@@ -8,7 +8,6 @@ import (
 	"github.com/tokenme/tmm/common"
 	. "github.com/tokenme/tmm/handler"
 	"net/http"
-	"strconv"
 	"time"
 )
 
@@ -16,21 +15,35 @@ const (
 	DEFAULT_PAGE_SIZE = 10
 )
 
+type SharesRequest struct {
+	Page     uint            `json:"page" form:"page"`
+	PageSize uint            `json:"page_size" form:"page_size"`
+	Idfa     string          `json:"idfa" form:"idfa"`
+	Platform common.Platform `json:"platform" form:"platform" binding:"required"`
+}
+
 func SharesHandler(c *gin.Context) {
-	userContext, exists := c.Get("USER")
+	_, exists := c.Get("USER")
 	if CheckWithCode(!exists, UNAUTHORIZED_ERROR, "need login", c) {
 		return
 	}
-	user := userContext.(common.User)
 
-	page, _ := strconv.ParseUint(c.Param("page"), 10, 64)
-	pageSize, _ := strconv.ParseUint(c.Param("pageSize"), 10, 64)
-	if page == 0 {
-		page = 1
+	var req SharesRequest
+	if CheckErr(c.Bind(&req), c) {
+		return
 	}
-	if pageSize == 0 || pageSize > DEFAULT_PAGE_SIZE {
-		pageSize = DEFAULT_PAGE_SIZE
+	if req.Page == 0 {
+		req.Page = 1
 	}
+	if req.PageSize == 0 || req.PageSize > DEFAULT_PAGE_SIZE {
+		req.PageSize = DEFAULT_PAGE_SIZE
+	}
+
+	device := common.DeviceRequest{
+		Idfa:     req.Idfa,
+		Platform: req.Platform,
+	}
+	deviceId := device.DeviceId()
 
 	db := Service.Db
 	query := `SELECT
@@ -45,10 +58,10 @@ func SharesHandler(c *gin.Context) {
     st.points_left,
     st.inserted_at,
     st.updated_at
-FROM share_tasks AS st
-WHERE st.points_left > 0
+FROM tmm.share_tasks AS st
+WHERE st.points_left>0 AND st.online_status = 1
 ORDER BY st.bonus DESC, st.id DESC LIMIT %d, %d`
-	rows, _, err := db.Query(query, (page-1)*pageSize, pageSize)
+	rows, _, err := db.Query(query, (req.Page-1)*req.PageSize, req.PageSize)
 	if CheckErr(err, c) {
 		return
 	}
@@ -70,7 +83,7 @@ ORDER BY st.bonus DESC, st.id DESC LIMIT %d, %d`
 			InsertedAt: row.ForceLocaltime(9).Format(time.RFC3339),
 			UpdatedAt:  row.ForceLocaltime(10).Format(time.RFC3339),
 		}
-		task.ShareLink, _ = task.GetShareLink(user.Id, Config)
+		task.ShareLink, _ = task.GetShareLink(deviceId, Config)
 		tasks = append(tasks, task)
 	}
 	c.JSON(http.StatusOK, tasks)

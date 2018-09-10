@@ -85,7 +85,6 @@ func main() {
 	if config.EnableGC {
 		go gcHandler.Start()
 	}
-
 	//queueManager := sqs.NewManager(config.SQS)
 	//queues := make(map[string]sqs.Queue)
 	//queues = map[string]sqs.Queue{

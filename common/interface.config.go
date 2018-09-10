@@ -13,8 +13,11 @@ type Config struct {
 	LogPath              string       `required:"true"`
 	TokenSalt            string       `required:"true"`
 	LinkSalt             string       `required:"true"`
-	OutputWallet         OutputWallet `required:"true"`
+	TMMPoolWallet        WalletConfig `required:"true"`
 	TMMTokenAddress      string       `required:"true"`
+	MinTMMExchange       uint         `required:"true"`
+	DefaultAppTaskTS     int64        `required:"true"`
+	DefaultShareTaskTS   int64        `required:"true"`
 	DefaultDeviceBalance uint64       `required:"true"`
 	SentryDSN            string       `required:"true"`
 	MySQL                MySQLConfig  `required:"true"`
@@ -45,9 +48,10 @@ type RedisConfig struct {
 	Slave  string
 }
 
-type OutputWallet struct {
+type WalletConfig struct {
 	Salt string `required:"true"`
 	Data string `required:"true"`
+	Key  string `required:"true"`
 }
 
 type SQSConfig struct {

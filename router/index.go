@@ -27,5 +27,7 @@ func NewRouter(templatePath string) *gin.Engine {
 	deviceRouter(r)
 	appRouter(r)
 	taskRouter(r)
+	exchangeRouter(r)
+	tokenRouter(r)
 	return r
 }

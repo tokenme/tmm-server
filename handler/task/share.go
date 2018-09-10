@@ -7,23 +7,15 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/tokenme/tmm/common"
 	. "github.com/tokenme/tmm/handler"
-	"github.com/tokenme/tmm/utils"
 	"net/http"
 )
 
 func ShareHandler(c *gin.Context) {
-
-	encryptedTaskId := c.Param("encryptedTaskId")
-	encryptedUserId := c.Param("encryptedUserId")
-	taskId, err := utils.DecryptUint64(encryptedTaskId, []byte(Config.LinkSalt))
+	taskId, deviceId, err := common.DecryptShareTaskLink(c.Param("encryptedTaskId"), c.Param("encryptedDeviceId"), Config)
 	if CheckErr(err, c) {
 		return
 	}
-	userId, err := utils.DecryptUint64(encryptedUserId, []byte(Config.LinkSalt))
-	if CheckErr(err, c) {
-		return
-	}
-	if Check(taskId == 0 || userId == 0, "not found", c) {
+	if Check(taskId == 0 || deviceId == "", "not found", c) {
 		return
 	}
 	db := Service.Db
@@ -36,14 +28,14 @@ func ShareHandler(c *gin.Context) {
     st.max_viewers,
     st.bonus,
     st.points,
-    st.points_left
-    ust.points,
-    ust.viewers
-FROM share_tasks AS st
-LEFT JOIN user_share_tasks AS ust ON (ust.task_id=st.id AD ust.user_id=%d)
+    st.points_left,
+    dst.points,
+    dst.viewers
+FROM tmm.share_tasks AS st
+LEFT JOIN tmm.device_share_tasks AS dst ON (dst.task_id=st.id AND dst.device_id='%s')
 WHERE st.id=%d
 LIMIT 1`
-	rows, _, err := db.Query(query, userId, taskId)
+	rows, _, err := db.Query(query, db.Escape(deviceId), taskId)
 	if CheckErr(err, c) {
 		return
 	}
@@ -66,14 +58,47 @@ LIMIT 1`
 		PointsLeft: pointsLeft,
 	}
 	userViewers := row.Uint(9)
-	if _, err := c.Cookie(task.CookieKey()); err == nil && (task.PointsLeft.GreaterThanOrEqual(bonus) && task.MaxViewers > userViewers) {
-		_, _, err := db.Query(`INSERT INTO tmm.user_share_tasks (user_id, task_id, points) VALUES (%d, %d, %s) ON DUPLICATE KEY UPDATE points=points+VALUES(points), viewers=viewers+1`, task.Id, userId, bonus.StringFixed(9))
+
+	var (
+		cookieFound = false
+		ipFound     = false
+	)
+	if _, err := c.Cookie(task.CookieKey()); err == nil {
+		cookieFound = true
+	}
+	ipInfo := ClientIP(c)
+	ipKey := task.IpKey(ipInfo)
+	redisConn := Service.Redis.Master.Get()
+	defer redisConn.Close()
+	_, err = redisConn.Do("GET", ipKey)
+	if err == nil {
+		ipFound = true
+	}
+
+	if !cookieFound && !ipFound && (task.PointsLeft.GreaterThanOrEqual(bonus) && task.MaxViewers > userViewers) {
+		_, _, err := db.Query(`INSERT IGNORE INTO tmm.device_share_tasks (device_id, task_id) VALUES ('%s', %d)`, db.Escape(deviceId), taskId)
 		if err == nil {
-			_, _, err = db.Query(`UPDATE tmm.share_tasks SET points_left=points_left-bonus, viewers=viewers+1 WHERE id=%d`, task.Id)
+			query := `UPDATE tmm.devices AS d, tmm.device_share_tasks AS dst, tmm.share_tasks AS st
+            SET
+                d.points = d.points + IF(st.points_left > st.bonus, st.bonus, st.points_left),
+                dst.points = dst.points + IF(st.points_left > st.bonus, st.bonus, st.points_left),
+                dst.viewers = dst.viewers + 1
+                st.points_left = IF(st.points_left > st.bonus, st.points_left - st.bonus, 0),
+                st.viewers = st.viewers + 1
+            WHERE
+                d.id='%s'
+            AND dst.device_id = d.id
+            AND dst.task_id = %d
+            AND st.id = dst.task_id`
+			_, _, err = db.Query(query, db.Escape(deviceId), task.Id)
 			if err != nil {
 				log.Error(err.Error())
 			}
-			c.SetCookie(task.CookieKey(), "1", 86400, "/", Config.Domain, true, true)
+			c.SetCookie(task.CookieKey(), "1", 60*60*24*30, "/", Config.Domain, true, true)
+			_, err = redisConn.Do("SETEX", ipKey, 600, true)
+			if err != nil {
+				log.Error(err.Error())
+			}
 		} else {
 			log.Error(err.Error())
 		}

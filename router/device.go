@@ -15,5 +15,6 @@ func deviceRouter(r *gin.Engine) {
 	}
 	r.POST("/device/bind", AuthMiddleware.MiddlewareFunc(), device.BindHandler)
 	r.GET("/device/list", AuthMiddleware.MiddlewareFunc(), device.ListHandler)
+	r.GET("/device/get/:deviceId", AuthMiddleware.MiddlewareFunc(), device.GetHandler)
 	r.GET("/device/apps/:deviceId", AuthMiddleware.MiddlewareFunc(), device.AppsHandler)
 }

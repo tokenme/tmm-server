@@ -129,18 +129,5 @@ func createByMobile(c *gin.Context, req CreateRequest) {
 			break
 		}
 	}
-
-	outputWalletPrivateKey, err := utils.AddressDecrypt(Config.OutputWallet.Data, Config.OutputWallet.Salt, Config.TokenSalt)
-	if CheckErr(err, c) {
-		raven.CaptureError(err, nil)
-		return
-	}
-	transactor := eth.TransactorAccount(outputWalletPrivateKey)
-	transactor.Value = eth.InitialGas
-	_, err = eth.Transfer(transactor, Service.Geth, c, pubKey)
-	if CheckErr(err, c) {
-		raven.CaptureError(err, nil)
-		return
-	}
 	c.JSON(http.StatusOK, APIResponse{Msg: "ok"})
 }

@@ -22,23 +22,66 @@ type ShareTask struct {
 	UpdatedAt  string          `json:"updated_at,omitempty"`
 }
 
-type ShareTaskProto struct {
-	Id   uint64 `json:"id"`
-	Link string `json:"link"`
-}
-
-func (this ShareTask) GetShareLink(userId uint64, config Config) (string, error) {
+func (this ShareTask) GetShareLink(deviceId string, config Config) (string, error) {
 	encrypted, err := utils.EncryptUint64(this.Id, []byte(config.LinkSalt))
 	if err != nil {
 		return "", err
 	}
-	encryptedUserId, err := utils.EncryptUint64(userId, []byte(config.LinkSalt))
+	encryptedDeviceId, err := utils.AESEncrypt([]byte(config.LinkSalt), deviceId)
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("%s/%s/%s", config.ShareUrl, encrypted, encryptedUserId), nil
+	return fmt.Sprintf("%s/%s/%s", config.ShareUrl, encrypted, encryptedDeviceId), nil
+}
+
+func DecryptShareTaskLink(encryptedTaskId string, encryptedDeviceId string, config Config) (taskId uint64, deviceId string, err error) {
+	taskId, err = utils.DecryptUint64(encryptedTaskId, []byte(config.LinkSalt))
+	if err != nil {
+		return
+	}
+	deviceId, err = utils.AESDecrypt([]byte(config.LinkSalt), encryptedDeviceId)
+	if err != nil {
+		return
+	}
+	return taskId, deviceId, nil
 }
 
 func (this ShareTask) CookieKey() string {
 	return fmt.Sprintf("share-task-%d", this.Id)
+}
+
+func (this ShareTask) IpKey(ip string) string {
+	return fmt.Sprintf("share-task-%d-ip-%s", this.Id, ip)
+}
+
+type AppTask struct {
+	Id         uint64          `json:"id"`
+	Name       string          `json:"name,omitempty"`
+	Platform   Platform        `json:"platform,omitempty"`
+	BundleId   string          `json:"bundle_id,omitempty"`
+	StoreId    uint64          `json:"store_id,omitempty"`
+	Icon       string          `json:"icon,omitempty"`
+	Points     decimal.Decimal `json:"points,omitempty"`
+	PointsLeft decimal.Decimal `json:"points_left,omitempty"`
+	Bonus      decimal.Decimal `json:"bonus,omitempty"`
+	Downloads  uint            `json:"downloads,omitempty"`
+	Status     int             `json:"status,omitempty"`
+	InsertedAt string          `json:"inserted_at,omitempty"`
+	UpdatedAt  string          `json:"updated_at,omitempty"`
+}
+
+type TaskType = uint
+
+const (
+	AppTaskType   TaskType = 1
+	ShareTaskType TaskType = 2
+)
+
+type TaskRecord struct {
+	Type      TaskType        `json:"type"`
+	Title     string          `json:"title"`
+	Points    decimal.Decimal `json:"points"`
+	Image     string          `json:"image,omitempty"`
+	Viewers   uint            `json:"viewers,omitempty"`
+	UpdatedAt string          `json:"updated_at,omitempty"`
 }

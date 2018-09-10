@@ -35,22 +35,19 @@ type APIResponse struct {
 	Msg string `json:"message,omitempty"`
 }
 
-type ErrorCode uint
+type ErrorCode = int
 
 const (
-	BADREQUEST_ERROR                 ErrorCode = 400
-	INTERNAL_ERROR                   ErrorCode = 500
-	NOTFOUND_ERROR                   ErrorCode = 404
-	UNAUTHORIZED_ERROR               ErrorCode = 401
-	INVALID_PASSWD_ERROR             ErrorCode = 409
-	DUPLICATE_USER_ERROR             ErrorCode = 202
-	UNACTIVATED_USER_ERROR           ErrorCode = 502
-	NOT_ENOUGH_TOKEN_ERROR           ErrorCode = 600
-	NOT_ENOUGH_TOKEN_PRODUCT_ERROR   ErrorCode = 601
-	NOT_ENOUGH_TOKEN_TASK_ERROR      ErrorCode = 700
-	DUPLICATE_EVIDENCE_ERROR         ErrorCode = 701
-	TOKEN_UNDER_CONSTRUCTION_ERROR   ErrorCode = 800
-	PRODUCT_UNDER_CONSTRUCTION_ERROR ErrorCode = 801
+	BADREQUEST_ERROR         ErrorCode = 400
+	INTERNAL_ERROR           ErrorCode = 500
+	NOTFOUND_ERROR           ErrorCode = 404
+	UNAUTHORIZED_ERROR       ErrorCode = 401
+	INVALID_PASSWD_ERROR     ErrorCode = 409
+	DUPLICATE_USER_ERROR     ErrorCode = 202
+	UNACTIVATED_USER_ERROR   ErrorCode = 502
+	NOT_ENOUGH_TOKEN_ERROR   ErrorCode = 600
+	NOT_ENOUGH_POINTS_ERROR  ErrorCode = 700
+	INVALID_MIN_POINTS_ERROR ErrorCode = 701
 )
 
 type APIError struct {
