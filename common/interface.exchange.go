@@ -19,43 +19,44 @@ type ExchangeRate struct {
 	MinPoints decimal.Decimal `json:"min_points"`
 }
 
-func GetExchangeRate(config Config, service *Service) (ExchangeRate, error) {
+func GetExchangeRate(config Config, service *Service) (ExchangeRate, decimal.Decimal, error) {
 	exchRate := ExchangeRate{}
+	pointsPerTs := decimal.New(0, 0)
 	privateKey, err := commonutils.AddressDecrypt(config.TMMPoolWallet.Data, config.TMMPoolWallet.Salt, config.TMMPoolWallet.Key)
 	if err != nil {
-		return exchRate, err
+		return exchRate, pointsPerTs, err
 	}
 	pubKey, err := eth.AddressFromHexPrivateKey(privateKey)
 	if err != nil {
-		return exchRate, err
+		return exchRate, pointsPerTs, err
 	}
 	token, err := utils.NewToken(config.TMMTokenAddress, service.Geth)
 	if err != nil {
-		return exchRate, err
+		return exchRate, pointsPerTs, err
 	}
 	tokenDecimal, err := utils.TokenDecimal(token)
 	if err != nil {
-		return exchRate, err
+		return exchRate, pointsPerTs, err
 	}
 	balance, err := utils.TokenBalanceOf(token, pubKey)
 	if err != nil {
-		return exchRate, err
+		return exchRate, pointsPerTs, err
 	}
 	remainSeconds := commonutils.YearRemainSeconds()
 	if err != nil {
-		return exchRate, err
+		return exchRate, pointsPerTs, err
 	}
 	balanceDecimal := decimal.NewFromBigInt(balance, 0)
 	remainSecondsDecimal := decimal.NewFromFloat(remainSeconds)
 	tmmPerSecond := balanceDecimal.Div(remainSecondsDecimal).Div(decimal.New(1, int32(tokenDecimal)))
 	db := service.Db
-	rows, _, err := db.Query(`SELECT SUM(d.points) AS points, SUM(d.total_ts) AS ts FROM tmm.devices AS d`)
+	rows, _, err := db.Query(`SELECT SUM(d.points) AS points, SUM(d.total_ts) - SUM(d.consumed_ts) AS ts FROM tmm.devices AS d`)
 	if err != nil {
-		return exchRate, err
+		return exchRate, pointsPerTs, err
 	}
 	points, err := decimal.NewFromString(rows[0].Str(0))
 	if err != nil {
-		return exchRate, err
+		return exchRate, pointsPerTs, err
 	}
 	ts := decimal.New(rows[0].Int64(1), 0)
 	{
@@ -75,25 +76,25 @@ FROM
     SELECT
         2,
         SUM( dst.points ) AS points,
-        COUNT(*) * %d AS ts
+        SUM(dst.viewers) * %d AS ts
     FROM
     tmm.device_share_tasks AS dst
     ) AS tmp`
 		rows, _, err := db.Query(query, config.DefaultAppTaskTS, config.DefaultShareTaskTS)
 		if err != nil {
-			return exchRate, err
+			return exchRate, pointsPerTs, err
 		}
 		taskPoints, err := decimal.NewFromString(rows[0].Str(0))
 		if err != nil {
-			return exchRate, err
+			return exchRate, pointsPerTs, err
 		}
 		taskTS := decimal.New(rows[0].Int64(1), 0)
 		points = points.Add(taskPoints)
 		ts = ts.Add(taskTS)
 	}
-	pointsPerTs := points.Div(ts)
+	pointsPerTs = points.Div(ts)
 	exchRate.Rate = tmmPerSecond.Div(pointsPerTs)
 	minTMMExchange := decimal.New(int64(config.MinTMMExchange), 0)
 	exchRate.MinPoints = pointsPerTs.Div(tmmPerSecond).Mul(minTMMExchange)
-	return exchRate, nil
+	return exchRate, pointsPerTs, nil
 }

@@ -44,7 +44,6 @@ WHERE d.id='%s' AND du.user_id=%d`
 	if CheckErr(err, c) {
 		return
 	}
-	log.Warn(query, db.Escape(req.DeviceId), user.Id)
 	if CheckWithCode(len(rows) == 0, NOTFOUND_ERROR, "not found", c) {
 		return
 	}
@@ -55,7 +54,7 @@ WHERE d.id='%s' AND du.user_id=%d`
 	if CheckWithCode(points.LessThan(req.Points), NOT_ENOUGH_POINTS_ERROR, "not enough points", c) {
 		return
 	}
-	exchangeRate, err := common.GetExchangeRate(Config, Service)
+	exchangeRate, pointsPerTs, err := common.GetExchangeRate(Config, Service)
 	if CheckErr(err, c) {
 		return
 	}
@@ -64,6 +63,7 @@ WHERE d.id='%s' AND du.user_id=%d`
 		return
 	}
 	tmm := req.Points.Mul(exchangeRate.Rate)
+	consumedTs := req.Points.Div(pointsPerTs)
 	poolPrivKey, err := commonutils.AddressDecrypt(Config.TMMPoolWallet.Data, Config.TMMPoolWallet.Salt, Config.TMMPoolWallet.Key)
 	if CheckErr(err, c) {
 		return
@@ -86,7 +86,7 @@ WHERE d.id='%s' AND du.user_id=%d`
 		return
 	}
 	transactor := eth.TransactorAccount(poolPrivKey)
-	nonce, err := eth.Nonce(c, Service.Geth, Service.Redis.Master, poolPubKey, Config.Geth)
+	nonce, err := eth.Nonce(c, Service.Geth, Service.Redis.Master, GlobalLock, poolPubKey, Config.Geth)
 	if CheckErr(err, c) {
 		return
 	}
@@ -100,7 +100,7 @@ WHERE d.id='%s' AND du.user_id=%d`
 	if CheckErr(err, c) {
 		return
 	}
-	err = eth.NonceIncr(c, Service.Geth, Service.Redis.Master, poolPubKey, Config.Geth)
+	err = eth.NonceIncr(c, Service.Geth, Service.Redis.Master, GlobalLock, poolPubKey, Config.Geth)
 	if err != nil {
 		log.Error(err.Error())
 	}
@@ -114,7 +114,7 @@ WHERE d.id='%s' AND du.user_id=%d`
 	if CheckErr(err, c) {
 		return
 	}
-	_, _, err = db.Query(`UPDATE tmm.devices AS d, tmm.user_devices AS du SET d.points = d.points - %s WHERE du.device_id=d.id AND d.id='%s' AND du.user_id=%d AND d.points > %s`, req.Points.String(), db.Escape(req.DeviceId), user.Id, req.Points.String())
+	_, _, err = db.Query(`UPDATE tmm.devices AS d, tmm.user_devices AS du SET d.points = d.points - %s, d.consumed_ts = d.consumed_ts + %d WHERE du.device_id=d.id AND d.id='%s' AND du.user_id=%d AND d.points > %s`, req.Points.String(), consumedTs.IntPart(), db.Escape(req.DeviceId), user.Id, req.Points.String())
 	if CheckErr(err, c) {
 		return
 	}

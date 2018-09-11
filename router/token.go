@@ -10,5 +10,6 @@ func tokenRouter(r *gin.Engine) {
 	tokenGroup.Use(AuthMiddleware.MiddlewareFunc())
 	{
 		tokenGroup.GET("/tmm/balance", token.TMMBalanceHandler)
+		tokenGroup.GET("/assets", token.AssetsHandler)
 	}
 }

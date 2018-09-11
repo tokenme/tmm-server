@@ -15,18 +15,21 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
 var (
-	Service *common.Service
-	Config  common.Config
+	Service    *common.Service
+	Config     common.Config
+	GlobalLock *sync.Mutex
 	//Queues  map[string]sqs.Queue
 )
 
 func InitHandler(s *common.Service, c common.Config) {
 	Service = s
 	Config = c
+	GlobalLock = new(sync.Mutex)
 	//Queues = queues
 	raven.SetDSN(Config.SentryDSN)
 }

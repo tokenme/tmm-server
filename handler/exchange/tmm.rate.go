@@ -9,7 +9,7 @@ import (
 )
 
 func TMMRateHandler(c *gin.Context) {
-	exchangeRate, err := common.GetExchangeRate(Config, Service)
+	exchangeRate, _, err := common.GetExchangeRate(Config, Service)
 	if CheckErr(err, c) {
 		return
 	}

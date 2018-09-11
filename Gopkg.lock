@@ -369,6 +369,12 @@
   revision = "c4c61651e9e37fa117f53c5a906d3b63090d8445"
 
 [[projects]]
+  name = "github.com/tokenme/etherscan-api"
+  packages = ["."]
+  revision = "e6423e8ecf136a1daf6b8125fdc284ae5b6d35ae"
+  version = "v1.0.4"
+
+[[projects]]
   name = "github.com/ugorji/go"
   packages = ["codec"]
   revision = "b4c50a2b199d93b13dc15e78929cfb23bfdf21ab"
@@ -498,6 +504,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "1c0d53ab1c2791161bbc8048383de3813d33ccd133ce28bdb82cac77fc6f6744"
+  inputs-digest = "f84685ec31938eb69ca6e6f6c0928e3a69833ac98078cd744f46f970a6bcd722"
   solver-name = "gps-cdcl"
   solver-version = 1
