@@ -8,10 +8,17 @@ import (
 )
 
 type Transaction struct {
-	Receipt    string          `json:"receipt"`
-	Status     int             `json:"status"`
-	Value      decimal.Decimal `json:"value"`
-	InsertedAt string          `json:"inserted_at"`
+	Receipt           string          `json:"receipt"`
+	Status            int             `json:"status"`
+	Value             decimal.Decimal `json:"value"`
+	From              string          `json:"from,omitempty"`
+	To                string          `json:"to,omitempty"`
+	Gas               decimal.Decimal `json:"gas,omitempty"`
+	GasPrice          decimal.Decimal `json:"gas_price,omitempty"`
+	GasUsed           decimal.Decimal `json:"gas_used,omitempty"`
+	CumulativeGasUsed decimal.Decimal `json:"cumulative_gas_used,omitempty"`
+	Confirmations     int             `json:"confirmations,omitempty"`
+	InsertedAt        string          `json:"inserted_at"`
 }
 
 type ExchangeRate struct {

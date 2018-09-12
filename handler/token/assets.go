@@ -38,7 +38,7 @@ func AssetsHandler(c *gin.Context) {
 	tokenAddresses[Config.TMMTokenAddress] = struct{}{}
 	var escapedAddresses []string
 	for {
-		txs, err := client.ERC20Transfers(nil, &user.Wallet, nil, nil, page, offset)
+		txs, err := client.ERC20Transfers(nil, &user.Wallet, nil, nil, page, offset, false)
 		if err != nil || len(txs) == 0 {
 			break
 		}

@@ -371,8 +371,8 @@
 [[projects]]
   name = "github.com/tokenme/etherscan-api"
   packages = ["."]
-  revision = "e6423e8ecf136a1daf6b8125fdc284ae5b6d35ae"
-  version = "v1.0.4"
+  revision = "5acf289cfa221ff52a2b8026f872cec119bcc952"
+  version = "v1.0.5"
 
 [[projects]]
   name = "github.com/ugorji/go"
