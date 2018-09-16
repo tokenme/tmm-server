@@ -12,5 +12,6 @@ func tokenRouter(r *gin.Engine) {
 		tokenGroup.GET("/tmm/balance", token.TMMBalanceHandler)
 		tokenGroup.GET("/assets", token.AssetsHandler)
 		tokenGroup.GET("/transactions/:address/:page/:pageSize", token.TransactionsHandler)
+		tokenGroup.POST("/transfer", token.TransferHandler)
 	}
 }

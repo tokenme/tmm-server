@@ -3,14 +3,17 @@ package token
 import (
 	"fmt"
 	//"github.com/davecgh/go-spew/spew"
+	"github.com/fabioberger/coinbase-go"
 	"github.com/gin-gonic/gin"
 	"github.com/mkideal/log"
 	"github.com/panjf2000/ants"
 	"github.com/shopspring/decimal"
-	"github.com/tokenme/etherscan-api"
+	"github.com/tokenme/tmm/coins/eth"
 	"github.com/tokenme/tmm/coins/eth/utils"
 	"github.com/tokenme/tmm/common"
 	. "github.com/tokenme/tmm/handler"
+	"github.com/tokenme/tmm/tools/ethplorer-api"
+	"math/big"
 	"net/http"
 	"strings"
 	"sync"
@@ -22,39 +25,53 @@ func AssetsHandler(c *gin.Context) {
 		return
 	}
 	user := userContext.(common.User)
-	user.Wallet = "0xb2D44E5eA830333aBD20b769fAD052bF13D40A41"
-
 	var (
 		tokens   []*common.Token
 		tokenMap = make(map[string]*common.Token)
 	)
 
-	db := Service.Db
-
-	client := etherscan.New(etherscan.Mainnet, Config.EtherscanAPIKey)
-	offset := 1000
-	page := 1
-	tokenAddresses := make(map[string]struct{})
-	tokenAddresses[Config.TMMTokenAddress] = struct{}{}
-	var escapedAddresses []string
-	for {
-		txs, err := client.ERC20Transfers(nil, &user.Wallet, nil, nil, page, offset, false)
-		if err != nil || len(txs) == 0 {
-			break
+	ethBalance, _ := eth.BalanceOf(Service.Geth, c, user.Wallet)
+	if ethBalance != nil && ethBalance.Cmp(big.NewInt(0)) == 1 {
+		token := &common.Token{
+			Name:     "Ethereum",
+			Symbol:   "ETH",
+			Decimals: 18,
+			Icon:     "https://www.ethereum.org/images/logos/ETHEREUM-ICON_Black_small.png",
+			Balance:  decimal.NewFromBigInt(ethBalance, -18),
 		}
-		page += 1
-		for _, tx := range txs {
-			addr := strings.ToLower(tx.ContractAddress)
-			if tx.TokenName == "" {
+		coinbaseClient := coinbase.ApiKeyClient(Config.CoinbaseAPI.Key, Config.CoinbaseAPI.Secret)
+		exchange, err := coinbaseClient.GetExchangeRate("eth", "usd")
+		if err != nil {
+			log.Error(err.Error())
+		} else {
+			token.Price = decimal.NewFromFloat(exchange)
+		}
+		tokens = append(tokens, token)
+	}
+	db := Service.Db
+	tokenAddresses := make(map[string]struct{})
+	var escapedAddresses []string
+	client := ethplorer.NewClient(Config.EthplorerAPIKey)
+	addressInfo, _ := client.GetAddressInfo(user.Wallet, "")
+	if len(addressInfo.Tokens) > 0 {
+		for _, addrToken := range addressInfo.Tokens {
+			if addrToken.Token.Address == "" && addrToken.Token.Symbol == "" {
 				continue
 			}
+			addr := strings.ToLower(addrToken.Token.Address)
 			if _, found := tokenAddresses[addr]; !found {
 				escapedAddresses = append(escapedAddresses, fmt.Sprintf("'%s'", db.Escape(addr)))
+				var minGas decimal.Decimal
+				if addr != Config.TMMTokenAddress {
+					minGas = decimal.New(600000*2, -9)
+				}
 				token := &common.Token{
 					Address:  addr,
-					Name:     tx.TokenName,
-					Symbol:   tx.TokenSymbol,
-					Decimals: uint(tx.TokenDecimal),
+					Name:     addrToken.Token.Name,
+					Symbol:   addrToken.Token.Symbol,
+					Decimals: uint(addrToken.Token.Decimals.IntPart()),
+					MinGas:   minGas,
+					Price:    addrToken.Token.Price.Rate,
 				}
 				tokenMap[token.Address] = token
 				tokens = append(tokens, token)
@@ -79,9 +96,15 @@ func AssetsHandler(c *gin.Context) {
 		icon := row.Str(1)
 		price, _ := decimal.NewFromString(row.Str(2))
 		if token, found := tokenMap[addr]; found {
-			token.Price = price
+			if token.Price.Equal(decimal.New(0, 0)) {
+				token.Price = price
+			}
 			token.Icon = icon
 		} else {
+			var minGas decimal.Decimal
+			if addr != Config.TMMTokenAddress {
+				minGas = decimal.New(600000*2, -9)
+			}
 			token := &common.Token{
 				Address:  addr,
 				Name:     row.Str(3),
@@ -89,6 +112,7 @@ func AssetsHandler(c *gin.Context) {
 				Decimals: row.Uint(5),
 				Icon:     icon,
 				Price:    price,
+				MinGas:   minGas,
 			}
 			tokenMap[addr] = token
 			tokens = append(tokens, token)
@@ -101,14 +125,17 @@ func AssetsHandler(c *gin.Context) {
 		token := req.(*common.Token)
 		tokenABI, err := utils.NewToken(token.Address, Service.Geth)
 		if err != nil {
+			log.Error(err.Error())
 			return err
 		}
 		balance, err := utils.TokenBalanceOf(tokenABI, user.Wallet)
 		if err != nil {
+			log.Error(err.Error())
 			return err
 		}
 		balanceDecimal, err := decimal.NewFromString(balance.String())
 		if err != nil {
+			log.Error(err.Error())
 			return err
 		}
 		if token.Decimals > 0 {
@@ -116,7 +143,6 @@ func AssetsHandler(c *gin.Context) {
 		} else {
 			token.Balance = balanceDecimal
 		}
-
 		return nil
 	})
 	for _, token := range tokenMap {
@@ -124,15 +150,25 @@ func AssetsHandler(c *gin.Context) {
 		balancePool.Serve(token)
 	}
 	wg.Wait()
-	var val []string
+	var (
+		val       []string
+		updateVal []string
+	)
 	for _, token := range tokenMap {
 		if _, found := knownAddressMap[token.Address]; found {
+			updateVal = append(updateVal, fmt.Sprintf("('%s', %s)", token.Address, token.Price.String()))
 			continue
 		}
-		val = append(val, fmt.Sprintf("('%s', '%s', '%s', %d)", token.Address, db.Escape(token.Name), db.Escape(token.Symbol), token.Decimals))
+		val = append(val, fmt.Sprintf("('%s', '%s', '%s', %d, %s)", token.Address, db.Escape(token.Name), db.Escape(token.Symbol), token.Decimals, token.Price.String()))
 	}
 	if len(val) > 0 {
-		_, _, err := db.Query(`INSERT IGNORE INTO tmm.erc20 (address, name, symbol, decimals) VALUES %s`, strings.Join(val, ","))
+		_, _, err := db.Query(`INSERT IGNORE INTO tmm.erc20 (address, name, symbol, decimals, price) VALUES %s`, strings.Join(val, ","))
+		if err != nil {
+			log.Error(err.Error())
+		}
+	}
+	if len(updateVal) > 0 {
+		_, _, err := db.Query(`INSERT INTO tmm.erc20 (address, price) VALUES %s ON DUPLICATE KEY UPDATE price=VALUES(price)`, strings.Join(updateVal, ","))
 		if err != nil {
 			log.Error(err.Error())
 		}

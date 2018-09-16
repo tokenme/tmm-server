@@ -1,40 +1,44 @@
 package common
 
 type Config struct {
-	Domain               string       `default:"tmm.tokenmama.io"`
-	AppName              string       `default:"tmm"`
-	BaseUrl              string       `default:"https://tmm.tokenmama.io"`
-	CDNUrl               string       `default:"https://cdn.tmm.io/"`
-	ShareUrl             string       `default:"https://tmm.tokenmama.io/share"`
-	QRCodeUrl            string       `default:"qr.tmm.io"`
-	Port                 int          `default:"8008"`
-	Geth                 string       `default:"geth.xibao100.com"`
-	Template             string       `required:"true"`
-	LogPath              string       `required:"true"`
-	TokenSalt            string       `required:"true"`
-	LinkSalt             string       `required:"true"`
-	TMMPoolWallet        WalletConfig `required:"true"`
-	TMMTokenAddress      string       `required:"true"`
-	MinTMMExchange       uint         `required:"true"`
-	DefaultAppTaskTS     int64        `required:"true"`
-	DefaultShareTaskTS   int64        `required:"true"`
-	DefaultDeviceBalance uint64       `required:"true"`
-	SentryDSN            string       `required:"true"`
-	MySQL                MySQLConfig  `required:"true"`
-	Redis                RedisConfig  `required:"true"`
-	SQS                  SQSConfig    `required:"true"`
-	Qiniu                QiniuConfig  `required:"true"`
-	TwilioToken          string       `required:"true"`
-	EtherscanAPIKey      string       `required:"true"`
-	SlackToken           string       `required:"true"`
-	SlackAdminChannelID  string       `required:"true"`
-	GeoIP                string       `required:"true"`
-	GrowthRate           float64      `required:"true"`
-	MinGrowthTS          int          `required:"true"`
-	Debug                bool         `default:"false"`
-	EnableWeb            bool         `default:"false"`
-	EnableGC             bool         `default:"false"`
-	EnableTx             bool         `default:"false"`
+	Domain               string            `default:"tmm.tokenmama.io"`
+	AppName              string            `default:"tmm"`
+	BaseUrl              string            `default:"https://tmm.tokenmama.io"`
+	CDNUrl               string            `default:"https://cdn.tmm.io/"`
+	ShareUrl             string            `default:"https://tmm.tokenmama.io/share"`
+	QRCodeUrl            string            `default:"qr.tmm.io"`
+	Port                 int               `default:"8008"`
+	Geth                 string            `default:"geth.xibao100.com"`
+	Template             string            `required:"true"`
+	LogPath              string            `required:"true"`
+	TokenProfilePath     string            `required:"true"`
+	TokenSalt            string            `required:"true"`
+	LinkSalt             string            `required:"true"`
+	TMMAgentWallet       WalletConfig      `required:"true"`
+	TMMPoolWallet        WalletConfig      `required:"true"`
+	TMMTokenAddress      string            `required:"true"`
+	MinTMMExchange       uint              `required:"true"`
+	DefaultAppTaskTS     int64             `required:"true"`
+	DefaultShareTaskTS   int64             `required:"true"`
+	DefaultDeviceBalance uint64            `required:"true"`
+	SentryDSN            string            `required:"true"`
+	MySQL                MySQLConfig       `required:"true"`
+	Redis                RedisConfig       `required:"true"`
+	SQS                  SQSConfig         `required:"true"`
+	Qiniu                QiniuConfig       `required:"true"`
+	TwilioToken          string            `required:"true"`
+	EthplorerAPIKey      string            `required:"true"`
+	EtherscanAPIKey      string            `required:"true"`
+	SlackToken           string            `required:"true"`
+	SlackAdminChannelID  string            `required:"true"`
+	CoinbaseAPI          CoinbaseAPIConfig `required:"true"`
+	GeoIP                string            `required:"true"`
+	GrowthRate           float64           `required:"true"`
+	MinGrowthTS          int               `required:"true"`
+	Debug                bool              `default:"false"`
+	EnableWeb            bool              `default:"false"`
+	EnableGC             bool              `default:"false"`
+	EnableTx             bool              `default:"false"`
 }
 
 type MySQLConfig struct {
@@ -66,14 +70,15 @@ type SQSConfig struct {
 }
 
 type QiniuConfig struct {
-	AK                    string `required:"true"`
-	Secret                string `required:"true"`
-	Bucket                string `required:"true"`
-	AvatarPath            string `required:"true"`
-	LogoPath              string `required:"true"`
-	TokenCover            string `required:"true"`
-	TokenProductImagePath string `required:"true"`
-	TokenTaskImagePath    string `required:"true"`
-	TokenTaskEvidencePath string `required:"true"`
-	Domain                string `required:"true"`
+	AK         string `required:"true"`
+	Secret     string `required:"true"`
+	Bucket     string `required:"true"`
+	AvatarPath string `required:"true"`
+	LogoPath   string `required:"true"`
+	Domain     string `required:"true"`
+}
+
+type CoinbaseAPIConfig struct {
+	Key    string `required:"true"`
+	Secret string `required:"true"`
 }

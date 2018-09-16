@@ -13,6 +13,7 @@ import (
 	"github.com/tokenme/tmm/handler"
 	"github.com/tokenme/tmm/router"
 	"github.com/tokenme/tmm/tools/gc"
+	"github.com/tokenme/tmm/tools/tokenprofile"
 	"os"
 	"os/signal"
 	"path"
@@ -23,9 +24,10 @@ import (
 func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	var (
-		config     common.Config
-		configFlag common.Config
-		configPath string
+		config         common.Config
+		configFlag     common.Config
+		configPath     string
+		parseTokenFlag bool
 	)
 
 	os.Setenv("CONFIGOR_ENV_PREFIX", "-")
@@ -37,6 +39,7 @@ func main() {
 	flag.BoolVar(&configFlag.EnableWeb, "web", false, "enable http web server")
 	flag.BoolVar(&configFlag.EnableGC, "gc", false, "enable gc")
 	flag.BoolVar(&configFlag.EnableTx, "tx", false, "enable tx queue handler")
+	flag.BoolVar(&parseTokenFlag, "parse-token", false, "enable parse token")
 	flag.Parse()
 
 	configor.New(&configor.Config{Verbose: configFlag.Debug, ErrorOnUnmatchedKeys: true, Environment: "production"}).Load(&config, configPath)
@@ -81,6 +84,10 @@ func main() {
 	defer service.Close()
 	service.Db.Reconnect()
 
+	if parseTokenFlag {
+		tokenprofile.Update(service, config)
+		return
+	}
 	gcHandler := gc.New(service, config)
 	if config.EnableGC {
 		go gcHandler.Start()

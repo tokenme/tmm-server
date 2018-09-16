@@ -20,7 +20,7 @@ func TransactionsHandler(c *gin.Context) {
 		return
 	}
 	user := userContext.(common.User)
-	user.Wallet = "0xb2D44E5eA830333aBD20b769fAD052bF13D40A41"
+
 	client := etherscan.New(etherscan.Mainnet, Config.EtherscanAPIKey)
 	tokenAddress := c.Param("address")
 	page, _ := strconv.ParseUint(c.Param("page"), 10, 64)

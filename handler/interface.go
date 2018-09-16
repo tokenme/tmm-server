@@ -51,6 +51,7 @@ const (
 	NOT_ENOUGH_TOKEN_ERROR   ErrorCode = 600
 	NOT_ENOUGH_POINTS_ERROR  ErrorCode = 700
 	INVALID_MIN_POINTS_ERROR ErrorCode = 701
+	NOT_ENOUGH_ETH_ERROR     ErrorCode = 800
 )
 
 type APIError struct {

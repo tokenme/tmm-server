@@ -44,6 +44,10 @@ func Transfer(token *eth.Token, opts *bind.TransactOpts, _to string, _value *big
 	return token.Transfer(opts, common.HexToAddress(_to), _value)
 }
 
+func TransferProxy(token *eth.Token, opts *bind.TransactOpts, _from string, _to string, _value *big.Int) (*types.Transaction, error) {
+	return token.TransferProxy(opts, common.HexToAddress(_from), common.HexToAddress(_to), _value)
+}
+
 func TokenMeta(token *eth.Token, owner string) (name string, symbol string, decimals uint8, initialSupply *big.Int, totalSupply *big.Int, totalTransfers *big.Int, totalHolers *big.Int, circulatingSupply *big.Int, balance *big.Int, err error) {
 	return token.Meta(nil, common.HexToAddress(owner))
 }

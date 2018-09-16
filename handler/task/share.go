@@ -78,9 +78,14 @@ LIMIT 1`
 	if !cookieFound && !ipFound && (task.PointsLeft.GreaterThanOrEqual(bonus) && task.MaxViewers > userViewers) {
 		_, _, err := db.Query(`INSERT IGNORE INTO tmm.device_share_tasks (device_id, task_id) VALUES ('%s', %d)`, db.Escape(deviceId), taskId)
 		if err == nil {
+			pointsPerTs, err := common.GetPointsPerTs(Service)
+			if CheckErr(err, c) {
+				return
+			}
 			query := `UPDATE tmm.devices AS d, tmm.device_share_tasks AS dst, tmm.share_tasks AS st
             SET
                 d.points = d.points + IF(st.points_left > st.bonus, st.bonus, st.points_left),
+                d.total_ts = d.total_ts + CEIL(IF(st.points_left > st.bonus, st.bonus, st.points_left) / %s)
                 dst.points = dst.points + IF(st.points_left > st.bonus, st.bonus, st.points_left),
                 dst.viewers = dst.viewers + 1
                 st.points_left = IF(st.points_left > st.bonus, st.points_left - st.bonus, 0),
@@ -90,7 +95,7 @@ LIMIT 1`
             AND dst.device_id = d.id
             AND dst.task_id = %d
             AND st.id = dst.task_id`
-			_, _, err = db.Query(query, db.Escape(deviceId), task.Id)
+			_, _, err = db.Query(query, pointsPerTs.String(), db.Escape(deviceId), task.Id)
 			if err != nil {
 				log.Error(err.Error())
 			}

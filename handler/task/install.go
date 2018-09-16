@@ -58,8 +58,13 @@ func AppInstallHandler(c *gin.Context) {
 			return
 		}
 	} else if req.Status == 1 {
+		pointsPerTs, err := common.GetPointsPerTs(Service)
+		if CheckErr(err, c) {
+			return
+		}
 		query := `UPDATE tmm.devices AS d, tmm.device_app_tasks AS dat, tmm.app_tasks AS appt
 SET d.points = d.points + IF(appt.points_left > appt.bonus, appt.bonus, appt.points_left),
+    d.total_ts = d.total_ts + CEIL(IF(appt.points_left > appt.bonus, appt.bonus, appt.points_left) / %s)
     appt.points_left = IF(appt.points_left > appt.bonus, appt.points_left - appt.bonus, 0),
     appt.downloads = appt.downloads + 1,
     dat.points = IF(appt.points_left > appt.bonus, appt.bonus, appt.points_left),
@@ -70,7 +75,7 @@ WHERE
     AND dat.device_id = d.id
     AND dat.task_id = %d
     AND dat.status != 1`
-		_, _, err = db.Query(query, db.Escape(deviceId), req.TaskId)
+		_, _, err = db.Query(query, pointsPerTs.String(), db.Escape(deviceId), req.TaskId)
 		if CheckErr(err, c) {
 			return
 		}
@@ -91,8 +96,13 @@ WHERE
 			return
 		}
 		bonus, _ = decimal.NewFromString(rows[0].Str(0))
+		pointsPerTs, err := common.GetPointsPerTs(Service)
+		if CheckErr(err, c) {
+			return
+		}
 		query := `UPDATE tmm.devices AS d, tmm.device_app_tasks AS dat, tmm.app_tasks AS appt
 SET d.points = IF(d.points > dat.points, d.points - dat.points, 0),
+    d.consumed_ts = d.consumed_ts + CEIL(IF(d.points > dat.points, d.points - dat.points, 0) / %s)
     appt.points_left = appt.points_left + IF(d.points > dat.points, dat.points, 0),
     appt.downloads = appt.downloads - IF(d.points > dat.points, 1, 0),
     dat.status = -1
@@ -102,7 +112,7 @@ WHERE
     AND dat.device_id = d.id
     AND dat.task_id = %d
     AND dat.status = 1`
-		_, _, err = db.Query(query, db.Escape(deviceId), req.TaskId)
+		_, _, err = db.Query(query, pointsPerTs, db.Escape(deviceId), req.TaskId)
 		if CheckErr(err, c) {
 			return
 		}

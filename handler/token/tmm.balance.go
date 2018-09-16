@@ -22,11 +22,7 @@ func TMMBalanceHandler(c *gin.Context) {
 	if CheckErr(err, c) {
 		return
 	}
-	name, symbol, decimals, _, _, _, _, _, _, err := utils.TokenMeta(tokenABI, user.Wallet)
-	balance, err := utils.TokenBalanceOf(tokenABI, user.Wallet)
-	if CheckErr(err, c) {
-		return
-	}
+	name, symbol, decimals, _, _, _, _, _, balance, err := utils.TokenMeta(tokenABI, user.Wallet)
 	balanceDecimal, err := decimal.NewFromString(balance.String())
 	if CheckErr(err, c) {
 		return

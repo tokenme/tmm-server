@@ -1,0 +1,3 @@
+[submodule "dependencies/token-profiles"]
+	path = dependencies/token-profiles
+	url = https://github.com/consenlabs/token-profile.git
