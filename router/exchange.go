@@ -10,6 +10,7 @@ func exchangeRouter(r *gin.Engine) {
 	exchangeGroup.Use(AuthMiddleware.MiddlewareFunc())
 	{
 		exchangeGroup.POST("/tmm/change", exchange.TMMChangeHandler)
+		exchangeGroup.GET("/records", exchange.RecordsHandler)
 	}
 	r.GET("/exchange/tmm/rate", exchange.TMMRateHandler)
 }

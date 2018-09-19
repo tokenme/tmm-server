@@ -38,7 +38,7 @@ func AppsCheckHandler(c *gin.Context) {
 	if Check(len(rows) == 0, "not found", c) {
 		return
 	}
-	rows, _, err = db.Query(`SELECT task_id, bundle_id, status FROM tmm.device_app_tasks WHERE device_id='%s' AND updated_at>DATE_SUB(NOW(), INTERVAL 7 DAY)`, db.Escape(deviceId))
+	rows, _, err = db.Query(`SELECT dat.task_id, dat.bundle_id, dat.status, asi.id FROM tmm.device_app_tasks AS dat LEFT JOIN tmm.app_scheme_ids AS asi ON (asi.bundle_id=dat.bundle_id) WHERE dat.device_id='%s' AND dat.updated_at>DATE_SUB(NOW(), INTERVAL 7 DAY)`, db.Escape(deviceId))
 	if CheckErr(err, c) {
 		return
 	}
@@ -48,6 +48,7 @@ func AppsCheckHandler(c *gin.Context) {
 			Id:       row.Uint64(0),
 			BundleId: row.Str(1),
 			Status:   row.Int(2),
+			SchemeId: row.Uint64(3),
 		}
 		tasks = append(tasks, task)
 	}

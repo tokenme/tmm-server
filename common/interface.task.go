@@ -8,6 +8,7 @@ import (
 
 type ShareTask struct {
 	Id         uint64          `json:"id"`
+	Creator    uint64          `json:"creator",omitempty`
 	Title      string          `json:"title"`
 	Summary    string          `json:"summary"`
 	Link       string          `json:"link"`
@@ -56,8 +57,10 @@ func (this ShareTask) IpKey(ip string) string {
 
 type AppTask struct {
 	Id         uint64          `json:"id"`
+	Creator    uint64          `json:"creator",omitempty`
 	Name       string          `json:"name,omitempty"`
 	Platform   Platform        `json:"platform,omitempty"`
+	SchemeId   uint64          `json:"scheme_id,omitempty"`
 	BundleId   string          `json:"bundle_id,omitempty"`
 	StoreId    uint64          `json:"store_id,omitempty"`
 	Icon       string          `json:"icon,omitempty"`

@@ -5,6 +5,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/tokenme/tmm/common"
 	. "github.com/tokenme/tmm/handler"
+	tokenUtils "github.com/tokenme/tmm/utils/token"
 	"net/http"
 )
 
@@ -16,18 +17,22 @@ func InfoGetHandler(c *gin.Context) {
 	user := userContext.(common.User)
 	if c.Query("refresh") != "" {
 		db := Service.Db
-		query := `SELECT 
-                u.id, 
+		query := `SELECT
+                u.id,
                 u.country_code,
                 u.mobile,
                 u.nickname,
                 u.avatar,
                 u.realname,
-                u.salt, 
+                u.salt,
                 u.passwd,
                 u.wallet_addr,
-                u.payment_passwd
+                u.payment_passwd,
+                IFNULL(ic.id, 0),
+                IFNULL(ic2.id, 0)
             FROM ucoin.users AS u
+            LEFT JOIN tmm.invite_codes AS ic ON (ic.user_id = u.id)
+            LEFT JOIN tmm.invite_codes AS ic2 ON (ic2.user_id = ic.parent_id)
             WHERE u.id = %d
             AND active = 1
             LIMIT 1`
@@ -40,7 +45,7 @@ func InfoGetHandler(c *gin.Context) {
 			return
 		}
 		row := rows[0]
-		user := common.User{
+		user = common.User{
 			Id:          row.Uint64(0),
 			CountryCode: row.Uint(1),
 			Mobile:      row.Str(2),
@@ -50,6 +55,8 @@ func InfoGetHandler(c *gin.Context) {
 			Salt:        row.Str(6),
 			Password:    row.Str(7),
 			Wallet:      row.Str(8),
+			InviteCode:  tokenUtils.Token(row.Uint64(10)),
+			InviterCode: tokenUtils.Token(row.Uint64(11)),
 		}
 		paymentPasswd := row.Str(9)
 		if paymentPasswd != "" {

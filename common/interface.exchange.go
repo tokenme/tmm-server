@@ -14,6 +14,14 @@ const (
 	TMMExchangeOut TMMExchangeDirection = -1
 )
 
+type ExchangeTxStatus = int8
+
+const (
+	ExchangeTxPending ExchangeTxStatus = 2
+	ExchangeTxFailed  ExchangeTxStatus = 0
+	ExchangeTxSuccess ExchangeTxStatus = 1
+)
+
 type Transaction struct {
 	Receipt           string          `json:"receipt"`
 	Status            int             `json:"status"`
@@ -26,6 +34,16 @@ type Transaction struct {
 	CumulativeGasUsed decimal.Decimal `json:"cumulative_gas_used,omitempty"`
 	Confirmations     int             `json:"confirmations,omitempty"`
 	InsertedAt        string          `json:"inserted_at"`
+}
+
+type ExchangeRecord struct {
+	Tx         string               `json:"tx"`
+	Status     ExchangeTxStatus     `json:"status"`
+	DeviceId   string               `json:"-"`
+	Tmm        decimal.Decimal      `json:"tmm"`
+	Points     decimal.Decimal      `json:"points"`
+	Direction  TMMExchangeDirection `json:"direction"`
+	InsertedAt string               `json:"inserted_at"`
 }
 
 type ExchangeRate struct {

@@ -41,17 +41,18 @@ type APIResponse struct {
 type ErrorCode = int
 
 const (
-	BADREQUEST_ERROR         ErrorCode = 400
-	INTERNAL_ERROR           ErrorCode = 500
-	NOTFOUND_ERROR           ErrorCode = 404
-	UNAUTHORIZED_ERROR       ErrorCode = 401
-	INVALID_PASSWD_ERROR     ErrorCode = 409
-	DUPLICATE_USER_ERROR     ErrorCode = 202
-	UNACTIVATED_USER_ERROR   ErrorCode = 502
-	NOT_ENOUGH_TOKEN_ERROR   ErrorCode = 600
-	NOT_ENOUGH_POINTS_ERROR  ErrorCode = 700
-	INVALID_MIN_POINTS_ERROR ErrorCode = 701
-	NOT_ENOUGH_ETH_ERROR     ErrorCode = 800
+	BADREQUEST_ERROR          ErrorCode = 400
+	INTERNAL_ERROR            ErrorCode = 500
+	NOTFOUND_ERROR            ErrorCode = 404
+	UNAUTHORIZED_ERROR        ErrorCode = 401
+	INVALID_PASSWD_ERROR      ErrorCode = 409
+	DUPLICATE_USER_ERROR      ErrorCode = 202
+	UNACTIVATED_USER_ERROR    ErrorCode = 502
+	NOT_ENOUGH_TOKEN_ERROR    ErrorCode = 600
+	NOT_ENOUGH_POINTS_ERROR   ErrorCode = 700
+	INVALID_MIN_POINTS_ERROR  ErrorCode = 701
+	NOT_ENOUGH_ETH_ERROR      ErrorCode = 800
+	INVALID_INVITE_CODE_ERROR ErrorCode = 1000
 )
 
 type APIError struct {

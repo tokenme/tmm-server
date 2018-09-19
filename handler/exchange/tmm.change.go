@@ -144,7 +144,7 @@ WHERE d.id='%s' AND du.user_id=%d`
 		Status:     2,
 		InsertedAt: time.Now().Format(time.RFC3339),
 	}
-	_, _, err = db.Query(`INSERT INTO tmm.txs (tx, status, user_id, device_id, tmm, points, direction) VALUES ('%s', %d, %d, '%s', '%s', '%s', %d)`, db.Escape(receipt.Receipt), receipt.Status, user.Id, db.Escape(req.DeviceId), receipt.Value.String(), req.Points.String(), req.Direction)
+	_, _, err = db.Query(`INSERT INTO tmm.exchange_records (tx, status, user_id, device_id, tmm, points, direction) VALUES ('%s', %d, %d, '%s', '%s', '%s', %d)`, db.Escape(receipt.Receipt), receipt.Status, user.Id, db.Escape(req.DeviceId), receipt.Value.String(), req.Points.String(), req.Direction)
 	if CheckErr(err, c) {
 		return
 	}

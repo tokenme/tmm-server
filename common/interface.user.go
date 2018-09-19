@@ -3,21 +3,24 @@ package common
 import (
 	"fmt"
 	"github.com/tokenme/tmm/utils"
+	tokenUtils "github.com/tokenme/tmm/utils/token"
 )
 
 type User struct {
-	Id          uint64 `json:"id,omitempty"`
-	CountryCode uint   `json:"country_code,omitempty"`
-	Mobile      string `json:"mobile,omitempty"`
-	Nick        string `json:"nick,omitempty"`
-	Name        string `json:"realname,omitempty"`
-	ShowName    string `json:"showname,omitempty"`
-	Avatar      string `json:"avatar,omitempty"`
-	Salt        string `json:"-"`
-	Password    string `json:"-"`
-	Wallet      string `json:"wallet"`
-	WalletPK    string `json:"-"`
-	CanPay      uint   `json:"can_pay,omitempty"`
+	Id          uint64           `json:"id,omitempty"`
+	CountryCode uint             `json:"country_code,omitempty"`
+	Mobile      string           `json:"mobile,omitempty"`
+	Nick        string           `json:"nick,omitempty"`
+	Name        string           `json:"realname,omitempty"`
+	ShowName    string           `json:"showname,omitempty"`
+	Avatar      string           `json:"avatar,omitempty"`
+	Salt        string           `json:"-"`
+	Password    string           `json:"-"`
+	Wallet      string           `json:"wallet"`
+	WalletPK    string           `json:"-"`
+	InviteCode  tokenUtils.Token `json:"invite_code,omitempty"`
+	InviterCode tokenUtils.Token `json:"inviter_code,omitempty"`
+	CanPay      uint             `json:"can_pay,omitempty"`
 }
 
 func (this User) GetShowName() string {

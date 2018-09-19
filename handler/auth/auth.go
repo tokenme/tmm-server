@@ -1,13 +1,13 @@
 package auth
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/mkideal/log"
 	//"github.com/davecgh/go-spew/spew"
-	"bytes"
 	"github.com/getsentry/raven-go"
 	"github.com/gin-gonic/gin"
+	"github.com/mkideal/log"
 	"github.com/o1egl/govatar"
 	"github.com/tokenme/tmm/common"
 	. "github.com/tokenme/tmm/handler"
@@ -28,18 +28,22 @@ var AuthenticatorFunc = func(loginInfo jwt.Login, c *gin.Context) (string, bool)
 	} else {
 		return loginInfo.Mobile, false
 	}
-	query := `SELECT 
-                u.id, 
+	query := `SELECT
+                u.id,
                 u.country_code,
                 u.mobile,
                 u.nickname,
                 u.avatar,
                 u.realname,
-                u.salt, 
+                u.salt,
                 u.passwd,
                 u.wallet_addr,
-                u.payment_passwd
+                u.payment_passwd,
+                IFNULL(ic.id, 0),
+                IFNULL(ic2.id, 0)
             FROM ucoin.users AS u
+            LEFT JOIN tmm.invite_codes AS ic ON (ic.user_id = u.id)
+            LEFT JOIN tmm.invite_codes AS ic2 ON (ic2.user_id = ic.parent_id)
             WHERE %s
             AND active = 1
             LIMIT 1`
@@ -61,6 +65,8 @@ var AuthenticatorFunc = func(loginInfo jwt.Login, c *gin.Context) (string, bool)
 		Salt:        row.Str(6),
 		Password:    row.Str(7),
 		Wallet:      row.Str(8),
+		InviteCode:  tokenUtils.Token(row.Uint64(10)),
+		InviterCode: tokenUtils.Token(row.Uint64(11)),
 	}
 	paymentPasswd := row.Str(9)
 	if paymentPasswd != "" {
@@ -77,6 +83,17 @@ var AuthenticatorFunc = func(loginInfo jwt.Login, c *gin.Context) (string, bool)
 			if len(rows) == 0 {
 				break
 			}
+		}
+	}
+	if user.InviteCode == 0 {
+		for {
+			inviteCode := tokenUtils.New()
+			_, _, err := db.Query(`INSERT IGNORE INTO tmm.invite_codes (id, user_id) VALUES (%d, %d)`, inviteCode, user.Id)
+			if err != nil {
+				continue
+			}
+			user.InviteCode = inviteCode
+			break
 		}
 	}
 	if user.Avatar == "" {

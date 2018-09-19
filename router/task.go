@@ -14,6 +14,8 @@ func taskRouter(r *gin.Engine) {
 		taskGroup.POST("/app/install", task.AppInstallHandler)
 		taskGroup.GET("/apps/check", task.AppsCheckHandler)
 		taskGroup.GET("/records", task.RecordsHandler)
+		taskGroup.POST("/share/add", task.ShareAddHandler)
+		taskGroup.POST("/app/add", task.AppAddHandler)
 	}
 	r.GET("/share/:encryptedTaskId/:encryptedDeviceId", task.ShareHandler)
 }

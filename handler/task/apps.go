@@ -19,10 +19,11 @@ type AppsRequest struct {
 }
 
 func AppsHandler(c *gin.Context) {
-	_, exists := c.Get("USER")
+	userContext, exists := c.Get("USER")
 	if CheckWithCode(!exists, UNAUTHORIZED_ERROR, "need login", c) {
 		return
 	}
+	user := userContext.(common.User)
 
 	var req AppsRequest
 	if CheckErr(c.Bind(&req), c) {
@@ -52,8 +53,11 @@ func AppsHandler(c *gin.Context) {
     a.points,
     a.points_left,
     a.inserted_at,
-    a.updated_at
+    a.updated_at,
+    a.creator,
+    IFNULL(asi.id, 0)
 FROM tmm.app_tasks AS a
+LEFT JOIN tmm.app_scheme_ids AS asi ON (asi.bundle_id = a.bundle_id)
 WHERE a.points_left>0 AND a.platform='%s' AND a.online_status=1
 AND NOT EXISTS (SELECT 1 FROM tmm.device_app_tasks AS dat WHERE dat.task_id=a.id AND dat.device_id='%s' AND dat.status=1 LIMIT 1)
 ORDER BY a.bonus DESC, a.id DESC LIMIT %d, %d`
@@ -66,6 +70,10 @@ ORDER BY a.bonus DESC, a.id DESC LIMIT %d, %d`
 		bonus, _ := decimal.NewFromString(row.Str(5))
 		points, _ := decimal.NewFromString(row.Str(6))
 		pointsLeft, _ := decimal.NewFromString(row.Str(7))
+		creator := row.Uint64(10)
+		if creator != user.Id {
+			creator = 0
+		}
 		task := common.AppTask{
 			Id:         row.Uint64(0),
 			Platform:   row.Str(1),
@@ -77,6 +85,8 @@ ORDER BY a.bonus DESC, a.id DESC LIMIT %d, %d`
 			PointsLeft: pointsLeft,
 			InsertedAt: row.ForceLocaltime(8).Format(time.RFC3339),
 			UpdatedAt:  row.ForceLocaltime(9).Format(time.RFC3339),
+			Creator:    creator,
+			SchemeId:   row.Uint64(11),
 		}
 		if task.StoreId == 0 {
 			lookup, err := common.App{BundleId: task.BundleId}.LookUp(Service)

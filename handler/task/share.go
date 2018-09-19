@@ -2,12 +2,14 @@ package task
 
 import (
 	//"github.com/davecgh/go-spew/spew"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/mkideal/log"
 	"github.com/shopspring/decimal"
 	"github.com/tokenme/tmm/common"
 	. "github.com/tokenme/tmm/handler"
 	"net/http"
+	"strings"
 )
 
 func ShareHandler(c *gin.Context) {
@@ -58,7 +60,6 @@ LIMIT 1`
 		PointsLeft: pointsLeft,
 	}
 	userViewers := row.Uint(9)
-
 	var (
 		cookieFound = false
 		ipFound     = false
@@ -103,6 +104,58 @@ LIMIT 1`
 			_, err = redisConn.Do("SETEX", ipKey, 600, true)
 			if err != nil {
 				log.Error(err.Error())
+			}
+			query = `SELECT id, inviter_id, user_id FROM
+(SELECT
+d.id,
+du.user_id AS inviter_id,
+du2.user_id
+FROM tmm.user_devices AS du
+INNER JOIN tmm.devices AS d ON (d.id = du.device_id)
+LEFT JOIN tmm.invite_codes AS ic ON (ic.parent_id=du.user_id)
+INNER JOIN tmm.user_devices AS du2 ON (du2.user_id=ic.user_id)
+WHERE du2.device_id='%s'
+ORDER BY d.lastping_at DESC LIMIT 1) AS t1
+UNION
+SELECT id, inviter_id, user_id FROM
+(SELECT
+d.id,
+du.user_id AS inviter_id,
+du2.user_id
+FROM tmm.user_devices AS du
+INNER JOIN tmm.devices AS d ON (d.id = du.device_id)
+LEFT JOIN tmm.invite_codes AS ic ON (ic.grand_id=du.user_id)
+INNER JOIN tmm.user_devices AS du2 ON (du2.user_id=ic.user_id)
+WHERE du2.device_id='%s'
+ORDER BY d.lastping_at DESC LIMIT 1) AS t2`
+			rows, _, err = db.Query(query, db.Escape(deviceId), db.Escape(deviceId))
+			if err != nil {
+				log.Error(err.Error())
+			}
+			var (
+				inviterBonus = bonus.Mul(decimal.NewFromFloat(Config.InviteBonusRate))
+				deviceIds    []string
+				insertLogs   []string
+				userId       uint64
+			)
+			for _, row := range rows {
+				deviceIds = append(deviceIds, fmt.Sprintf("'%s'", db.Escape(row.Str(0))))
+				if userId == 0 {
+					userId = row.Uint64(2)
+				}
+				insertLogs = append(insertLogs, fmt.Sprintf("(%d, %d, %s, 1, %d)", row.Uint64(1), userId, inviterBonus.String(), task.Id))
+			}
+			if len(deviceIds) > 0 {
+				_, ret, err := db.Query(`UPDATE tmm.devices SET points = points + %s WHERE id IN (%s)`, inviterBonus.String(), strings.Join(deviceIds, ","))
+				if CheckErr(err, c) {
+					return
+				}
+				if ret.AffectedRows() > 0 {
+					_, _, err = db.Query(`INSERT INTO tmm.invite_bonus (user_id, from_user_id, bonus, task_type, task_id) VALUES %s`, strings.Join(insertLogs, ","))
+					if CheckErr(err, c) {
+						return
+					}
+				}
 			}
 		} else {
 			log.Error(err.Error())

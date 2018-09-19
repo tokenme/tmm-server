@@ -23,10 +23,11 @@ type SharesRequest struct {
 }
 
 func SharesHandler(c *gin.Context) {
-	_, exists := c.Get("USER")
+	userContext, exists := c.Get("USER")
 	if CheckWithCode(!exists, UNAUTHORIZED_ERROR, "need login", c) {
 		return
 	}
+	user := userContext.(common.User)
 
 	var req SharesRequest
 	if CheckErr(c.Bind(&req), c) {
@@ -57,7 +58,8 @@ func SharesHandler(c *gin.Context) {
     st.points,
     st.points_left,
     st.inserted_at,
-    st.updated_at
+    st.updated_at,
+    st.creator
 FROM tmm.share_tasks AS st
 WHERE st.points_left>0 AND st.online_status = 1
 ORDER BY st.bonus DESC, st.id DESC LIMIT %d, %d`
@@ -70,6 +72,10 @@ ORDER BY st.bonus DESC, st.id DESC LIMIT %d, %d`
 		bonus, _ := decimal.NewFromString(row.Str(6))
 		points, _ := decimal.NewFromString(row.Str(7))
 		pointsLeft, _ := decimal.NewFromString(row.Str(8))
+		creator := row.Uint64(11)
+		if creator != user.Id {
+			creator = 0
+		}
 		task := common.ShareTask{
 			Id:         row.Uint64(0),
 			Title:      row.Str(1),
@@ -82,6 +88,7 @@ ORDER BY st.bonus DESC, st.id DESC LIMIT %d, %d`
 			PointsLeft: pointsLeft,
 			InsertedAt: row.ForceLocaltime(9).Format(time.RFC3339),
 			UpdatedAt:  row.ForceLocaltime(10).Format(time.RFC3339),
+			Creator:    creator,
 		}
 		task.ShareLink, _ = task.GetShareLink(deviceId, Config)
 		tasks = append(tasks, task)

@@ -129,5 +129,14 @@ func createByMobile(c *gin.Context, req CreateRequest) {
 			break
 		}
 	}
+
+	for {
+		inviteCode := tokenUtils.New()
+		_, _, err := db.Query(`INSERT IGNORE INTO tmm.invite_codes (id, user_id) VALUES (%d, %d)`, inviteCode, userId)
+		if err != nil {
+			continue
+		}
+		break
+	}
 	c.JSON(http.StatusOK, APIResponse{Msg: "ok"})
 }

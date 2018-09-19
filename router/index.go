@@ -29,5 +29,6 @@ func NewRouter(templatePath string) *gin.Engine {
 	taskRouter(r)
 	exchangeRouter(r)
 	tokenRouter(r)
+	qiniuRouter(r)
 	return r
 }

@@ -35,6 +35,9 @@ type Config struct {
 	GeoIP                string            `required:"true"`
 	GrowthRate           float64           `required:"true"`
 	MinGrowthTS          int               `required:"true"`
+	InviteBonus          uint              `required:"true"`
+	InviterBonus         uint              `required:"true"`
+	InviteBonusRate      float64           `required:"true"`
 	Debug                bool              `default:"false"`
 	EnableWeb            bool              `default:"false"`
 	EnableGC             bool              `default:"false"`
@@ -75,6 +78,7 @@ type QiniuConfig struct {
 	Bucket     string `required:"true"`
 	AvatarPath string `required:"true"`
 	LogoPath   string `required:"true"`
+	ImagePath  string `required:"true"`
 	Domain     string `required:"true"`
 }
 
