@@ -11,6 +11,7 @@ func userRouter(r *gin.Engine) {
 	{
 		userGroup.GET("/info", user.InfoGetHandler)
 		userGroup.POST("/update", user.UpdateHandler)
+		userGroup.GET("/invite/summary", user.InviteSummaryHandler)
 	}
 	r.POST("/user/create", user.CreateHandler)
 	r.POST("/user/reset-password", user.ResetPasswordHandler)
