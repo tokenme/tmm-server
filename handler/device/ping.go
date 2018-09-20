@@ -40,17 +40,25 @@ func ping(service *common.Service, pingRequest common.PingRequest) {
 	db := service.Db
 	deviceId := device.DeviceId()
 	appId := device.AppId()
-	_, _, err := db.Query(`UPDATE tmm.device_apps SET total_ts=total_ts+%d, lastping_at=NOW() WHERE device_id='%s' AND app_id='%s' LIMIT 1`, pingRequest.Ts, db.Escape(deviceId), db.Escape(appId))
-	if err != nil {
-		raven.CaptureError(err, nil)
-		log.Error(err.Error())
-	}
-	_, _, err = db.Query(`UPDATE tmm.devices SET total_ts=total_ts+%d, tmp_ts=tmp_ts+%d, lastping_at=NOW() WHERE id='%s' LIMIT 1`, pingRequest.Ts, pingRequest.Ts, db.Escape(deviceId))
-	if err != nil {
-		raven.CaptureError(err, nil)
-		log.Error(err.Error())
-	}
-	_, _, err = db.Query(`UPDATE tmm.apps SET total_ts=total_ts+%d, is_active=1, lastping_at=NOW() WHERE id='%s' AND platform='%s' LIMIT 1`, pingRequest.Ts, db.Escape(appId), device.Platform)
+	query := `UPDATE
+                tmm.devices AS d,
+                tmm.device_apps AS da,
+                tmm.apps AS a
+            SET
+                d.total_ts=d.total_ts+%d,
+                da.total_ts=da.total_ts+%d,
+                a.total_ts=a.total_ts+%d,
+                d.tmp_ts=d.tmp_ts+%d,
+                d.lastping_at=NOW(),
+                da.lastping_at=NOW(),
+                a.lastping_at=NOW(),
+                a.is_active=1
+            WHERE
+                da.device_id=d.id
+            AND d.id='%s'
+            AND da.app_id=a.id AND a.id='%s'
+            AND a.platform='%s' LIMIT 1`
+	_, _, err := db.Query(query, pingRequest.Ts, pingRequest.Ts, pingRequest.Ts, pingRequest.Ts, db.Escape(deviceId), db.Escape(appId), device.Platform)
 	if err != nil {
 		raven.CaptureError(err, nil)
 		log.Error(err.Error())
