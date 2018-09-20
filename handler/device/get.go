@@ -26,6 +26,7 @@ func GetHandler(c *gin.Context) {
     d.platform,
     d.device_name,
     d.model,
+    d.idfa,
     d.is_tablet,
     d.total_ts,
     COUNT(da.app_id),
@@ -49,24 +50,25 @@ GROUP BY d.id`
 	}
 	row := rows[0]
 	var isTablet bool
-	if row.Uint(4) == 1 {
+	if row.Uint(5) == 1 {
 		isTablet = true
 	}
-	tmmBalance, _ := decimal.NewFromString(row.Str(7))
-	points, _ := decimal.NewFromString(row.Str(8))
+	tmmBalance, _ := decimal.NewFromString(row.Str(8))
+	points, _ := decimal.NewFromString(row.Str(9))
 	device := common.Device{
 		Id:         row.Str(0),
 		Platform:   row.Str(1),
 		Name:       row.Str(2),
 		Model:      row.Str(3),
+		Idfa:       row.Str(4),
 		IsTablet:   isTablet,
-		TotalTs:    row.Uint64(5),
-		TotalApps:  row.Uint(6),
+		TotalTs:    row.Uint64(6),
+		TotalApps:  row.Uint(7),
 		TMMBalance: tmmBalance,
 		Points:     points,
-		LastPingAt: row.ForceLocaltime(9).Format(time.RFC3339),
-		InsertedAt: row.ForceLocaltime(10).Format(time.RFC3339),
-		UpdatedAt:  row.ForceLocaltime(11).Format(time.RFC3339),
+		LastPingAt: row.ForceLocaltime(10).Format(time.RFC3339),
+		InsertedAt: row.ForceLocaltime(11).Format(time.RFC3339),
+		UpdatedAt:  row.ForceLocaltime(12).Format(time.RFC3339),
 	}
 	device.GrowthFactor, _ = device.GetGrowthFactor(Service)
 	c.JSON(http.StatusOK, device)

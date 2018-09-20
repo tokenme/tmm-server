@@ -36,8 +36,7 @@ func AppsHandler(c *gin.Context) {
 FROM device_apps AS da
 INNER JOIN devices AS d ON (d.id=da.device_id)
 INNER JOIN apps AS a ON (a.id=da.app_id AND a.platform=d.platform)
-INNER JOIN user_devices AS ud ON (ud.device_id=da.device_id)
-WHERE ud.user_id=%d AND da.device_id='%s'`
+WHERE d.user_id=%d AND da.device_id='%s'`
 	rows, _, err := db.Query(query, user.Id, deviceId)
 	if CheckErr(err, c) {
 		return

@@ -14,6 +14,7 @@ func deviceRouter(r *gin.Engine) {
 		deviceGroup.POST("/save", device.SaveHandler)
 	}
 	r.POST("/device/bind", AuthMiddleware.MiddlewareFunc(), device.BindHandler)
+	r.POST("/device/unbind", AuthMiddleware.MiddlewareFunc(), device.UnbindHandler)
 	r.GET("/device/list", AuthMiddleware.MiddlewareFunc(), device.ListHandler)
 	r.GET("/device/get/:deviceId", AuthMiddleware.MiddlewareFunc(), device.GetHandler)
 	r.GET("/device/apps/:deviceId", AuthMiddleware.MiddlewareFunc(), device.AppsHandler)

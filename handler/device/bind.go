@@ -32,7 +32,7 @@ func BindHandler(c *gin.Context) {
 		Platform: common.IOS,
 		Idfa:     req.Idfa,
 	}
-	_, _, err := db.Query(`INSERT IGNORE INTO tmm.user_devices (user_id, device_id) VALUES (%d, '%s')`, user.Id, deviceRequest.DeviceId())
+	_, _, err := db.Query(`UPDATE tmm.devices SET user_id=%d WHERE id='%s' AND user_id=0`, user.Id, deviceRequest.DeviceId())
 	if CheckErr(err, c) {
 		log.Error(err.Error())
 		return
