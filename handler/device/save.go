@@ -7,7 +7,6 @@ import (
 	"github.com/getsentry/raven-go"
 	"github.com/gin-gonic/gin"
 	//"github.com/mkideal/log"
-	"github.com/tokenme/tmm/coins/eth"
 	"github.com/tokenme/tmm/common"
 	. "github.com/tokenme/tmm/handler"
 	commonutils "github.com/tokenme/tmm/utils"
@@ -52,24 +51,7 @@ func saveDevice(service *common.Service, deviceRequest common.DeviceRequest, c *
 	if len(rows) > 0 {
 		return nil
 	}
-	query := `INSERT INTO tmm.devices (id, platform, wallet, wallet_salt, wallet_addr, idfa, device_name, system_version, os_version, language, model, timezone, country, is_emulator, is_jailbrojen, is_tablet, lastping_at) VALUES ('%s', '%s', '%s', '%s', '%s', '%s', %s, %s, %s, %s, %s, %s, %s, %d, %d, %d, NOW()) ON DUPLICATE KEY UPDATE idfa=VALUES(idfa), device_name=VALUES(device_name), system_version=VALUES(system_version), os_version=VALUES(os_version), language=VALUES(language), model=VALUES(model), timezone=VALUES(timezone), country=VALUES(country), lastping_at=VALUES(lastping_at)`
-
-	privateKey, _, err := eth.GenerateAccount()
-	if err != nil {
-		raven.CaptureError(err, nil)
-		return err
-	}
-	walletSalt, wallet, err := commonutils.AddressEncrypt(privateKey, Config.TokenSalt)
-	if err != nil {
-		raven.CaptureError(err, nil)
-		return err
-	}
-
-	pubKey, err := eth.AddressFromHexPrivateKey(privateKey)
-	if err != nil {
-		raven.CaptureError(err, nil)
-		return err
-	}
+	query := `INSERT INTO tmm.devices (id, platform, idfa, device_name, system_version, os_version, language, model, timezone, country, is_emulator, is_jailbrojen, is_tablet, lastping_at) VALUES ('%s', '%s', '%s', %s, %s, %s, %s, %s, %s, %s, %d, %d, %d, NOW()) ON DUPLICATE KEY UPDATE idfa=VALUES(idfa), device_name=VALUES(device_name), system_version=VALUES(system_version), os_version=VALUES(os_version), language=VALUES(language), model=VALUES(model), timezone=VALUES(timezone), country=VALUES(country), lastping_at=VALUES(lastping_at)`
 	var (
 		deviceName    = "NULL"
 		systemVersion = "NULL"
@@ -112,7 +94,7 @@ func saveDevice(service *common.Service, deviceRequest common.DeviceRequest, c *
 	if deviceRequest.IsTablet {
 		isTablet = 1
 	}
-	_, _, err = db.Query(query, deviceRequest.DeviceId(), deviceRequest.Platform, db.Escape(wallet), walletSalt, pubKey, db.Escape(deviceRequest.Idfa), deviceName, systemVersion, osVersion, language, model, timezone, country, isEmulator, isJailBrojen, isTablet)
+	_, _, err = db.Query(query, deviceRequest.DeviceId(), deviceRequest.Platform, db.Escape(deviceRequest.Idfa), deviceName, systemVersion, osVersion, language, model, timezone, country, isEmulator, isJailBrojen, isTablet)
 	if err != nil {
 		raven.CaptureError(err, nil)
 		return err
