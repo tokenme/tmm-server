@@ -9,8 +9,12 @@ import (
 	"net/http"
 )
 
+type UnbindRequest struct {
+	Id string `json:"id" form:"id" binding:"required"`
+}
+
 func UnbindHandler(c *gin.Context) {
-	var req BindRequest
+	var req UnbindRequest
 	if CheckErr(c.Bind(&req), c) {
 		return
 	}
@@ -21,14 +25,10 @@ func UnbindHandler(c *gin.Context) {
 	user := userContext.(common.User)
 	db := Service.Db
 
-	if Check(req.Idfa == "", "invalid request", c) {
+	if Check(req.Id == "", "invalid request", c) {
 		return
 	}
-	deviceRequest := common.DeviceRequest{
-		Platform: common.IOS,
-		Idfa:     req.Idfa,
-	}
-	_, _, err := db.Query(`UPDATE tmm.devices SET user_id=0 WHERE user_id=%d AND id='%s'`, user.Id, deviceRequest.DeviceId())
+	_, _, err := db.Query(`UPDATE tmm.devices SET user_id=0 WHERE user_id=%d AND id='%s'`, user.Id, req.Id)
 	if CheckErr(err, c) {
 		log.Error(err.Error())
 		return
