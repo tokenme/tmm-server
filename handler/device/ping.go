@@ -57,7 +57,7 @@ func ping(service *common.Service, pingRequest common.PingRequest) {
                 da.device_id=d.id
             AND d.id='%s'
             AND da.app_id=a.id AND a.id='%s'
-            AND a.platform='%s' LIMIT 1`
+            AND a.platform='%s'`
 	_, _, err := db.Query(query, pingRequest.Ts, pingRequest.Ts, pingRequest.Ts, pingRequest.Ts, db.Escape(deviceId), db.Escape(appId), device.Platform)
 	if err != nil {
 		raven.CaptureError(err, nil)
