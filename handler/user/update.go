@@ -79,9 +79,8 @@ func UpdateHandler(c *gin.Context) {
 	} else if req.InviterCode > 0 {
 		query := `SELECT
 d.id
-FROM tmm.user_devices AS du
-INNER JOIN tmm.devices AS d ON (d.id = du.device_id)
-WHERE du.user_id = %d
+FROM tmm.devices AS d
+WHERE d.user_id = %d
 ORDER BY d.lastping_at DESC LIMIT 1`
 		rows, _, err := db.Query(query, user.Id)
 		if CheckErr(err, c) {
@@ -102,10 +101,9 @@ ORDER BY d.lastping_at DESC LIMIT 1`
 		}
 		query = `SELECT
 d.id,
-du.user_id
-FROM tmm.user_devices AS du
-INNER JOIN tmm.devices AS d ON (d.id = du.device_id)
-LEFT JOIN tmm.invite_codes AS ic ON (ic.parent_id=du.user_id)
+d.user_id
+FROM tmm.devices AS d
+LEFT JOIN tmm.invite_codes AS ic ON (ic.parent_id=d.user_id)
 WHERE ic.user_id = %d
 ORDER BY d.lastping_at DESC LIMIT 1`
 		rows, _, err = db.Query(query, user.Id)

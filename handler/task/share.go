@@ -20,6 +20,7 @@ func ShareHandler(c *gin.Context) {
 	if Check(taskId == 0 || deviceId == "", "not found", c) {
 		return
 	}
+
 	db := Service.Db
 	query := `SELECT
     st.id,
@@ -60,6 +61,7 @@ LIMIT 1`
 		PointsLeft: pointsLeft,
 	}
 	userViewers := row.Uint(9)
+
 	var (
 		cookieFound = false
 		ipFound     = false
@@ -108,25 +110,23 @@ LIMIT 1`
 			query = `SELECT id, inviter_id, user_id FROM
 (SELECT
 d.id,
-du.user_id AS inviter_id,
-du2.user_id
-FROM tmm.user_devices AS du
-INNER JOIN tmm.devices AS d ON (d.id = du.device_id)
-LEFT JOIN tmm.invite_codes AS ic ON (ic.parent_id=du.user_id)
-INNER JOIN tmm.user_devices AS du2 ON (du2.user_id=ic.user_id)
-WHERE du2.device_id='%s'
+ic.parent_id AS inviter_id,
+ic.user_id
+FROM tmm.invite_codes AS ic
+LEFT JOIN tmm.devices AS d ON (d.user_id=ic.parent_id)
+LEFT JOIN tmm.devices AS d2 ON (d2.user_id=ic.user_id)
+WHERE d2.id='%s'
 ORDER BY d.lastping_at DESC LIMIT 1) AS t1
 UNION
 SELECT id, inviter_id, user_id FROM
 (SELECT
 d.id,
-du.user_id AS inviter_id,
-du2.user_id
-FROM tmm.user_devices AS du
-INNER JOIN tmm.devices AS d ON (d.id = du.device_id)
-LEFT JOIN tmm.invite_codes AS ic ON (ic.grand_id=du.user_id)
-INNER JOIN tmm.user_devices AS du2 ON (du2.user_id=ic.user_id)
-WHERE du2.device_id='%s'
+ic.grand_id AS inviter_id,
+ic.user_id
+FROM tmm.invite_codes AS ic
+LEFT JOIN tmm.devices AS d ON (d.user_id=ic.grand_id)
+LEFT JOIN tmm.devices AS d2 ON (d2.user_id=ic.user_id)
+WHERE d2.id='%s'
 ORDER BY d.lastping_at DESC LIMIT 1) AS t2`
 			rows, _, err = db.Query(query, db.Escape(deviceId), db.Escape(deviceId))
 			if err != nil {

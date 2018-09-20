@@ -41,9 +41,8 @@ func ShareAddHandler(c *gin.Context) {
 	db := Service.Db
 	query := `SELECT
 d.id
-FROM tmm.user_devices AS du
-INNER JOIN tmm.devices AS d ON (d.id = du.device_id)
-WHERE du.user_id = %d AND d.points >= %s
+FROM tmm.devices AS d
+WHERE d.user_id = %d AND d.points >= %s
 ORDER BY d.points DESC LIMIT 1`
 	rows, _, err := db.Query(query, user.Id, req.Points)
 	if CheckErr(err, c) {
@@ -53,7 +52,7 @@ ORDER BY d.points DESC LIMIT 1`
 		return
 	}
 	deviceId := rows[0].Str(0)
-	_, ret, err := db.Query(`UPDATE tmm.devices AS d SET d.points = d.points - %s, d.consumed_ts = d.consumed_ts + %d WHERE id='%s' AND d.points >= %s AND EXISTS (SELECT 1 FROM tmm.user_devices AS du WHERE du.user_id=%d AND du.device_id = d.id LIMIT 1)`, req.Points.String(), ts.IntPart(), db.Escape(deviceId), req.Points.String(), user.Id)
+	_, ret, err := db.Query(`UPDATE tmm.devices AS d SET d.points=d.points-%s, d.consumed_ts = d.consumed_ts + %d WHERE id='%s' AND d.points>=%s AND d.user_id=%d`, req.Points.String(), ts.IntPart(), db.Escape(deviceId), req.Points.String(), user.Id)
 	if CheckErr(err, c) {
 		return
 	}

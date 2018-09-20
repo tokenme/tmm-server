@@ -37,7 +37,7 @@ func AppInstallHandler(c *gin.Context) {
 		Platform: req.Platform,
 	}
 	deviceId := device.DeviceId()
-	rows, _, err := db.Query(`SELECT 1 FROM tmm.user_devices AS ud WHERE user_id=%d AND device_id='%s' LIMIT 1`, user.Id, db.Escape(deviceId))
+	rows, _, err := db.Query(`SELECT 1 FROM tmm.devices WHERE user_id=%d AND id='%s' LIMIT 1`, user.Id, db.Escape(deviceId))
 	if CheckErr(err, c) {
 		return
 	}
@@ -93,20 +93,18 @@ WHERE
 		query = `SELECT id, user_id FROM
 (SELECT
 d.id,
-du.user_id
-FROM tmm.user_devices AS du
-INNER JOIN tmm.devices AS d ON (d.id = du.device_id)
-LEFT JOIN tmm.invite_codes AS ic ON (ic.parent_id=du.user_id)
+d.user_id
+FROM tmm.devices AS d
+LEFT JOIN tmm.invite_codes AS ic ON (ic.parent_id=d.user_id)
 WHERE ic.user_id = %d
 ORDER BY d.lastping_at DESC LIMIT 1) AS t1
 UNION
 SELECT id, user_id FROM
 (SELECT
 d.id,
-du.user_id
-FROM tmm.user_devices AS du
-INNER JOIN tmm.devices AS d ON (d.id = du.device_id)
-LEFT JOIN tmm.invite_codes AS ic ON (ic.grand_id=du.user_id)
+d.user_id
+FROM tmm.devices AS d
+LEFT JOIN tmm.invite_codes AS ic ON (ic.grand_id=d.user_id)
 WHERE ic.user_id = %d
 ORDER BY d.lastping_at DESC LIMIT 1) AS t2`
 		rows, _, err = db.Query(query, user.Id, user.Id)
@@ -168,20 +166,18 @@ WHERE
 		query = `SELECT id, user_id FROM
 (SELECT
 d.id,
-du.user_id
-FROM tmm.user_devices AS du
-INNER JOIN tmm.devices AS d ON (d.id = du.device_id)
-LEFT JOIN tmm.invite_codes AS ic ON (ic.parent_id=du.user_id)
+d.user_id
+FROM tmm.devices AS d
+LEFT JOIN tmm.invite_codes AS ic ON (ic.parent_id=d.user_id)
 WHERE ic.user_id = %d
 ORDER BY d.points DESC LIMIT 1) AS t1
 UNION
 SELECT id, user_id FROM
 (SELECT
 d.id,
-du.user_id
-FROM tmm.user_devices AS du
-INNER JOIN tmm.devices AS d ON (d.id = du.device_id)
-LEFT JOIN tmm.invite_codes AS ic ON (ic.grand_id=du.user_id)
+d.user_id
+FROM tmm.devices AS d
+LEFT JOIN tmm.invite_codes AS ic ON (ic.grand_id=d.user_id)
 WHERE ic.user_id = %d
 ORDER BY d.points DESC LIMIT 1) AS t2`
 		rows, _, err = db.Query(query, user.Id, user.Id)

@@ -79,8 +79,7 @@ func TMMChangeHandler(c *gin.Context) {
 		query := `SELECT
     d.points
 FROM tmm.devices AS d
-INNER JOIN tmm.user_devices AS du ON (du.device_id=d.id)
-WHERE d.id='%s' AND du.user_id=%d`
+WHERE d.id='%s' AND d.user_id=%d`
 		rows, _, err := db.Query(query, db.Escape(req.DeviceId), user.Id)
 		if CheckErr(err, c) {
 			return
@@ -149,9 +148,9 @@ WHERE d.id='%s' AND du.user_id=%d`
 		return
 	}
 	if req.Direction == common.TMMExchangeIn {
-		_, _, err = db.Query(`UPDATE tmm.devices AS d, tmm.user_devices AS du SET d.points = IF(d.points - %s <= 0, 0, d.points - %s), d.consumed_ts = d.consumed_ts + %d WHERE du.device_id=d.id AND d.id='%s' AND du.user_id=%d`, req.Points.String(), req.Points.String(), consumedTs.IntPart(), db.Escape(req.DeviceId), user.Id)
+		_, _, err = db.Query(`UPDATE tmm.devices AS d, SET d.points = IF(d.points - %s <= 0, 0, d.points - %s), d.consumed_ts = d.consumed_ts + %d WHERE d.id='%s' AND d.user_id=%d`, req.Points.String(), req.Points.String(), consumedTs.IntPart(), db.Escape(req.DeviceId), user.Id)
 	} else {
-		_, _, err = db.Query(`UPDATE tmm.devices AS d, tmm.user_devices AS du SET d.points = d.points + %s, d.total_ts = d.total_ts + %d WHERE du.device_id=d.id AND d.id='%s' AND du.user_id=%d`, req.Points.String(), consumedTs.IntPart(), db.Escape(req.DeviceId), user.Id)
+		_, _, err = db.Query(`UPDATE tmm.devices AS d SET d.points = d.points + %s, d.total_ts = d.total_ts + %d WHERE d.id='%s' AND d.user_id=%d`, req.Points.String(), consumedTs.IntPart(), db.Escape(req.DeviceId), user.Id)
 	}
 	if CheckErr(err, c) {
 		return

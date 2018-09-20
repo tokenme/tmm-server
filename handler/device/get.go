@@ -35,11 +35,10 @@ func GetHandler(c *gin.Context) {
     d.lastping_at,
     d.inserted_at,
     d.updated_at
-FROM user_devices AS ud
-INNER JOIN devices AS d ON (d.id=ud.device_id)
+FROM devices AS d
 LEFT JOIN device_apps AS da ON (da.device_id=d.id)
 INNER JOIN apps AS a ON (a.id=da.app_id)
-WHERE ud.user_id=%d AND ud.device_id = '%s'
+WHERE d.user_id=%d AND d.id = '%s'
 GROUP BY d.id`
 	rows, _, err := db.Query(query, user.Id, deviceId)
 	if CheckErr(err, c) {

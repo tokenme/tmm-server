@@ -42,10 +42,10 @@ func RecordsHandler(c *gin.Context) {
     dat.updated_at AS updated_at,
     appt.bundle_id AS bundle_id,
     0 AS viewers
-FROM tmm.user_devices AS ud
-LEFT JOIN tmm.device_app_tasks AS dat ON (dat.device_id = ud.device_id)
+FROM tmm.devices AS d
+LEFT JOIN tmm.device_app_tasks AS dat ON (dat.device_id = d.id)
 INNER JOIN tmm.app_tasks AS appt ON (appt.id = dat.task_id)
-WHERE ud.user_id = %d AND dat.status = 1
+WHERE d.user_id = %d AND dat.status = 1
 UNION
 SELECT
     2 AS task_type,
@@ -54,10 +54,10 @@ SELECT
     dst.updated_at AS updated_at,
     '' AS bundle_id,
     st.viewers AS viewers
-FROM tmm.user_devices AS ud
-LEFT JOIN tmm.device_share_tasks AS dst ON (dst.device_id = ud.device_id)
+FROM tmm.devices AS d
+LEFT JOIN tmm.device_share_tasks AS dst ON (dst.device_id = d.id)
 INNER JOIN tmm.share_tasks AS st ON (st.id = dst.task_id)
-WHERE ud.user_id = %d
+WHERE d.user_id = %d
 ORDER BY updated_at DESC LIMIT %d, %d`
 	rows, _, err := db.Query(query, user.Id, user.Id, (req.Page-1)*req.PageSize, req.PageSize)
 	if CheckErr(err, c) {
