@@ -53,6 +53,8 @@ const (
 	INVALID_MIN_POINTS_ERROR  ErrorCode = 701
 	NOT_ENOUGH_ETH_ERROR      ErrorCode = 800
 	INVALID_INVITE_CODE_ERROR ErrorCode = 1000
+	MAX_BIND_DEVICE_ERROR     ErrorCode = 1100
+	OTHER_BIND_DEVICE_ERROR   ErrorCode = 1101
 )
 
 type APIError struct {

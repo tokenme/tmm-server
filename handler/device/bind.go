@@ -3,7 +3,7 @@ package device
 import (
 	//"github.com/davecgh/go-spew/spew"
 	"github.com/gin-gonic/gin"
-	"github.com/mkideal/log"
+	//"github.com/mkideal/log"
 	"github.com/tokenme/tmm/common"
 	. "github.com/tokenme/tmm/handler"
 	"net/http"
@@ -28,14 +28,34 @@ func BindHandler(c *gin.Context) {
 	if Check(req.Idfa == "", "invalid request", c) {
 		return
 	}
+	rows, _, err := db.Query(`SELECT COUNT(*) FROM tmm.devices WHERE user_id=%d`, user.Id)
+	if CheckErr(err, c) {
+		return
+	}
+	var deviceCount int
+	if len(rows) > 0 {
+		deviceCount = rows[0].Int(0)
+	}
+	if CheckWithCode(deviceCount >= Config.MaxBindDevice, MAX_BIND_DEVICE_ERROR, "exceeded maximum binding devices", c) {
+		return
+	}
 	deviceRequest := common.DeviceRequest{
 		Platform: common.IOS,
 		Idfa:     req.Idfa,
 	}
-	_, _, err := db.Query(`UPDATE tmm.devices SET user_id=%d WHERE id='%s' AND user_id=0`, user.Id, deviceRequest.DeviceId())
+	deviceId := deviceRequest.DeviceId()
+	_, ret, err := db.Query(`UPDATE tmm.devices SET user_id=%d WHERE id='%s' AND user_id=0`, user.Id, deviceId)
 	if CheckErr(err, c) {
-		log.Error(err.Error())
 		return
+	}
+	if ret.AffectedRows() == 0 {
+		rows, _, err := db.Query(`SELECT 1 FROM tmm.devices WHERE user_id=%d AND id='%s' LIMIT 1`, user.Id, deviceId)
+		if CheckErr(err, c) {
+			return
+		}
+		if CheckWithCode(len(rows) == 0, OTHER_BIND_DEVICE_ERROR, "the device has been bind by others", c) {
+			return
+		}
 	}
 	c.JSON(http.StatusOK, APIResponse{Msg: "ok"})
 }
