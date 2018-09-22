@@ -8,6 +8,12 @@
   version = "v0.3.0"
 
 [[projects]]
+  name = "github.com/HuKeping/rbtree"
+  packages = ["."]
+  revision = "0a7018020338cfd53ae43c6fa0a6a1a1ae216714"
+  version = "v1.0"
+
+[[projects]]
   branch = "master"
   name = "github.com/aristanetworks/goarista"
   packages = ["monotime"]
@@ -89,6 +95,17 @@
   packages = ["."]
   revision = "5b2fd362dcafefa56a87b7a0884a39eaa3c909fc"
   version = "v1.0-Beta"
+
+[[projects]]
+  name = "github.com/emirpasic/gods"
+  packages = [
+    "containers",
+    "trees",
+    "trees/redblacktree",
+    "utils"
+  ]
+  revision = "f6c17b524822278a87e3b3bd809fec33b51f5b46"
+  version = "v1.9.0"
 
 [[projects]]
   name = "github.com/ethereum/go-ethereum"
@@ -513,6 +530,12 @@
   revision = "c1b8fa8bdccecb0b8db834ee0b92fdbcfa606dd6"
 
 [[projects]]
+  name = "gopkg.in/oleiade/lane.v1"
+  packages = ["."]
+  revision = "28f7c3f09254f12b51e620fa4db136ba58804762"
+  version = "v1.0.0"
+
+[[projects]]
   name = "gopkg.in/yaml.v2"
   packages = ["."]
   revision = "5420a8b6744d3b0345ab293f6fcba19c978f1183"
@@ -531,6 +554,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "862d865d70393401d15000657acad4a9709c596910316c26937f48c01ef30b37"
+  inputs-digest = "d9aafd388cfc70a3ce47de2358088929abf0a8cd0c721465c28b67d7c5146ae5"
   solver-name = "gps-cdcl"
   solver-version = 1
