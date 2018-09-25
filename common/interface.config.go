@@ -17,6 +17,7 @@ type Config struct {
 	TMMAgentWallet       WalletConfig      `required:"true"`
 	TMMPoolWallet        WalletConfig      `required:"true"`
 	TMMTokenAddress      string            `required:"true"`
+	TMMEscrowAddress     string            `required:"true"`
 	MinTMMExchange       uint              `required:"true"`
 	DefaultAppTaskTS     int64             `required:"true"`
 	DefaultShareTaskTS   int64             `required:"true"`
@@ -43,6 +44,7 @@ type Config struct {
 	EnableWeb            bool              `default:"false"`
 	EnableGC             bool              `default:"false"`
 	EnableTx             bool              `default:"false"`
+	EnableOrderBook      bool              `default:"false"`
 }
 
 type MySQLConfig struct {

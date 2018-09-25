@@ -5,9 +5,12 @@ import (
 )
 
 type Trade struct {
-	Timestamp    int
-	Id           uint64
-	CounterParty uint64
-	Quantity     decimal.Decimal
-	Price        decimal.Decimal
+	Timestamp          int
+	Id                 uint64
+	Wallet             string
+	CounterParty       uint64
+	CounterPartyWallet string
+	Quantity           decimal.Decimal
+	Price              decimal.Decimal
+	Side               Side
 }

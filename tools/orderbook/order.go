@@ -4,11 +4,11 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-type Side = int8
+type Side = uint8
 
 const (
 	Ask Side = 1
-	Bid Side = -1
+	Bid Side = 2
 )
 
 type ProcessType = uint8
@@ -26,6 +26,7 @@ type Order struct {
 	TradeId     uint64
 	Side        Side
 	ProcessType ProcessType
+	Wallet      string
 	nextOrder   *Order
 	prevOrder   *Order
 	OrderList   *OrderList
@@ -39,6 +40,7 @@ func (o *Order) Copy() *Order {
 		Id:          o.Id,
 		TradeId:     o.TradeId,
 		Side:        o.Side,
+		Wallet:      o.Wallet,
 		ProcessType: o.ProcessType,
 		nextOrder:   o.nextOrder,
 		prevOrder:   o.prevOrder,

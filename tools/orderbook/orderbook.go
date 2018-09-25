@@ -1,6 +1,7 @@
 package orderbook
 
 import (
+	"fmt"
 	"github.com/shopspring/decimal"
 	lane "gopkg.in/oleiade/lane.v1"
 )
@@ -163,16 +164,19 @@ func (orderBook *OrderBook) ProcessOrderList(side Side, orderList *OrderList, qu
 			}
 		}
 
-		// if verbose {
-		//  fmt.Println("TRADE: Time - %v, Price - %v, Quantity - %v, TradeID - %v, Matching TradeID - %v", orderBook.time, tradedPrice.String(), tradedQuantity.String(), counterParty, quote["trade_id"])
-		// }
+		if verbose {
+			fmt.Printf("TRADE: Time - %v, Price - %v, Quantity - %v, TradeID - %v, Matching TradeID - %v\n", orderBook.time, tradedPrice.String(), tradedQuantity.String(), headOrder.TradeId, order.TradeId)
+		}
 
 		transactionRecord := &Trade{
-			Id:           order.TradeId,
-			CounterParty: headOrder.TradeId,
-			Timestamp:    orderBook.time,
-			Price:        tradedPrice,
-			Quantity:     tradedQuantity,
+			Id:                 order.TradeId,
+			Wallet:             order.Wallet,
+			CounterParty:       headOrder.TradeId,
+			CounterPartyWallet: headOrder.Wallet,
+			Timestamp:          orderBook.time,
+			Price:              tradedPrice,
+			Quantity:           tradedQuantity,
+			Side:               order.Side,
 		}
 
 		orderBook.deque.Append(transactionRecord)

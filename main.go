@@ -13,6 +13,7 @@ import (
 	"github.com/tokenme/tmm/handler"
 	"github.com/tokenme/tmm/router"
 	"github.com/tokenme/tmm/tools/gc"
+	"github.com/tokenme/tmm/tools/orderbook-server"
 	"github.com/tokenme/tmm/tools/tokenprofile"
 	"os"
 	"os/signal"
@@ -40,6 +41,7 @@ func main() {
 	flag.BoolVar(&configFlag.EnableGC, "gc", false, "enable gc")
 	flag.BoolVar(&configFlag.EnableTx, "tx", false, "enable tx queue handler")
 	flag.BoolVar(&parseTokenFlag, "parse-token", false, "enable parse token")
+	flag.BoolVar(&configFlag.EnableOrderBook, "orderbook", false, "enable orderbook handler")
 	flag.Parse()
 
 	configor.New(&configor.Config{Verbose: configFlag.Debug, ErrorOnUnmatchedKeys: true, Environment: "production"}).Load(&config, configPath)
@@ -60,6 +62,10 @@ func main() {
 
 	if configFlag.EnableTx {
 		config.EnableTx = configFlag.EnableTx
+	}
+
+	if configFlag.EnableOrderBook {
+		config.EnableOrderBook = configFlag.EnableOrderBook
 	}
 
 	if configFlag.Debug {
@@ -88,9 +94,20 @@ func main() {
 		tokenprofile.Update(service, config)
 		return
 	}
+
+	handler.InitHandler(service, config)
+
 	gcHandler := gc.New(service, config)
 	if config.EnableGC {
 		go gcHandler.Start()
+	}
+	orderbookServer, err := obs.NewServer(service, config, handler.GlobalLock)
+	if config.EnableOrderBook {
+		if err != nil {
+			log.Error(err.Error())
+			return
+		}
+		go orderbookServer.Start()
 	}
 	//queueManager := sqs.NewManager(config.SQS)
 	//queues := make(map[string]sqs.Queue)
@@ -105,7 +122,6 @@ func main() {
 	//}
 
 	if config.EnableWeb {
-		handler.InitHandler(service, config)
 		if config.Debug {
 			gin.SetMode(gin.DebugMode)
 		} else {
@@ -135,4 +151,7 @@ func main() {
 	//	}
 	//}
 	gcHandler.Stop()
+	if config.EnableOrderBook {
+		orderbookServer.Stop()
+	}
 }

@@ -148,7 +148,7 @@ WHERE d.id='%s' AND d.user_id=%d`
 		return
 	}
 	if req.Direction == common.TMMExchangeIn {
-		_, _, err = db.Query(`UPDATE tmm.devices AS d, SET d.points = IF(d.points - %s <= 0, 0, d.points - %s), d.consumed_ts = d.consumed_ts + %d WHERE d.id='%s' AND d.user_id=%d`, req.Points.String(), req.Points.String(), consumedTs.IntPart(), db.Escape(req.DeviceId), user.Id)
+		_, _, err = db.Query(`UPDATE tmm.devices AS d SET d.points = IF(d.points - %s <= 0, 0, d.points - %s), d.consumed_ts = d.consumed_ts + %d WHERE d.id='%s' AND d.user_id=%d`, req.Points.String(), req.Points.String(), consumedTs.IntPart(), db.Escape(req.DeviceId), user.Id)
 	} else {
 		_, _, err = db.Query(`UPDATE tmm.devices AS d SET d.points = d.points + %s, d.total_ts = d.total_ts + %d WHERE d.id='%s' AND d.user_id=%d`, req.Points.String(), consumedTs.IntPart(), db.Escape(req.DeviceId), user.Id)
 	}
