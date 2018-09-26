@@ -6,11 +6,14 @@ import (
 )
 
 type Order struct {
-	TradeId      uint64                `json:"trand_id,omitempty"`
+	TradeId      uint64                `json:"trade_id,omitempty"`
 	Quantity     decimal.Decimal       `json:"quantity,omitempty"`
 	Price        decimal.Decimal       `json:"price,omitempty"`
 	Side         orderbook.Side        `json:"side,omitempty"`
 	ProcessType  orderbook.ProcessType `json:"process_type,omitempty"`
 	DealQuantity decimal.Decimal       `json:"deal_quantity,omitempty"`
 	DealEth      decimal.Decimal       `json:"deal_eth,omitempty"`
+	OnlineStatus int8                  `json:"online_status,omitempty"`
+	InsertedAt   string                `json:"inserted_at,omitempty"`
+	UpdatedAt    string                `json:"updated_at,omitempty"`
 }

@@ -37,6 +37,8 @@ type Server struct {
 	globalLock       *sync.Mutex
 	checkDepositCh   chan struct{}
 	checkOrderbookCh chan struct{}
+	checkDealCh      chan struct{}
+	checkWithdrawCh  chan struct{}
 	exitCh           chan struct{}
 	canStopCh        chan struct{}
 }
@@ -72,6 +74,8 @@ func NewServer(service *common.Service, config common.Config, globalLock *sync.M
 		globalLock:       globalLock,
 		checkDepositCh:   make(chan struct{}, 1),
 		checkOrderbookCh: make(chan struct{}, 1),
+		checkDealCh:      make(chan struct{}, 1),
+		checkWithdrawCh:  make(chan struct{}, 1),
 		exitCh:           make(chan struct{}, 1),
 		canStopCh:        make(chan struct{}, 1),
 	}, nil
@@ -82,12 +86,18 @@ func (this *Server) Start() {
 	ctx, cancel := context.WithCancel(context.Background())
 	go this.checkDeposits(ctx)
 	go this.checkOrderbook(ctx)
+	go this.checkDeals(ctx)
+	go this.checkWithdraws(ctx)
 	for !shouldStop {
 		select {
 		case <-this.checkDepositCh:
 			go this.checkDeposits(ctx)
 		case <-this.checkOrderbookCh:
 			go this.checkOrderbook(ctx)
+		case <-this.checkDealCh:
+			go this.checkDeals(ctx)
+		case <-this.checkWithdrawCh:
+			go this.checkWithdraws(ctx)
 		case <-this.exitCh:
 			shouldStop = true
 			cancel()
@@ -237,6 +247,59 @@ func (this *Server) dealTransfer(ctx context.Context, buyers []ethcommon.Address
 	return txHash, nil
 }
 
+func (this *Server) checkDeals(ctx context.Context) {
+	db := this.service.Db
+	var wg sync.WaitGroup
+	pool, _ := ants.NewPoolWithFunc(100, func(tx interface{}) error {
+		defer wg.Done()
+		txHex := tx.(string)
+		log.Info("Checking Deal Receipt:%s", txHex)
+		receipt, err := utils.TransactionReceipt(this.service.Geth, ctx, txHex)
+		if err != nil {
+			log.Error(err.Error())
+			return err
+		}
+		if receipt == nil {
+			return nil
+		}
+		db := this.service.Db
+		_, _, err = db.Query(`UPDATE tmm.orderbook_trades SET tx_status=%d WHERE tx='%s'`, receipt.Status, txHex)
+		if err != nil {
+			log.Error(err.Error())
+			return err
+		}
+		return nil
+	})
+
+	query := `SELECT id, tx FROM tmm.orderbook_trades WHERE tx_status=2 AND id>%d ORDER BY id ASC LIMIT 1000`
+	var (
+		startId uint64
+		endId   uint64
+	)
+	for {
+		rows, _, err := db.Query(query, startId)
+		if err != nil {
+			break
+		}
+		if len(rows) == 0 {
+			break
+		}
+		for _, row := range rows {
+			endId = row.Uint64(0)
+			tx := row.Str(1)
+			wg.Add(1)
+			pool.Serve(tx)
+		}
+		if endId == startId {
+			break
+		}
+		startId = endId
+	}
+	wg.Wait()
+	time.Sleep(10 * time.Second)
+	this.checkDealCh <- struct{}{}
+}
+
 func (this *Server) checkDeposits(ctx context.Context) {
 	db := this.service.Db
 	var wg sync.WaitGroup
@@ -289,4 +352,58 @@ func (this *Server) checkDeposits(ctx context.Context) {
 	wg.Wait()
 	time.Sleep(10 * time.Second)
 	this.checkDepositCh <- struct{}{}
+}
+
+func (this *Server) checkWithdraws(ctx context.Context) {
+	db := this.service.Db
+	var wg sync.WaitGroup
+	pool, _ := ants.NewPoolWithFunc(100, func(tx interface{}) error {
+		defer wg.Done()
+		msg := tx.(TxMap)
+		txHex := msg.Tx
+		log.Info("Checking Deposit Receipt:%s", txHex)
+		receipt, err := utils.TransactionReceipt(this.service.Geth, ctx, txHex)
+		if err != nil {
+			log.Error(err.Error())
+			return err
+		}
+		if receipt == nil {
+			return nil
+		}
+		db := this.service.Db
+		_, _, err = db.Query(`UPDATE tmm.orderbooks SET withdraw_tx_status=%d WHERE id=%d`, receipt.Status, msg.Id)
+		if err != nil {
+			log.Error(err.Error())
+			return err
+		}
+		return nil
+	})
+
+	query := `SELECT id, withdraw_tx FROM tmm.orderbooks WHERE withdraw_tx_status=2 AND id>%d ORDER BY id ASC LIMIT 1000`
+	var (
+		startId uint64
+		endId   uint64
+	)
+	for {
+		rows, _, err := db.Query(query, startId)
+		if err != nil {
+			break
+		}
+		if len(rows) == 0 {
+			break
+		}
+		for _, row := range rows {
+			endId = row.Uint64(0)
+			tx := row.Str(1)
+			wg.Add(1)
+			pool.Serve(TxMap{Id: endId, Tx: tx})
+		}
+		if endId == startId {
+			break
+		}
+		startId = endId
+	}
+	wg.Wait()
+	time.Sleep(10 * time.Second)
+	this.checkWithdrawCh <- struct{}{}
 }

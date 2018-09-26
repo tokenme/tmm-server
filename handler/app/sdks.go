@@ -41,7 +41,7 @@ func SdksHandler(c *gin.Context) {
     a.build_version,
     a.total_ts,
     a.tmm
-FROM apps AS a
+FROM tmm.apps AS a
 WHERE a.platform='%s' AND a.is_active=1 ORDER BY a.total_ts DESC LIMIT %d, %d`
 	rows, _, err := db.Query(query, platform, (page-1)*pageSize, pageSize)
 	if CheckErr(err, c) {

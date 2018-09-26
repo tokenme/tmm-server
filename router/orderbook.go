@@ -10,6 +10,9 @@ func orderbookRouter(r *gin.Engine) {
 	orderbookGroup.Use(AuthMiddleware.MiddlewareFunc())
 	{
 		orderbookGroup.POST("/order/add", orderbook.OrderAddHandler)
+		orderbookGroup.POST("/order/cancel", orderbook.OrderCancelHandler)
 		orderbookGroup.GET("/market/top/:side", orderbook.MarketTopHandler)
+		orderbookGroup.GET("/rate", orderbook.RateHandler)
+		orderbookGroup.GET("/orders/:page/:pageSize/:side", orderbook.OrdersHandler)
 	}
 }
