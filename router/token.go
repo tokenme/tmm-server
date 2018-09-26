@@ -13,5 +13,6 @@ func tokenRouter(r *gin.Engine) {
 		tokenGroup.GET("/assets", token.AssetsHandler)
 		tokenGroup.GET("/transactions/:address/:page/:pageSize", token.TransactionsHandler)
 		tokenGroup.POST("/transfer", token.TransferHandler)
+		tokenGroup.GET("/info/:address", token.InfoHandler)
 	}
 }
