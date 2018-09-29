@@ -12,6 +12,7 @@ import (
 	"github.com/tokenme/tmm/coins/eth"
 	"github.com/tokenme/tmm/coins/eth/utils"
 	"github.com/tokenme/tmm/common"
+	"github.com/tokenme/tmm/tools/ethgasstation-api"
 	"github.com/tokenme/tmm/tools/orderbook"
 	commonutils "github.com/tokenme/tmm/utils"
 	"math/big"
@@ -222,7 +223,13 @@ func (this *Server) processTrades(ctx context.Context, trades []*orderbook.Trade
 }
 
 func (this *Server) dealTransfer(ctx context.Context, buyers []ethcommon.Address, sellers []ethcommon.Address, weiAmounts []*big.Int, tokenAmounts []*big.Int) (txHash string, err error) {
-	gasPrice := new(big.Int).Mul(big.NewInt(2), big.NewInt(params.Shannon))
+	var gasPrice *big.Int
+	gas, err := ethgasstation.Gas()
+	if err != nil {
+		gasPrice = new(big.Int).Mul(big.NewInt(2), big.NewInt(params.Shannon))
+	} else {
+		gasPrice = new(big.Int).Mul(big.NewInt(gas.SafeLow.Div(decimal.New(10, 0)).IntPart()), big.NewInt(params.Shannon))
+	}
 	var gasLimit uint64 = 540000
 	transactor := eth.TransactorAccount(this.agentPrivKey)
 	nonce, err := eth.Nonce(ctx, this.service.Geth, this.service.Redis.Master, this.globalLock, this.agentPubKey, this.config.Geth)
