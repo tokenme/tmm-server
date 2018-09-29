@@ -2,6 +2,7 @@ package task
 
 import (
 	//"github.com/davecgh/go-spew/spew"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	//"github.com/mkideal/log"
 	"github.com/shopspring/decimal"
@@ -20,6 +21,7 @@ type SharesRequest struct {
 	PageSize uint            `json:"page_size" form:"page_size"`
 	Idfa     string          `json:"idfa" form:"idfa"`
 	Platform common.Platform `json:"platform" form:"platform" binding:"required"`
+	MineOnly bool            `json:"mine_only" form:"mine_only"`
 }
 
 func SharesHandler(c *gin.Context) {
@@ -40,6 +42,12 @@ func SharesHandler(c *gin.Context) {
 		req.PageSize = DEFAULT_PAGE_SIZE
 	}
 
+	onlineStatusConstrain := "AND st.online_status = 1"
+	orderBy := "st.bonus DESC, st.id DESC"
+	if req.MineOnly {
+		onlineStatusConstrain = fmt.Sprintf("AND st.creator = %d", user.Id)
+		orderBy = "st.id DESC"
+	}
 	device := common.DeviceRequest{
 		Idfa:     req.Idfa,
 		Platform: req.Platform,
@@ -57,13 +65,15 @@ func SharesHandler(c *gin.Context) {
     st.bonus,
     st.points,
     st.points_left,
+    st.viewers,
     st.inserted_at,
     st.updated_at,
-    st.creator
+    st.creator,
+    st.online_status
 FROM tmm.share_tasks AS st
-WHERE st.points_left>0 AND st.online_status = 1
-ORDER BY st.bonus DESC, st.id DESC LIMIT %d, %d`
-	rows, _, err := db.Query(query, (req.Page-1)*req.PageSize, req.PageSize)
+WHERE st.points_left>0 %s
+ORDER BY %s LIMIT %d, %d`
+	rows, _, err := db.Query(query, onlineStatusConstrain, orderBy, (req.Page-1)*req.PageSize, req.PageSize)
 	if CheckErr(err, c) {
 		return
 	}
@@ -72,10 +82,7 @@ ORDER BY st.bonus DESC, st.id DESC LIMIT %d, %d`
 		bonus, _ := decimal.NewFromString(row.Str(6))
 		points, _ := decimal.NewFromString(row.Str(7))
 		pointsLeft, _ := decimal.NewFromString(row.Str(8))
-		creator := row.Uint64(11)
-		if creator != user.Id {
-			creator = 0
-		}
+		creator := row.Uint64(12)
 		task := common.ShareTask{
 			Id:         row.Uint64(0),
 			Title:      row.Str(1),
@@ -86,9 +93,13 @@ ORDER BY st.bonus DESC, st.id DESC LIMIT %d, %d`
 			Bonus:      bonus,
 			Points:     points,
 			PointsLeft: pointsLeft,
-			InsertedAt: row.ForceLocaltime(9).Format(time.RFC3339),
-			UpdatedAt:  row.ForceLocaltime(10).Format(time.RFC3339),
-			Creator:    creator,
+			InsertedAt: row.ForceLocaltime(10).Format(time.RFC3339),
+			UpdatedAt:  row.ForceLocaltime(11).Format(time.RFC3339),
+		}
+		if creator == user.Id {
+			task.Viewers = row.Uint(9)
+			task.Creator = creator
+			task.OnlineStatus = int8(row.Int(13))
 		}
 		task.ShareLink, _ = task.GetShareLink(deviceId, Config)
 		tasks = append(tasks, task)

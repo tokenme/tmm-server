@@ -17,7 +17,7 @@ type AppInstallRequest struct {
 	BundleId string          `json:"bundle_id" form:"bundle_id" binding:"required"`
 	Platform common.Platform `json:"platform" form:"platform" binding:"required"`
 	TaskId   uint64          `json:"task_id" form:"task_id" binding:"required"`
-	Status   int             `json:"status" form:"status"`
+	Status   int8            `json:"status" form:"status"`
 }
 
 func AppInstallHandler(c *gin.Context) {
@@ -204,10 +204,10 @@ ORDER BY d.points DESC LIMIT 1) AS t2`
 		}
 	}
 	task := common.AppTask{
-		Id:       req.TaskId,
-		BundleId: req.BundleId,
-		Status:   req.Status,
-		Bonus:    bonus,
+		Id:            req.TaskId,
+		BundleId:      req.BundleId,
+		InstallStatus: req.Status,
+		Bonus:         bonus,
 	}
 	c.JSON(http.StatusOK, task)
 }
