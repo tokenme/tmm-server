@@ -50,10 +50,10 @@ func AppsCheckHandler(c *gin.Context) {
 	var tasks []common.AppTask
 	for _, row := range rows {
 		task := common.AppTask{
-			Id:       row.Uint64(0),
-			BundleId: row.Str(1),
-			Status:   row.Int(2),
-			SchemeId: row.Uint64(3),
+			Id:            row.Uint64(0),
+			BundleId:      row.Str(1),
+			InstallStatus: int8(row.Int(2)),
+			SchemeId:      row.Uint64(3),
 		}
 		tasks = append(tasks, task)
 	}

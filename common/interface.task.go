@@ -7,20 +7,21 @@ import (
 )
 
 type ShareTask struct {
-	Id         uint64          `json:"id"`
-	Creator    uint64          `json:"creator",omitempty`
-	Title      string          `json:"title"`
-	Summary    string          `json:"summary"`
-	Link       string          `json:"link"`
-	ShareLink  string          `json:"share_link"`
-	Image      string          `json:"image,omitempty"`
-	Points     decimal.Decimal `json:"points,omitempty"`
-	PointsLeft decimal.Decimal `json:"points_left,omitempty"`
-	Bonus      decimal.Decimal `json:"bonus,omitempty"`
-	MaxViewers uint            `json:"max_viewers,omitempty"`
-	Viewers    uint            `json:"viewers,omitempty"`
-	InsertedAt string          `json:"inserted_at,omitempty"`
-	UpdatedAt  string          `json:"updated_at,omitempty"`
+	Id           uint64          `json:"id"`
+	Creator      uint64          `json:"creator",omitempty`
+	Title        string          `json:"title"`
+	Summary      string          `json:"summary"`
+	Link         string          `json:"link"`
+	ShareLink    string          `json:"share_link"`
+	Image        string          `json:"image,omitempty"`
+	Points       decimal.Decimal `json:"points,omitempty"`
+	PointsLeft   decimal.Decimal `json:"points_left,omitempty"`
+	Bonus        decimal.Decimal `json:"bonus,omitempty"`
+	MaxViewers   uint            `json:"max_viewers,omitempty"`
+	Viewers      uint            `json:"viewers,omitempty"`
+	InsertedAt   string          `json:"inserted_at,omitempty"`
+	UpdatedAt    string          `json:"updated_at,omitempty"`
+	OnlineStatus int8            `json:"online_status,omitempty"`
 }
 
 func (this ShareTask) GetShareLink(deviceId string, config Config) (string, error) {
@@ -56,21 +57,22 @@ func (this ShareTask) IpKey(ip string) string {
 }
 
 type AppTask struct {
-	Id         uint64          `json:"id"`
-	Creator    uint64          `json:"creator",omitempty`
-	Name       string          `json:"name,omitempty"`
-	Platform   Platform        `json:"platform,omitempty"`
-	SchemeId   uint64          `json:"scheme_id,omitempty"`
-	BundleId   string          `json:"bundle_id,omitempty"`
-	StoreId    uint64          `json:"store_id,omitempty"`
-	Icon       string          `json:"icon,omitempty"`
-	Points     decimal.Decimal `json:"points,omitempty"`
-	PointsLeft decimal.Decimal `json:"points_left,omitempty"`
-	Bonus      decimal.Decimal `json:"bonus,omitempty"`
-	Downloads  uint            `json:"downloads,omitempty"`
-	Status     int             `json:"status,omitempty"`
-	InsertedAt string          `json:"inserted_at,omitempty"`
-	UpdatedAt  string          `json:"updated_at,omitempty"`
+	Id            uint64          `json:"id"`
+	Creator       uint64          `json:"creator",omitempty`
+	Name          string          `json:"name,omitempty"`
+	Platform      Platform        `json:"platform,omitempty"`
+	SchemeId      uint64          `json:"scheme_id,omitempty"`
+	BundleId      string          `json:"bundle_id,omitempty"`
+	StoreId       uint64          `json:"store_id,omitempty"`
+	Icon          string          `json:"icon,omitempty"`
+	Points        decimal.Decimal `json:"points,omitempty"`
+	PointsLeft    decimal.Decimal `json:"points_left,omitempty"`
+	Bonus         decimal.Decimal `json:"bonus,omitempty"`
+	Downloads     uint            `json:"downloads,omitempty"`
+	InsertedAt    string          `json:"inserted_at,omitempty"`
+	UpdatedAt     string          `json:"updated_at,omitempty"`
+	OnlineStatus  int8            `json:"online_status,omitempty"`
+	InstallStatus int8            `json:"install_status,omitempty"`
 }
 
 type TaskType = uint

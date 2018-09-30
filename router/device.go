@@ -12,6 +12,7 @@ func deviceRouter(r *gin.Engine) {
 	{
 		deviceGroup.POST("/ping", device.PingHandler)
 		deviceGroup.POST("/save", device.SaveHandler)
+		deviceGroup.POST("/points", device.PointsHandler)
 	}
 	r.POST("/device/bind", AuthMiddleware.MiddlewareFunc(), device.BindHandler)
 	r.POST("/device/unbind", AuthMiddleware.MiddlewareFunc(), device.UnbindHandler)

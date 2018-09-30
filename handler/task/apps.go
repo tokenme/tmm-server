@@ -4,6 +4,7 @@ import (
 	//"github.com/davecgh/go-spew/spew"
 	"github.com/gin-gonic/gin"
 	//"github.com/mkideal/log"
+	"fmt"
 	"github.com/shopspring/decimal"
 	"github.com/tokenme/tmm/common"
 	. "github.com/tokenme/tmm/handler"
@@ -18,6 +19,7 @@ type AppsRequest struct {
     Imei     string          `json:"imei" form:"imei"`
     Mac      string          `json:"mac" form:"mac"`
 	Platform common.Platform `json:"platform" form:"platform" binding:"required"`
+	MineOnly bool            `json:"mine_only" form:"mine_only"`
 }
 
 func AppsHandler(c *gin.Context) {
@@ -54,6 +56,14 @@ func AppsHandler(c *gin.Context) {
     deviceId := deviceRequest.DeviceId()
 
 	db := Service.Db
+
+	onlineStatusConstrain := fmt.Sprintf("AND a.points_left>0 AND a.online_status=1 AND NOT EXISTS (SELECT 1 FROM tmm.device_app_tasks AS dat WHERE dat.task_id=a.id AND dat.device_id='%s' AND dat.status=1 LIMIT 1)", db.Escape(deviceId))
+	orderBy := "a.bonus DESC, a.id DESC"
+	if req.MineOnly {
+		onlineStatusConstrain = fmt.Sprintf("AND a.creator = %d", user.Id)
+		orderBy = "a.id DESC"
+	}
+
 	query := `SELECT
     a.id,
     a.platform,
@@ -63,16 +73,17 @@ func AppsHandler(c *gin.Context) {
     a.bonus,
     a.points,
     a.points_left,
+    a.downloads,
     a.inserted_at,
     a.updated_at,
     a.creator,
-    IFNULL(asi.id, 0)
+    IFNULL(asi.id, 0),
+    a.online_status
 FROM tmm.app_tasks AS a
 LEFT JOIN tmm.app_scheme_ids AS asi ON (asi.bundle_id = a.bundle_id)
-WHERE a.points_left>0 AND a.platform='%s' AND a.online_status=1
-AND NOT EXISTS (SELECT 1 FROM tmm.device_app_tasks AS dat WHERE dat.task_id=a.id AND dat.device_id='%s' AND dat.status=1 LIMIT 1)
-ORDER BY a.bonus DESC, a.id DESC LIMIT %d, %d`
-	rows, _, err := db.Query(query, db.Escape(req.Platform), db.Escape(deviceId), (req.Page-1)*req.PageSize, req.PageSize)
+WHERE a.platform='%s' %s
+ORDER BY %s LIMIT %d, %d`
+	rows, _, err := db.Query(query, db.Escape(req.Platform), onlineStatusConstrain, orderBy, (req.Page-1)*req.PageSize, req.PageSize)
 	if CheckErr(err, c) {
 		return
 	}
@@ -81,10 +92,7 @@ ORDER BY a.bonus DESC, a.id DESC LIMIT %d, %d`
 		bonus, _ := decimal.NewFromString(row.Str(5))
 		points, _ := decimal.NewFromString(row.Str(6))
 		pointsLeft, _ := decimal.NewFromString(row.Str(7))
-		creator := row.Uint64(10)
-		if creator != user.Id {
-			creator = 0
-		}
+		creator := row.Uint64(11)
 		task := common.AppTask{
 			Id:         row.Uint64(0),
 			Platform:   row.Str(1),
@@ -94,10 +102,14 @@ ORDER BY a.bonus DESC, a.id DESC LIMIT %d, %d`
 			Bonus:      bonus,
 			Points:     points,
 			PointsLeft: pointsLeft,
-			InsertedAt: row.ForceLocaltime(8).Format(time.RFC3339),
-			UpdatedAt:  row.ForceLocaltime(9).Format(time.RFC3339),
-			Creator:    creator,
-			SchemeId:   row.Uint64(11),
+			InsertedAt: row.ForceLocaltime(9).Format(time.RFC3339),
+			UpdatedAt:  row.ForceLocaltime(10).Format(time.RFC3339),
+			SchemeId:   row.Uint64(12),
+		}
+		if creator == user.Id {
+			task.Downloads = row.Uint(8)
+			task.Creator = creator
+			task.OnlineStatus = int8(row.Int(13))
 		}
 		if task.StoreId == 0 {
 			lookup, err := common.App{BundleId: task.BundleId}.LookUp(Service)
