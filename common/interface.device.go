@@ -2,6 +2,7 @@ package common
 
 import (
 	"fmt"
+    "strings"
 	"github.com/shopspring/decimal"
 	"github.com/tokenme/tmm/utils"
 )
@@ -43,6 +44,7 @@ func (this Device) GetGrowthFactor(service *Service) (decimal.Decimal, error) {
 }
 
 type DeviceRequest struct {
+    Id              string   `json:"id,omitempty"`
 	IsEmulator      bool     `json:"isEmulator,omitempty"`
 	IsJailBrojen    bool     `json:"isJailBrojen,omitempty"`
 	IsTablet        bool     `json:"isTablet,omitempty"`
@@ -58,6 +60,8 @@ type DeviceRequest struct {
 	Ip              string   `json:"ip,omitempty"`
 	Language        string   `json:"language,omitempty"`
 	Idfa            string   `json:"idfa,omitempty"`
+    Imei            string   `json:"imei,omitempty"`
+    Mac             string   `json:"mac,omitempty"`
 	OpenIDFA        string   `json:"openIDFA,omitempty"`
 	DeviceType      string   `json:"deviceType,omitempty"`
 	OsVersion       string   `json:"osVersion,omitempty"`
@@ -67,7 +71,16 @@ type DeviceRequest struct {
 func (this DeviceRequest) DeviceId() string {
 	if this.Platform == IOS {
 		return utils.Sha1(this.Idfa)
-	}
+    } else if (this.Platform == ANDROID) {
+        var str string
+        if len(this.Imei) > 0 {
+            str = this.Imei
+            if len(this.Mac) > 0 && this.Mac != "02:00:00:00:00:00" {
+                str = str + strings.Replace(this.Mac, ":", "", -1)
+            }
+            return utils.Sha1(str)
+        }
+    }
 	return ""
 }
 

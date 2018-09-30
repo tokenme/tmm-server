@@ -15,6 +15,8 @@ type AppsRequest struct {
 	Page     uint            `json:"page" form:"page"`
 	PageSize uint            `json:"page_size" form:"page_size"`
 	Idfa     string          `json:"idfa" form:"idfa"`
+    Imei     string          `json:"imei" form:"imei"`
+    Mac      string          `json:"mac" form:"mac"`
 	Platform common.Platform `json:"platform" form:"platform" binding:"required"`
 }
 
@@ -36,11 +38,20 @@ func AppsHandler(c *gin.Context) {
 		req.PageSize = DEFAULT_PAGE_SIZE
 	}
 
-	device := common.DeviceRequest{
-		Idfa:     req.Idfa,
-		Platform: req.Platform,
-	}
-	deviceId := device.DeviceId()
+	var deviceRequest common.DeviceRequest
+    if (len(req.Platform) == 0 || req.Platform == common.IOS) && len(req.Idfa) > 0 {
+        deviceRequest = common.DeviceRequest{
+            Platform: common.IOS,
+            Idfa:     req.Idfa,
+        }
+    } else if len(req.Imei) > 0 {
+        deviceRequest = common.DeviceRequest{
+            Platform: common.ANDROID,
+            Imei:     req.Imei,
+            Mac:      req.Mac,
+        }
+    }
+    deviceId := deviceRequest.DeviceId()
 
 	db := Service.Db
 	query := `SELECT
