@@ -17,3 +17,12 @@ type Order struct {
 	InsertedAt   string                `json:"inserted_at,omitempty"`
 	UpdatedAt    string                `json:"updated_at,omitempty"`
 }
+
+type MarketGraph struct {
+	Trades   uint64          `json:"trades,omitempty"`
+	Quantity decimal.Decimal `json:"quantity,omitempty"`
+	Price    decimal.Decimal `json:"price,omitempty"`
+	Low      decimal.Decimal `json:"low,omitempty"`
+	High     decimal.Decimal `json:"high,omitempty"`
+	At       string          `json:"at,omitempty"`
+}
