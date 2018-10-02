@@ -4,10 +4,11 @@ import (
 	"github.com/danielkov/gin-helmet"
 	"github.com/dvwright/xss-mw"
 	"github.com/gin-gonic/gin"
+	"github.com/tokenme/tmm/common"
 	"net/http"
 )
 
-func NewRouter(templatePath string) *gin.Engine {
+func NewRouter(templatePath string, config common.Config) *gin.Engine {
 	r := gin.New()
 	r.Use(gin.Logger())
 	r.Use(gin.Recovery())
@@ -20,6 +21,13 @@ func NewRouter(templatePath string) *gin.Engine {
 	r.LoadHTMLGlob(templatePath)
 	r.GET("/", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"msg": "tokenmama.io"})
+		return
+	})
+	r.GET("/contacts", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"telegram": config.Contact.Telegram,
+			"wechat":   config.Contact.Wechat,
+			"website":  config.Contact.Website})
 		return
 	})
 	authRouter(r)

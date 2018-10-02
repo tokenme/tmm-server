@@ -130,7 +130,7 @@ func main() {
 		//gin.DisableBindValidation()
 		templatePath := path.Join(config.Template, "./*")
 		log.Info("Template path: %s", templatePath)
-		r := router.NewRouter(templatePath)
+		r := router.NewRouter(templatePath, config)
 		log.Info("%s started at:0.0.0.0:%d", config.AppName, config.Port)
 		defer log.Info("%s exit from:0.0.0.0:%d", config.AppName, config.Port)
 		endless.ListenAndServe(fmt.Sprintf(":%d", config.Port), r)

@@ -55,6 +55,12 @@
   version = "v1.15.6"
 
 [[projects]]
+  name = "github.com/bitly/go-simplejson"
+  packages = ["."]
+  revision = "aabad6e819789e569bd6aabf444c935aa9ba1e44"
+  version = "v0.5.0"
+
+[[projects]]
   name = "github.com/bsm/redis-lock"
   packages = ["."]
   revision = "1dfc459b28b179b4ff73d82b7b58d8d2b10ec3be"
@@ -274,6 +280,15 @@
   packages = ["."]
   revision = "0360b2af4f38e8d38c7fce2a9f4e702702d73a39"
   version = "v0.0.3"
+
+[[projects]]
+  name = "github.com/me-io/go-swap"
+  packages = [
+    "pkg/exchanger",
+    "pkg/swap"
+  ]
+  revision = "1947f04b4dbe9b4d19249e61434568cb266f3be9"
+  version = "0.0.1"
 
 [[projects]]
   name = "github.com/microcosm-cc/bluemonday"
@@ -554,6 +569,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "d9aafd388cfc70a3ce47de2358088929abf0a8cd0c721465c28b67d7c5146ae5"
+  inputs-digest = "bfe3412065152f0aef2844e661b2eb0cd4bc6737cb8f681b530fc840d2cef5c1"
   solver-name = "gps-cdcl"
   solver-version = 1

@@ -40,6 +40,7 @@ type Config struct {
 	InviterBonus         uint              `required:"true"`
 	InviteBonusRate      float64           `required:"true"`
 	MaxBindDevice        int               `required:"true"`
+	Contact              ContactConfig     `required:"true"`
 	Debug                bool              `default:"false"`
 	EnableWeb            bool              `default:"false"`
 	EnableGC             bool              `default:"false"`
@@ -88,4 +89,10 @@ type QiniuConfig struct {
 type CoinbaseAPIConfig struct {
 	Key    string `required:"true"`
 	Secret string `required:"true"`
+}
+
+type ContactConfig struct {
+	Telegram string `required:"true"`
+	Wechat   string `required:"true"`
+	Website  string `required:"true"`
 }

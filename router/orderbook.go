@@ -15,4 +15,5 @@ func orderbookRouter(r *gin.Engine) {
 		orderbookGroup.GET("/rate", orderbook.RateHandler)
 		orderbookGroup.GET("/orders/:page/:pageSize/:side", orderbook.OrdersHandler)
 	}
+	r.GET("/orderbook/market/graph/:hours", orderbook.MarketGraphHandler)
 }

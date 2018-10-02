@@ -3,7 +3,6 @@ package token
 import (
 	"fmt"
 	//"github.com/davecgh/go-spew/spew"
-	"github.com/fabioberger/coinbase-go"
 	"github.com/gin-gonic/gin"
 	"github.com/mkideal/log"
 	"github.com/panjf2000/ants"
@@ -12,7 +11,9 @@ import (
 	"github.com/tokenme/tmm/coins/eth/utils"
 	"github.com/tokenme/tmm/common"
 	. "github.com/tokenme/tmm/handler"
+	"github.com/tokenme/tmm/tools/ethgasstation-api"
 	"github.com/tokenme/tmm/tools/ethplorer-api"
+	"github.com/tokenme/tmm/tools/forex"
 	"math/big"
 	"net/http"
 	"strings"
@@ -28,7 +29,13 @@ func AssetsHandler(c *gin.Context) {
 	var (
 		tokens   []*common.Token
 		tokenMap = make(map[string]*common.Token)
+		ethPrice = common.GetETHPrice(Service, Config)
+		currency = c.Query("currency")
 	)
+
+	if currency == "" {
+		currency = "USD"
+	}
 
 	ethBalance, _ := eth.BalanceOf(Service.Geth, c, user.Wallet)
 	if ethBalance != nil && ethBalance.Cmp(big.NewInt(0)) == 1 {
@@ -39,15 +46,18 @@ func AssetsHandler(c *gin.Context) {
 			Icon:     "https://www.ethereum.org/images/logos/ETHEREUM-ICON_Black_small.png",
 			Balance:  decimal.NewFromBigInt(ethBalance, -18),
 		}
-		coinbaseClient := coinbase.ApiKeyClient(Config.CoinbaseAPI.Key, Config.CoinbaseAPI.Secret)
-		exchange, err := coinbaseClient.GetExchangeRate("eth", "usd")
-		if err != nil {
-			log.Error(err.Error())
-		} else {
-			token.Price = decimal.NewFromFloat(exchange)
-		}
+		token.Price = ethPrice
 		tokens = append(tokens, token)
 	}
+
+	gasPrice := decimal.New(2, 0)
+	gas, err := ethgasstation.Gas()
+	if err == nil {
+		gas.SafeLow.Div(decimal.New(10, 0))
+	}
+	gasLimit := decimal.New(210000, -9)
+	generalMinGas := gasPrice.Mul(gasLimit)
+
 	db := Service.Db
 	tokenAddresses := make(map[string]struct{})
 	var escapedAddresses []string
@@ -63,7 +73,7 @@ func AssetsHandler(c *gin.Context) {
 				escapedAddresses = append(escapedAddresses, fmt.Sprintf("'%s'", db.Escape(addr)))
 				var minGas decimal.Decimal
 				if addr != Config.TMMTokenAddress {
-					minGas = decimal.New(600000*2, -9)
+					minGas = generalMinGas
 				}
 				token := &common.Token{
 					Address:  addr,
@@ -95,6 +105,13 @@ func AssetsHandler(c *gin.Context) {
 		addr := strings.ToLower(row.Str(0))
 		icon := row.Str(1)
 		price, _ := decimal.NewFromString(row.Str(2))
+		if addr == Config.TMMTokenAddress {
+			tmmRate := common.GetTMMRate(Service, Config)
+			tmmPrice := tmmRate.Mul(ethPrice)
+			if tmmPrice.GreaterThan(decimal.Zero) {
+				price = tmmPrice
+			}
+		}
 		if token, found := tokenMap[addr]; found {
 			if token.Price.Equal(decimal.New(0, 0)) {
 				token.Price = price
@@ -103,7 +120,7 @@ func AssetsHandler(c *gin.Context) {
 		} else {
 			var minGas decimal.Decimal
 			if addr != Config.TMMTokenAddress {
-				minGas = decimal.New(600000*2, -9)
+				minGas = generalMinGas
 			}
 			token := &common.Token{
 				Address:  addr,
@@ -171,6 +188,12 @@ func AssetsHandler(c *gin.Context) {
 		_, _, err := db.Query(`INSERT INTO tmm.erc20 (address, price) VALUES %s ON DUPLICATE KEY UPDATE price=VALUES(price)`, strings.Join(updateVal, ","))
 		if err != nil {
 			log.Error(err.Error())
+		}
+	}
+	if currency != "USD" {
+		rate := forex.Rate(Service, "USD", currency)
+		for _, token := range tokens {
+			token.Price = token.Price.Mul(rate)
 		}
 	}
 	c.JSON(http.StatusOK, tokens)
