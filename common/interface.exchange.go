@@ -71,7 +71,7 @@ func GetExchangeRate(config Config, service *Service) (ExchangeRate, decimal.Dec
 func GetPointsPerTs(service *Service) (decimal.Decimal, error) {
 	pointsPerTs := decimal.New(0, 0)
 	db := service.Db
-	rows, _, err := db.Query(`SELECT SUM(d.points) AS points, SUM(d.total_ts) - SUM(d.consumed_ts) AS ts FROM tmm.devices AS d`)
+	rows, _, err := db.Query(`SELECT SUM(d.points) AS points, SUM(IF(d.total_ts > d.consumed_ts, d.total_ts - d.consumed_ts, 0)) AS ts FROM tmm.devices AS d`)
 	if err != nil {
 		return pointsPerTs, err
 	}
