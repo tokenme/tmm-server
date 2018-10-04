@@ -55,6 +55,7 @@ const (
 	INVALID_INVITE_CODE_ERROR ErrorCode = 1000
 	MAX_BIND_DEVICE_ERROR     ErrorCode = 1100
 	OTHER_BIND_DEVICE_ERROR   ErrorCode = 1101
+	INVALID_CDP_VENDOR_ERROR  ErrorCode = 1200
 )
 
 type APIError struct {

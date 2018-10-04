@@ -45,5 +45,6 @@ func NewRouter(templatePath string, config common.Config) *gin.Engine {
 	tokenRouter(r)
 	qiniuRouter(r)
 	orderbookRouter(r)
+	redeemRouter(r)
 	return r
 }

@@ -80,6 +80,9 @@ func GetPointsPerTs(service *Service) (decimal.Decimal, error) {
 		return pointsPerTs, err
 	}
 	ts := decimal.New(rows[0].Int64(1), 0)
+	if ts.LessThan(decimal.Zero) {
+		ts = decimal.New(1, 0)
+	}
 	pointsPerTs = points.Div(ts)
 	return pointsPerTs, nil
 }

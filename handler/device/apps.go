@@ -37,7 +37,7 @@ FROM device_apps AS da
 INNER JOIN devices AS d ON (d.id=da.device_id)
 INNER JOIN apps AS a ON (a.id=da.app_id AND a.platform=d.platform)
 WHERE d.user_id=%d AND da.device_id='%s'`
-	rows, _, err := db.Query(query, user.Id, deviceId)
+	rows, _, err := db.Query(query, user.Id, db.Escape(deviceId))
 	if CheckErr(err, c) {
 		return
 	}

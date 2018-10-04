@@ -12,6 +12,7 @@ type Config struct {
 	Template             string            `required:"true"`
 	LogPath              string            `required:"true"`
 	TokenProfilePath     string            `required:"true"`
+	PhonedataPath        string            `required:"true"`
 	TokenSalt            string            `required:"true"`
 	LinkSalt             string            `required:"true"`
 	TMMAgentWallet       WalletConfig      `required:"true"`
@@ -27,6 +28,7 @@ type Config struct {
 	Redis                RedisConfig       `required:"true"`
 	SQS                  SQSConfig         `required:"true"`
 	Qiniu                QiniuConfig       `required:"true"`
+	Aliyun               AliyunConfig      `required:"true"`
 	TwilioToken          string            `required:"true"`
 	EthplorerAPIKey      string            `required:"true"`
 	EtherscanAPIKey      string            `required:"true"`
@@ -95,4 +97,10 @@ type ContactConfig struct {
 	Telegram string `required:"true"`
 	Wechat   string `required:"true"`
 	Website  string `required:"true"`
+}
+
+type AliyunConfig struct {
+	RegionId string `required:"true"`
+	AK       string `required:"true"`
+	AS       string `required:"true"`
 }

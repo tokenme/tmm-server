@@ -8,5 +8,6 @@ secp256k1:
 	cp -r dependencies/secp256k1/include vendor/github.com/ethereum/go-ethereum/crypto/secp256k1/libsecp256k1/include;
 
 install:
+	cp vendor/github.com/xluohome/phonedata/phone.dat /etc/phone.dat
 	cp -f /opt/go/bin/tmm /usr/local/bin/;
 	chmod a+x /usr/local/bin/tmm;
