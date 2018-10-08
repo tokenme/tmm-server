@@ -23,11 +23,17 @@ func NewRouter(templatePath string, config common.Config) *gin.Engine {
 		c.JSON(http.StatusOK, gin.H{"msg": "tokenmama.io"})
 		return
 	})
-	r.GET("/contacts", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
-			"telegram": config.Contact.Telegram,
-			"wechat":   config.Contact.Wechat,
-			"website":  config.Contact.Website})
+	r.GET("/contact/list", func(c *gin.Context) {
+		c.JSON(http.StatusOK, []gin.H{{
+			"name":  "telegram",
+			"value": config.Contact.Telegram,
+		}, {
+			"name":  "wechat",
+			"value": config.Contact.Wechat,
+		}, {
+			"name":  "website",
+			"value": config.Contact.Website,
+		}})
 		return
 	})
 	authRouter(r)
@@ -39,5 +45,6 @@ func NewRouter(templatePath string, config common.Config) *gin.Engine {
 	tokenRouter(r)
 	qiniuRouter(r)
 	orderbookRouter(r)
+	redeemRouter(r)
 	return r
 }

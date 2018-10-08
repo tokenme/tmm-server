@@ -14,10 +14,17 @@ import (
 
 const DEFAULT_PAGE_SIZE = 10
 
+type RecordType = uint8
+
+const (
+	RedeemCdpRecordType RecordType = 1
+)
+
 type RecordsRequest struct {
 	Page      uint                        `json:"page" form:"page"`
 	PageSize  uint                        `json:"page_size" form:"page_size"`
-	Direction common.TMMExchangeDirection `json:"direction" form:"direction" binding:"required"`
+	Direction common.TMMExchangeDirection `json:"direction" form:"direction"`
+	Type      RecordType                  `json:"type" form:"type"`
 }
 
 func RecordsHandler(c *gin.Context) {
@@ -37,12 +44,35 @@ func RecordsHandler(c *gin.Context) {
 	if req.PageSize == 0 || req.PageSize > DEFAULT_PAGE_SIZE {
 		req.PageSize = DEFAULT_PAGE_SIZE
 	}
+	db := Service.Db
+	if req.Type == RedeemCdpRecordType {
+		query := `SELECT
+        co.device_id, co.points, co.grade, co.inserted_at
+        FROM tmm.cdp_orders AS co
+        INNER JOIN tmm.devices AS d ON (d.id=co.device_id)
+        WHERE d.user_id=%d ORDER BY co.inserted_at DESC LIMIT %d, %d`
+		rows, _, err := db.Query(query, user.Id, (req.Page-1)*req.PageSize, req.PageSize)
+		if CheckErr(err, c) {
+			return
+		}
+		var records []common.RedeemCdpRecord
+		for _, row := range rows {
+			points, _ := decimal.NewFromString(row.Str(1))
+			record := common.RedeemCdpRecord{
+				DeviceId:   row.Str(0),
+				Points:     points,
+				Grade:      row.Str(2),
+				InsertedAt: row.ForceLocaltime(3).Format(time.RFC3339),
+			}
+			records = append(records, record)
+		}
+		c.JSON(http.StatusOK, records)
+		return
+	}
 	pointsPerTs, err := common.GetPointsPerTs(Service)
 	if CheckErr(err, c) {
 		return
 	}
-
-	db := Service.Db
 	query := `SELECT
         tx, status, device_id, tmm, points, direction, inserted_at
         FROM tmm.exchange_records

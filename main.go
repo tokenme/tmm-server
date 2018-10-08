@@ -72,6 +72,8 @@ func main() {
 		config.Debug = configFlag.Debug
 	}
 
+	os.Setenv("PHONE_DATA_DIR", config.PhonedataPath)
+
 	wd, err := os.Getwd()
 	if err != nil {
 		log.Error(err.Error())
