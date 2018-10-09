@@ -4,6 +4,8 @@ import (
 	//"github.com/davecgh/go-spew/spew"
 	"github.com/gin-gonic/gin"
 	//"github.com/mkideal/log"
+	"encoding/json"
+	"github.com/garyburd/redigo/redis"
 	"github.com/shopspring/decimal"
 	"github.com/tokenme/tmm/common"
 	. "github.com/tokenme/tmm/handler"
@@ -13,6 +15,8 @@ import (
 	"net/http"
 	"sort"
 )
+
+const REDEEMCDPS_CACHE_KEY = "REDEEMCDPS"
 
 func DycdpListHandler(c *gin.Context) {
 	userContext, exists := c.Get("USER")
@@ -30,6 +34,17 @@ func DycdpListHandler(c *gin.Context) {
 	}
 	if CheckWithCode(phone.CardType != "中国移动" && phone.CardType != "中国联通" && phone.CardType != "中国电信", INVALID_CDP_VENDOR_ERROR, "the cdp vendor not supported", c) {
 		return
+	}
+	redisConn := Service.Redis.Master.Get()
+	defer redisConn.Close()
+	{
+		var redeemCdps []*common.RedeemCdp
+		js, _ := redis.Bytes(redisConn.Do("GET", REDEEMCDPS_CACHE_KEY))
+		json.Unmarshal(js, &redeemCdps)
+		if len(redeemCdps) > 0 {
+			c.JSON(http.StatusOK, redeemCdps)
+			return
+		}
 	}
 	cdpClient, err := dycdp.NewClientWithAccessKey(Config.Aliyun.RegionId, Config.Aliyun.AK, Config.Aliyun.AS)
 	if CheckErr(err, c) {
@@ -85,5 +100,9 @@ func DycdpListHandler(c *gin.Context) {
 		}
 	}
 	sort.Sort(redeemCdps)
+	js, err := json.Marshal(redeemCdps)
+	if err == nil {
+		redisConn.Do("SETEX", REDEEMCDPS_CACHE_KEY, 2*60, js)
+	}
 	c.JSON(http.StatusOK, redeemCdps)
 }
