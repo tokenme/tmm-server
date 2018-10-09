@@ -5,10 +5,10 @@ type Config struct {
 	AppName              string            `default:"tmm"`
 	BaseUrl              string            `default:"https://tmm.tokenmama.io"`
 	CDNUrl               string            `default:"https://cdn.tmm.io/"`
-	ShareUrl             string            `default:"https://tmm.tokenmama.io/share"`
 	QRCodeUrl            string            `default:"qr.tmm.io"`
 	Port                 int               `default:"8008"`
 	Geth                 string            `default:"geth.xibao100.com"`
+	ShareUrl             string            `required:"true"`
 	Template             string            `required:"true"`
 	LogPath              string            `required:"true"`
 	TokenProfilePath     string            `required:"true"`

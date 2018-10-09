@@ -431,6 +431,12 @@
   version = "1.1.0"
 
 [[projects]]
+  branch = "go1"
+  name = "github.com/skelterjohn/go.matrix"
+  packages = ["."]
+  revision = "daa59528eefd43623a4c8e36373a86f9eef870a2"
+
+[[projects]]
   branch = "master"
   name = "github.com/syndtr/goleveldb"
   packages = [
@@ -454,6 +460,18 @@
   packages = ["."]
   revision = "5acf289cfa221ff52a2b8026f872cec119bcc952"
   version = "v1.0.5"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/tokenme/go-fn"
+  packages = ["fn"]
+  revision = "37331e464987481d3dfbb7f20f50b99bd2e64662"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/tokenme/probab"
+  packages = ["dst"]
+  revision = "8703a4c316539ae3e656fa9cf4646cd62af15c08"
 
 [[projects]]
   name = "github.com/ugorji/go"
@@ -597,6 +615,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "f1518d54b4030ed483cc86e24a8efeb7772ff1624052a00bf267621ea0251bcd"
+  inputs-digest = "7b59e297cd68bb1724c80cf0b4271009874c3cfb7bfce68e47db52397415c20f"
   solver-name = "gps-cdcl"
   solver-version = 1
