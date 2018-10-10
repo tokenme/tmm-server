@@ -81,6 +81,7 @@ type Login struct {
 	CountryCode uint   `form:"country_code" json:"country_code"`
 	Mobile      string `form:"mobile" json:"mobile"`
 	Password    string `form:"password" json:"password"`
+	Captcha     string `form:"captcha" json:"captcha"`
 }
 
 // MiddlewareInit initialize jwt configs.

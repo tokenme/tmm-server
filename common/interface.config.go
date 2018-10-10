@@ -29,6 +29,7 @@ type Config struct {
 	SQS                  SQSConfig         `required:"true"`
 	Qiniu                QiniuConfig       `required:"true"`
 	Aliyun               AliyunConfig      `required:"true"`
+	ReCaptcha            ReCaptchaConfig   `required:"true"`
 	TwilioToken          string            `required:"true"`
 	EthplorerAPIKey      string            `required:"true"`
 	EtherscanAPIKey      string            `required:"true"`
@@ -103,4 +104,10 @@ type AliyunConfig struct {
 	RegionId string `required:"true"`
 	AK       string `required:"true"`
 	AS       string `required:"true"`
+}
+
+type ReCaptchaConfig struct {
+	Key      string `required:"true"`
+	Secret   string `required:"true"`
+	Hostname string `required:"true"`
 }
