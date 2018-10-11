@@ -31,11 +31,18 @@ func InfoGetHandler(c *gin.Context) {
                 u.payment_passwd,
                 IFNULL(ic.id, 0),
                 IFNULL(ic2.id, 0),
-                IFNULL(us.exchange_enabled, 0)
+                IFNULL(us.exchange_enabled, 0),
+                wx.union_id,
+                wx.nick,
+                wx.avatar,
+                wx.gender,
+                wx.access_token,
+                wx.expires
             FROM ucoin.users AS u
             LEFT JOIN tmm.invite_codes AS ic ON (ic.user_id = u.id)
             LEFT JOIN tmm.invite_codes AS ic2 ON (ic2.user_id = ic.parent_id)
             LEFT JOIN tmm.user_settings AS us ON (us.user_id = u.id)
+            LEFT JOIN tmm.wx AS wx ON (wx.user_id = u.id)
             WHERE u.id = %d
             AND active = 1
             LIMIT 1`
@@ -65,6 +72,18 @@ func InfoGetHandler(c *gin.Context) {
 		paymentPasswd := row.Str(9)
 		if paymentPasswd != "" {
 			user.CanPay = 1
+		}
+		wxUnionId := row.Str(13)
+		if wxUnionId != "" {
+			wechat := &common.Wechat{
+				UnionId:     wxUnionId,
+				Nick:        row.Str(14),
+				Avatar:      row.Str(15),
+				Gender:      row.Uint(16),
+				AccessToken: row.Str(17),
+				Expires:     row.ForceLocaltime(18),
+			}
+			user.Wechat = wechat
 		}
 		user.ShowName = user.GetShowName()
 		user.Avatar = user.GetAvatar(Config.CDNUrl)
