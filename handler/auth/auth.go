@@ -13,6 +13,7 @@ import (
 	. "github.com/tokenme/tmm/handler"
 	"github.com/tokenme/tmm/middlewares/jwt"
 	"github.com/tokenme/tmm/tools/qiniu"
+	"github.com/tokenme/tmm/tools/recaptcha"
 	"github.com/tokenme/tmm/utils"
 	tokenUtils "github.com/tokenme/tmm/utils/token"
 	"image/png"
@@ -23,9 +24,13 @@ import (
 var AuthenticatorFunc = func(loginInfo jwt.Login, c *gin.Context) (string, bool) {
 	db := Service.Db
 	var where string
-	if loginInfo.CountryCode > 0 && loginInfo.Mobile != "" && loginInfo.Password != "" {
+	if loginInfo.CountryCode > 0 && loginInfo.Mobile != "" && loginInfo.Password != "" && loginInfo.Captcha != "" {
 		where = fmt.Sprintf("u.country_code=%d AND u.mobile='%s'", loginInfo.CountryCode, db.Escape(loginInfo.Mobile))
 	} else {
+		return loginInfo.Mobile, false
+	}
+	captchaRes := recaptcha.Verify(Config.ReCaptcha.Secret, Config.ReCaptcha.Hostname, loginInfo.Captcha)
+	if CheckWithCode(!captchaRes.Success, INVALID_CAPTCHA_ERROR, "Invalid captcha", c) {
 		return loginInfo.Mobile, false
 	}
 	query := `SELECT
@@ -40,10 +45,19 @@ var AuthenticatorFunc = func(loginInfo jwt.Login, c *gin.Context) (string, bool)
                 u.wallet_addr,
                 u.payment_passwd,
                 IFNULL(ic.id, 0),
-                IFNULL(ic2.id, 0)
+                IFNULL(ic2.id, 0),
+                IFNULL(us.exchange_enabled, 0),
+                wx.union_id,
+                wx.nick,
+                wx.avatar,
+                wx.gender,
+                wx.access_token,
+                wx.expires
             FROM ucoin.users AS u
             LEFT JOIN tmm.invite_codes AS ic ON (ic.user_id = u.id)
             LEFT JOIN tmm.invite_codes AS ic2 ON (ic2.user_id = ic.parent_id)
+            LEFT JOIN tmm.user_settings AS us ON (us.user_id = u.id)
+            LEFT JOIN tmm.wx AS wx ON (wx.user_id = u.id)
             WHERE %s
             AND active = 1
             LIMIT 1`
@@ -56,21 +70,34 @@ var AuthenticatorFunc = func(loginInfo jwt.Login, c *gin.Context) (string, bool)
 	}
 	row := rows[0]
 	user := common.User{
-		Id:          row.Uint64(0),
-		CountryCode: row.Uint(1),
-		Mobile:      row.Str(2),
-		Nick:        row.Str(3),
-		Avatar:      row.Str(4),
-		Name:        row.Str(5),
-		Salt:        row.Str(6),
-		Password:    row.Str(7),
-		Wallet:      row.Str(8),
-		InviteCode:  tokenUtils.Token(row.Uint64(10)),
-		InviterCode: tokenUtils.Token(row.Uint64(11)),
+		Id:              row.Uint64(0),
+		CountryCode:     row.Uint(1),
+		Mobile:          row.Str(2),
+		Nick:            row.Str(3),
+		Avatar:          row.Str(4),
+		Name:            row.Str(5),
+		Salt:            row.Str(6),
+		Password:        row.Str(7),
+		Wallet:          row.Str(8),
+		InviteCode:      tokenUtils.Token(row.Uint64(10)),
+		InviterCode:     tokenUtils.Token(row.Uint64(11)),
+		ExchangeEnabled: row.Int(12) == 1 || row.Uint(1) != 86,
 	}
 	paymentPasswd := row.Str(9)
 	if paymentPasswd != "" {
 		user.CanPay = 1
+	}
+	wxUnionId := row.Str(13)
+	if wxUnionId != "" {
+		wechat := &common.Wechat{
+			UnionId:     wxUnionId,
+			Nick:        row.Str(14),
+			Avatar:      row.Str(15),
+			Gender:      row.Uint(16),
+			AccessToken: row.Str(17),
+			Expires:     row.ForceLocaltime(18),
+		}
+		user.Wechat = wechat
 	}
 	if user.Nick == "" {
 		for {

@@ -1,6 +1,7 @@
 package user
 
 import (
+	//"github.com/davecgh/go-spew/spew"
 	"github.com/getsentry/raven-go"
 	"github.com/gin-gonic/gin"
 	"github.com/tokenme/tmm/common"
@@ -29,10 +30,19 @@ func InfoGetHandler(c *gin.Context) {
                 u.wallet_addr,
                 u.payment_passwd,
                 IFNULL(ic.id, 0),
-                IFNULL(ic2.id, 0)
+                IFNULL(ic2.id, 0),
+                IFNULL(us.exchange_enabled, 0),
+                wx.union_id,
+                wx.nick,
+                wx.avatar,
+                wx.gender,
+                wx.access_token,
+                wx.expires
             FROM ucoin.users AS u
             LEFT JOIN tmm.invite_codes AS ic ON (ic.user_id = u.id)
             LEFT JOIN tmm.invite_codes AS ic2 ON (ic2.user_id = ic.parent_id)
+            LEFT JOIN tmm.user_settings AS us ON (us.user_id = u.id)
+            LEFT JOIN tmm.wx AS wx ON (wx.user_id = u.id)
             WHERE u.id = %d
             AND active = 1
             LIMIT 1`
@@ -46,21 +56,34 @@ func InfoGetHandler(c *gin.Context) {
 		}
 		row := rows[0]
 		user = common.User{
-			Id:          row.Uint64(0),
-			CountryCode: row.Uint(1),
-			Mobile:      row.Str(2),
-			Nick:        row.Str(3),
-			Avatar:      row.Str(4),
-			Name:        row.Str(5),
-			Salt:        row.Str(6),
-			Password:    row.Str(7),
-			Wallet:      row.Str(8),
-			InviteCode:  tokenUtils.Token(row.Uint64(10)),
-			InviterCode: tokenUtils.Token(row.Uint64(11)),
+			Id:              row.Uint64(0),
+			CountryCode:     row.Uint(1),
+			Mobile:          row.Str(2),
+			Nick:            row.Str(3),
+			Avatar:          row.Str(4),
+			Name:            row.Str(5),
+			Salt:            row.Str(6),
+			Password:        row.Str(7),
+			Wallet:          row.Str(8),
+			InviteCode:      tokenUtils.Token(row.Uint64(10)),
+			InviterCode:     tokenUtils.Token(row.Uint64(11)),
+			ExchangeEnabled: row.Int(12) == 1 || row.Uint(1) != 86,
 		}
 		paymentPasswd := row.Str(9)
 		if paymentPasswd != "" {
 			user.CanPay = 1
+		}
+		wxUnionId := row.Str(13)
+		if wxUnionId != "" {
+			wechat := &common.Wechat{
+				UnionId:     wxUnionId,
+				Nick:        row.Str(14),
+				Avatar:      row.Str(15),
+				Gender:      row.Uint(16),
+				AccessToken: row.Str(17),
+				Expires:     row.ForceLocaltime(18),
+			}
+			user.Wechat = wechat
 		}
 		user.ShowName = user.GetShowName()
 		user.Avatar = user.GetAvatar(Config.CDNUrl)

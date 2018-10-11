@@ -46,6 +46,7 @@ const (
 	NOTFOUND_ERROR            ErrorCode = 404
 	UNAUTHORIZED_ERROR        ErrorCode = 401
 	INVALID_PASSWD_ERROR      ErrorCode = 409
+	INVALID_CAPTCHA_ERROR     ErrorCode = 408
 	DUPLICATE_USER_ERROR      ErrorCode = 202
 	UNACTIVATED_USER_ERROR    ErrorCode = 502
 	NOT_ENOUGH_TOKEN_ERROR    ErrorCode = 600
@@ -179,7 +180,7 @@ func ApiCheckFunc() gin.HandlerFunc {
 				"message": err.Error()})
 			return
 		}
-		if req.Ts < time.Now().Add(-10*time.Minute).Unix() {
+		if req.Ts < time.Now().Add(-10*time.Minute).Unix() || req.Ts > time.Now().Add(10*time.Minute).Unix() {
 			c.Abort()
 			c.JSON(http.StatusBadRequest, gin.H{
 				"code":    401,

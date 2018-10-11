@@ -6,6 +6,7 @@ import (
 	"github.com/getsentry/raven-go"
 	"github.com/gin-gonic/gin"
 	"github.com/o1egl/govatar"
+	"github.com/tokenme/tmm/tools/recaptcha"
 	"image/png"
 	//"github.com/mkideal/log"
 	"github.com/nu7hatch/gouuid"
@@ -28,6 +29,7 @@ type CreateRequest struct {
 	VerifyCode  string `form:"verify_code" json:"verify_code"`
 	Password    string `form:"passwd" json:"passwd"`
 	RePassword  string `form:"repasswd" json:"repasswd"`
+	Captcha     string `form:"captcha" json:"captcha"`
 }
 
 func CreateHandler(c *gin.Context) {
@@ -39,7 +41,7 @@ func CreateHandler(c *gin.Context) {
 }
 
 func createByMobile(c *gin.Context, req CreateRequest) {
-	if Check(req.Mobile == "" || req.CountryCode == 0 || req.VerifyCode == "" || req.Password == "" || req.RePassword == "", "missing params", c) {
+	if Check(req.Mobile == "" || req.CountryCode == 0 || req.VerifyCode == "" || req.Password == "" || req.RePassword == "" || req.Captcha == "", "missing params", c) {
 		return
 	}
 	if Check(req.Password != req.RePassword, "repassword!=password", c) {
@@ -63,6 +65,11 @@ func createByMobile(c *gin.Context, req CreateRequest) {
 		return
 	}
 	if Check(!ret.Success, ret.Message, c) {
+		return
+	}
+
+	captchaRes := recaptcha.Verify(Config.ReCaptcha.Secret, Config.ReCaptcha.Hostname, req.Captcha)
+	if CheckWithCode(!captchaRes.Success, INVALID_CAPTCHA_ERROR, "Invalid captcha", c) {
 		return
 	}
 
