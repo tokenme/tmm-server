@@ -79,6 +79,13 @@ func (this DeviceRequest) AppId() string {
 }
 
 type PingRequest struct {
+	Logs   string        `json:"logs,omitempty"`
 	Ts     int64         `json:"duration,omitempty"`
 	Device DeviceRequest `json:"device,omitempty"`
+}
+
+type PingCache struct {
+	Logs string `json:"l,omitempty"`
+	Ts   int64  `json:"ts,omitempty"`
+	Cap  int64  `json:"cap,omitempty"`
 }

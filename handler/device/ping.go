@@ -2,10 +2,9 @@ package device
 
 import (
 	"encoding/json"
-	"github.com/garyburd/redigo/redis"
-	"time"
-	//"github.com/davecgh/go-spew/spew"
 	"fmt"
+	//"github.com/davecgh/go-spew/spew"
+	"github.com/garyburd/redigo/redis"
 	"github.com/getsentry/raven-go"
 	"github.com/gin-gonic/gin"
 	"github.com/mkideal/log"
@@ -16,11 +15,11 @@ import (
 	"github.com/tokenme/tmm/utils"
 	"math"
 	"net/http"
+	"time"
 )
 
 const (
-	DEVICE_APP_PING_CACHE_KEY     = "APPPing:%s-%s"
-	DEVICE_APP_PING_CAP_CACHE_KEY = "APPPingCap:%s-%s"
+	DEVICE_APP_PING_CACHE_KEY = "APPPing:%s-%s"
 )
 
 func PingHandler(c *gin.Context) {
@@ -53,23 +52,9 @@ func ping(service *common.Service, pingRequest common.PingRequest) {
 	deviceId := device.DeviceId()
 	appId := device.AppId()
 
-	redisConn := service.Redis.Master.Get()
-	defer redisConn.Close()
-	lastPingKey := utils.Sha1(fmt.Sprintf(DEVICE_APP_PING_CACHE_KEY, deviceId, appId))
-	lastPingTs, _ := redis.Int64(redisConn.Do("GET", lastPingKey))
-	nowTs := time.Now().Unix()
-	redisConn.Do("SETEX", lastPingKey, 60, nowTs)
-	if nowTs-lastPingTs < 60 {
-		log.Warn("Too fast Ping %d, Device:%s, AppId:%s", nowTs-lastPingTs, deviceId, appId)
+	if !validatePingRequest(pingRequest, deviceId, appId, service) {
 		return
 	}
-	pingCapKey := utils.Sha1(fmt.Sprintf(DEVICE_APP_PING_CAP_CACHE_KEY, deviceId, appId))
-	pingCap, _ := redis.Int64(redisConn.Do("GET", pingCapKey))
-	if pingCap > 120 {
-		log.Warn("PingCap: %d, Device:%s, AppId:%s", pingCap, deviceId, appId)
-		return
-	}
-	redisConn.Do("SETEX", lastPingKey, 24*60, pingCap+pingRequest.Ts)
 
 	db := service.Db
 	query := `UPDATE
@@ -133,4 +118,40 @@ func ping(service *common.Service, pingRequest common.PingRequest) {
 		raven.CaptureError(err, nil)
 		log.Error(err.Error())
 	}
+}
+
+func validatePingRequest(pingRequest common.PingRequest, deviceId string, appId string, service *common.Service) bool {
+	if pingRequest.Ts <= 0 || pingRequest.Logs == "" {
+		return false
+	}
+	redisConn := service.Redis.Master.Get()
+	defer redisConn.Close()
+	pingKey := utils.Sha1(fmt.Sprintf(DEVICE_APP_PING_CACHE_KEY, deviceId, appId))
+	cachejs, _ := redis.Bytes(redisConn.Do("GET", pingKey))
+	nowTs := time.Now().Unix()
+	var cacheData common.PingCache
+	json.Unmarshal(cachejs, &cacheData)
+	if nowTs-cacheData.Ts < 60 {
+		log.Warn("Too fast Ping %d, Device:%s, AppId:%s", nowTs-cacheData.Ts, deviceId, appId)
+		return false
+	}
+	if cacheData.Cap > 120 {
+		log.Warn("PingCap: %d, Device:%s, AppId:%s", cacheData.Cap, deviceId, appId)
+		return false
+	}
+	logReq := utils.Sha1(pingRequest.Logs)
+	if logReq == cacheData.Logs {
+		log.Warn("PingLog: %s, Device:%s, AppId:%s", logReq, deviceId, appId)
+		return false
+	}
+	js, err := json.Marshal(common.PingCache{
+		Ts:   nowTs,
+		Logs: logReq,
+		Cap:  cacheData.Cap + pingRequest.Ts,
+	})
+	_, err = redisConn.Do("SETEX", pingKey, 24*60, js)
+	if err != nil {
+		log.Error(err.Error())
+	}
+	return true
 }
