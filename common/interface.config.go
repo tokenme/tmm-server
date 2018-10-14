@@ -20,6 +20,7 @@ type Config struct {
 	TMMTokenAddress      string            `required:"true"`
 	TMMEscrowAddress     string            `required:"true"`
 	MinTMMExchange       uint              `required:"true"`
+	MinTMMRedeem         uint              `required:"true"`
 	DefaultAppTaskTS     int64             `required:"true"`
 	DefaultShareTaskTS   int64             `required:"true"`
 	DefaultDeviceBalance uint64            `required:"true"`
@@ -30,11 +31,11 @@ type Config struct {
 	Qiniu                QiniuConfig       `required:"true"`
 	Aliyun               AliyunConfig      `required:"true"`
 	ReCaptcha            ReCaptchaConfig   `required:"true"`
+	Wechat               WechatConfig      `required:"true"`
 	TwilioToken          string            `required:"true"`
 	EthplorerAPIKey      string            `required:"true"`
 	EtherscanAPIKey      string            `required:"true"`
-	SlackToken           string            `required:"true"`
-	SlackAdminChannelID  string            `required:"true"`
+	Slack                SlackConfig       `required:"true"`
 	CoinbaseAPI          CoinbaseAPIConfig `required:"true"`
 	GeoIP                string            `required:"true"`
 	GrowthRate           float64           `required:"true"`
@@ -110,4 +111,18 @@ type ReCaptchaConfig struct {
 	Key      string `required:"true"`
 	Secret   string `required:"true"`
 	Hostname string `required:"true"`
+}
+
+type WechatConfig struct {
+	AppId   string `required:"true"`
+	MchId   string `required:"true"`
+	Key     string `required:"true"`
+	CertCrt string `required:"true"`
+	CertKey string `required:"true"`
+}
+
+type SlackConfig struct {
+	Token           string `required:"true"`
+	FeedbackChannel string `required:"true"`
+	OpsChannel      string `required:"true"`
 }

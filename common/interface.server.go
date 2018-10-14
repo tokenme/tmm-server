@@ -46,7 +46,7 @@ func NewService(config Config) *Service {
 	service.RedisPool(config.Redis.Master, config.Redis.Slave, 10, 120)
 	service.NewGeth(config.Geth)
 	service.NewGeoIP(config.GeoIP)
-	service.NewSlack(config.SlackToken)
+	service.NewSlack(config.Slack.Token)
 	return service
 }
 
