@@ -106,11 +106,7 @@ func AssetsHandler(c *gin.Context) {
 		icon := row.Str(1)
 		price, _ := decimal.NewFromString(row.Str(2))
 		if addr == Config.TMMTokenAddress {
-			tmmRate := common.GetTMMRate(Service, Config)
-			tmmPrice := tmmRate.Mul(ethPrice)
-			if tmmPrice.GreaterThan(decimal.Zero) {
-				price = tmmPrice
-			}
+			price = common.GetTMMPrice(Service, Config, common.MarketPrice)
 		}
 		if token, found := tokenMap[addr]; found {
 			if token.Price.Equal(decimal.New(0, 0)) {

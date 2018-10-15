@@ -14,7 +14,15 @@ import (
 const (
 	TOKEN_INFO_KEY  = "etherplorer-token-%s"
 	ETH_PRICE_CACHE = "eth-usd"
-	TMM_PRICE_CACHE = "tmm-usd"
+	TMM_PRICE_CACHE = "tmm-usd-%d"
+)
+
+type PriceType = uint8
+
+const (
+	CrowsalePrice PriceType = 1
+	MarketPrice   PriceType = 2
+	RecyclePrice  PriceType = 3
 )
 
 type Token struct {
@@ -86,10 +94,11 @@ func GetTMMRate(service *Service, config Config) (rate decimal.Decimal) {
 	return
 }
 
-func GetTMMPrice(service *Service, config Config) (price decimal.Decimal) {
+func GetTMMPrice(service *Service, config Config, priceType PriceType) (price decimal.Decimal) {
 	redisConn := service.Redis.Master.Get()
 	defer redisConn.Close()
-	priceStr, _ := redis.String(redisConn.Do("GET", TMM_PRICE_CACHE))
+	cacheKey := fmt.Sprintf(TMM_PRICE_CACHE, priceType)
+	priceStr, _ := redis.String(redisConn.Do("GET", cacheKey))
 	priceValue, err := decimal.NewFromString(priceStr)
 	if err == nil {
 		return priceValue
@@ -102,14 +111,15 @@ func GetTMMPrice(service *Service, config Config) (price decimal.Decimal) {
 	if len(rows) > 0 {
 		price, _ = decimal.NewFromString(rows[0].Str(0))
 	}
+
 	ethPrice := GetETHPrice(service, config)
 	tmmRate := GetTMMRate(service, config)
 	tmmPrice := tmmRate.Mul(ethPrice)
-	if tmmPrice.GreaterThan(decimal.Zero) {
+	if (priceType == CrowsalePrice || priceType == MarketPrice) && tmmPrice.GreaterThan(price) || priceType == RecyclePrice && tmmPrice.LessThan(price) {
 		price = tmmPrice
 	}
 	if price.GreaterThan(decimal.Zero) {
-		redisConn.Do("SETEX", TMM_PRICE_CACHE, 2*60, price.StringFixed(9))
+		redisConn.Do("SETEX", cacheKey, 2*60, price.StringFixed(9))
 	}
 	return
 }
@@ -119,6 +129,6 @@ func GetPointPrice(service *Service, config Config) (price decimal.Decimal) {
 	if err != nil {
 		return
 	}
-	tmmPrice := GetTMMPrice(service, config)
+	tmmPrice := GetTMMPrice(service, config, RecyclePrice)
 	return tmmPrice.Mul(exchangeRate.Rate)
 }

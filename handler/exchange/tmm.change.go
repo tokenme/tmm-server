@@ -2,10 +2,12 @@ package exchange
 
 import (
 	//"github.com/davecgh/go-spew/spew"
+	"encoding/json"
 	"fmt"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/gin-gonic/gin"
 	"github.com/mkideal/log"
+	"github.com/nlopes/slack"
 	"github.com/shopspring/decimal"
 	"github.com/tokenme/tmm/coins/eth"
 	"github.com/tokenme/tmm/coins/eth/utils"
@@ -15,6 +17,7 @@ import (
 	commonutils "github.com/tokenme/tmm/utils"
 	"math/big"
 	"net/http"
+	"strconv"
 	"time"
 )
 
@@ -141,7 +144,7 @@ WHERE d.id='%s' AND d.user_id=%d`
 	if CheckErr(err, c) {
 		return
 	}
-	err = eth.NonceIncr(c, Service.Geth, Service.Redis.Master, GlobalLock, poolPubKey, Config.Geth)
+	err = eth.NonceIncr(c, Service.Geth, Service.Redis.Master, GlobalLock, agentPubKey, Config.Geth)
 	if err != nil {
 		log.Error(err.Error())
 	}
@@ -155,12 +158,63 @@ WHERE d.id='%s' AND d.user_id=%d`
 	if CheckErr(err, c) {
 		return
 	}
+	var slackTitle string
 	if req.Direction == common.TMMExchangeIn {
+		slackTitle = "Points -> Token"
 		_, _, err = db.Query(`UPDATE tmm.devices AS d SET d.points = IF(d.points - %s <= 0, 0, d.points - %s), d.consumed_ts = d.consumed_ts + %d WHERE d.id='%s' AND d.user_id=%d`, req.Points.String(), req.Points.String(), consumedTs.IntPart(), db.Escape(req.DeviceId), user.Id)
 	} else {
+		slackTitle = "Token -> Points"
 		_, _, err = db.Query(`UPDATE tmm.devices AS d SET d.points = d.points + %s, d.total_ts = d.total_ts + %d WHERE d.id='%s' AND d.user_id=%d`, req.Points.String(), consumedTs.IntPart(), db.Escape(req.DeviceId), user.Id)
 	}
 	if CheckErr(err, c) {
+		return
+	}
+
+	params := slack.PostMessageParameters{Parse: "full", UnfurlMedia: true, Markdown: true}
+	attachment := slack.Attachment{
+		Color:      "success",
+		AuthorName: user.ShowName,
+		AuthorIcon: user.Avatar,
+		Title:      slackTitle,
+		Fallback:   "Fallback message",
+		Fields: []slack.AttachmentField{
+			{
+				Title: "CountryCode",
+				Value: strconv.FormatUint(uint64(user.CountryCode), 10),
+				Short: true,
+			},
+			{
+				Title: "UserID",
+				Value: strconv.FormatUint(user.Id, 10),
+				Short: true,
+			},
+			{
+				Title: "Points",
+				Value: req.Points.StringFixed(4),
+				Short: true,
+			},
+			{
+				Title: "Tokens",
+				Value: tmm.StringFixed(4),
+				Short: true,
+			},
+			{
+				Title: "Gas Price",
+				Value: gasPrice.String(),
+				Short: true,
+			},
+			{
+				Title: "Recept",
+				Value: receipt.Receipt,
+				Short: true,
+			},
+		},
+		Ts: json.Number(strconv.FormatInt(time.Now().Unix(), 10)),
+	}
+	params.Attachments = []slack.Attachment{attachment}
+	_, _, err = Service.Slack.PostMessage(Config.Slack.OpsChannel, "Point <-> Token", params)
+	if err != nil {
+		log.Error(err.Error())
 		return
 	}
 	c.JSON(http.StatusOK, receipt)

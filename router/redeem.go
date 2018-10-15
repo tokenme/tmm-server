@@ -11,5 +11,7 @@ func redeemRouter(r *gin.Engine) {
 	{
 		redeemGroup.GET("/dycdp/list", redeem.DycdpListHandler)
 		redeemGroup.POST("/dycdp/order/add", redeem.DycdpOrderAddHandler)
+		redeemGroup.POST("/tmm/withdraw", redeem.TMMWithdrawHandler)
 	}
+	r.GET("/redeem/tmm/rate", redeem.TMMRateHandler)
 }

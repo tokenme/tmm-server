@@ -15,6 +15,7 @@ import (
 	"github.com/garyburd/redigo/redis"
 	"github.com/mkideal/log"
 	"math/big"
+	"strings"
 	"sync"
 )
 
@@ -118,7 +119,11 @@ func Nonce(ctx context.Context, client *ethclient.Client, redisConn *redis.Pool,
 	defer locker.Unlock()
 	conn := redisConn.Get()
 	defer conn.Close()
-	key := fmt.Sprintf("%s-%s", addr, chain)
+	chainType := UC_CHAIN
+	if strings.Contains(chain, "mainnet.infura.io") {
+		chainType = MAIN_CHAIN
+	}
+	key := fmt.Sprintf("%s-%s", addr, chainType)
 	nonceSaved, _ := redis.Uint64(conn.Do("GET", key))
 	nonce, err := client.PendingNonceAt(ctx, common.HexToAddress(addr))
 	if err != nil {
@@ -138,7 +143,11 @@ func NonceIncr(ctx context.Context, client *ethclient.Client, redisConn *redis.P
 	defer locker.Unlock()
 	conn := redisConn.Get()
 	defer conn.Close()
-	key := fmt.Sprintf("%s-%s", addr, chain)
+	chainType := UC_CHAIN
+	if strings.Contains(chain, "mainnet.infura.io") {
+		chainType = MAIN_CHAIN
+	}
+	key := fmt.Sprintf("%s-%s", addr, chainType)
 	_, err := conn.Do("INCR", key)
 	return err
 }

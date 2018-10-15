@@ -2,7 +2,9 @@ package redeem
 
 import (
 	"github.com/aliyun/alibaba-cloud-sdk-go/sdk/requests"
+	"github.com/nlopes/slack"
 	//"github.com/davecgh/go-spew/spew"
+	"encoding/json"
 	"github.com/gin-gonic/gin"
 	"github.com/mkideal/log"
 	"github.com/nu7hatch/gouuid"
@@ -15,6 +17,7 @@ import (
 	"github.com/xluohome/phonedata"
 	"net/http"
 	"strconv"
+	"time"
 )
 
 type DycdpOrderAddRequest struct {
@@ -107,6 +110,54 @@ func DycdpOrderAddHandler(c *gin.Context) {
 			}
 		}
 	} else if Check(orderResponse.Message != "", orderResponse.Message, c) {
+		return
+	}
+
+	params := slack.PostMessageParameters{Parse: "full", UnfurlMedia: true, Markdown: true}
+	attachment := slack.Attachment{
+		Color:      "success",
+		AuthorName: user.ShowName,
+		AuthorIcon: user.Avatar,
+		Title:      "Redeem Mobile Data",
+		Fallback:   "Fallback message",
+		Fields: []slack.AttachmentField{
+			{
+				Title: "CountryCode",
+				Value: strconv.FormatUint(uint64(user.CountryCode), 10),
+				Short: true,
+			},
+			{
+				Title: "UserID",
+				Value: strconv.FormatUint(user.Id, 10),
+				Short: true,
+			},
+			{
+				Title: "Points",
+				Value: points.StringFixed(4),
+				Short: true,
+			},
+			{
+				Title: "Grade",
+				Value: offer.Grade,
+				Short: true,
+			},
+			{
+				Title: "Price",
+				Value: strconv.FormatUint(offer.Price, 10),
+				Short: true,
+			},
+			{
+				Title: "Discount",
+				Value: offer.Discount.String(),
+				Short: true,
+			},
+		},
+		Ts: json.Number(strconv.FormatInt(time.Now().Unix(), 10)),
+	}
+	params.Attachments = []slack.Attachment{attachment}
+	_, _, err = Service.Slack.PostMessage(Config.Slack.OpsChannel, "Redeem Mobile Data", params)
+	if err != nil {
+		log.Error(err.Error())
 		return
 	}
 	c.JSON(http.StatusOK, APIResponse{Msg: "ok"})
