@@ -103,6 +103,7 @@ func GetTMMPrice(service *Service, config Config, priceType PriceType) (price de
 	if err == nil {
 		return priceValue
 	}
+
 	db := service.Db
 	rows, _, err := db.Query("SELECT price FROM tmm.erc20 WHERE address='%s' LIMIT 1", config.TMMTokenAddress)
 	if err != nil {
