@@ -6,7 +6,7 @@ import (
 	//"github.com/davecgh/go-spew/spew"
 	"github.com/getsentry/raven-go"
 	"github.com/gin-gonic/gin"
-	//"github.com/mkideal/log"
+	"github.com/mkideal/log"
 	"github.com/tokenme/tmm/common"
 	. "github.com/tokenme/tmm/handler"
 	commonutils "github.com/tokenme/tmm/utils"
@@ -18,6 +18,7 @@ func SaveHandler(c *gin.Context) {
 	secret := c.MustGet("Secret").(string)
 	decrepted, err := commonutils.DesDecrypt(req.Payload, []byte(secret))
 	if CheckErr(err, c) {
+		log.Error(err.Error())
 		raven.CaptureError(err, nil)
 		return
 	}

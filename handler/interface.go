@@ -194,6 +194,7 @@ func ApiCheckFunc() gin.HandlerFunc {
 		}
 		secret := getAppSecret(req.APPKey)
 		if secret == "" {
+			log.Error("empty secret")
 			c.Abort()
 			c.JSON(http.StatusBadRequest, gin.H{
 				"code":    401,
