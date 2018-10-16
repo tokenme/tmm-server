@@ -51,9 +51,10 @@ func PointsHandler(c *gin.Context) {
 	redisConn.Do("SETEX", cacheKey, 60*5, points.String())
 	if err == nil {
 		lastPoints, _ := decimal.NewFromString(lastPointsStr)
-		if err == nil && points.GreaterThan(lastPoints.Add(decimal.New(1, -3))) {
+		increasedPoints := points.Sub(lastPoints)
+		if err == nil && increasedPoints.GreaterThan(decimal.New(1, -4)) {
 			title := "New UCoin Points"
-			desc := fmt.Sprintf("You just earn %s UCoin points, check UCoin Wallet for more information.", points.Sub(lastPoints).StringFixed(4))
+			desc := fmt.Sprintf("You just earn %s UCoin points, check UCoin Wallet for more information.", increasedPoints.StringFixed(4))
 			icon := "https://static.tianxi100.com/ucoin/icon-ios-marketing-1024@1x.png"
 			link := "https://tmm.tokenmama.io"
 			if strings.HasPrefix(deviceRequest.Language, "zh") {
