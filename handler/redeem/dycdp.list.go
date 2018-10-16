@@ -1,11 +1,11 @@
 package redeem
 
 import (
-	//"github.com/davecgh/go-spew/spew"
-	"github.com/gin-gonic/gin"
-	//"github.com/mkideal/log"
 	"encoding/json"
+	//"github.com/davecgh/go-spew/spew"
 	"github.com/garyburd/redigo/redis"
+	"github.com/gin-gonic/gin"
+	"github.com/mkideal/log"
 	"github.com/shopspring/decimal"
 	"github.com/tokenme/tmm/common"
 	. "github.com/tokenme/tmm/handler"
@@ -24,15 +24,16 @@ func DycdpListHandler(c *gin.Context) {
 		return
 	}
 	user := userContext.(common.User)
-
 	if CheckWithCode(user.CountryCode != 86, INVALID_CDP_VENDOR_ERROR, "the cdp vendor not supported", c) {
 		return
 	}
 	phone, err := phonedata.Find(user.Mobile)
 	if CheckErr(err, c) {
+		log.Error(err.Error())
 		return
 	}
 	if CheckWithCode(phone.CardType != "中国移动" && phone.CardType != "中国联通" && phone.CardType != "中国电信", INVALID_CDP_VENDOR_ERROR, "the cdp vendor not supported", c) {
+		log.Error(err.Error())
 		return
 	}
 	redisConn := Service.Redis.Master.Get()
@@ -48,6 +49,7 @@ func DycdpListHandler(c *gin.Context) {
 	}
 	cdpClient, err := dycdp.NewClientWithAccessKey(Config.Aliyun.RegionId, Config.Aliyun.AK, Config.Aliyun.AS)
 	if CheckErr(err, c) {
+		log.Error(err.Error())
 		return
 	}
 	cdpRequest := dycdp.CreateQueryCdpOfferRequest()
@@ -56,6 +58,7 @@ func DycdpListHandler(c *gin.Context) {
 	cdpRequest.Province = phone.Province
 	cdpResponse, err := cdpClient.QueryCdpOffer(cdpRequest)
 	if CheckErr(err, c) {
+		log.Error(err.Error())
 		return
 	}
 	offers := cdpResponse.FlowOffers.FlowOffer

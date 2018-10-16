@@ -9,12 +9,8 @@ import (
 	"net/http"
 )
 
-type BindRequest struct {
-	Idfa string `form:"idfa" json:"idfa"`
-}
-
 func BindHandler(c *gin.Context) {
-	var req BindRequest
+	var req common.DeviceRequest
 	if CheckErr(c.Bind(&req), c) {
 		return
 	}
@@ -23,6 +19,16 @@ func BindHandler(c *gin.Context) {
 		return
 	}
 	user := userContext.(common.User)
+
+	err := saveDevice(Service, req, c)
+	if CheckErr(err, c) {
+		return
+	}
+	err = saveApp(Service, req)
+	if CheckErr(err, c) {
+		return
+	}
+
 	db := Service.Db
 
 	if Check(req.Idfa == "", "invalid request", c) {
