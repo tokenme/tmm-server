@@ -1,5 +1,4 @@
-<!DOCTYPE html>
-<html>
+<html xmlns="http://www.w3.org/1999/xhtml">
 <head>
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1"/>
@@ -12,6 +11,7 @@
 <meta property="og:image" content="{{ .Image }}"/>
 <meta property="og:url" content="{{ .ShareLink }}"/>
 <title>{{ .Title }}</title>
+{{ if not .IsWx }}
 <style media="all" type="text/css">
 html, body, div, iframe {
   margin: 0;
@@ -23,14 +23,20 @@ html, body, div, iframe {
   font: inherit;
   vertical-align: baseline;
 }
+body {overflow: hidden;}
 iframe {
   display: block;
 }
 </style>
+{{ else }}
+<script language="javascript" type="text/javascript">
+    window.location.href = '{{ .Link }}';
+</script>
+{{ end  }}
 </head>
 <body>
-  <div>
-    <iframe frameborder="no" src="{{ .Link }}"></iframe>
-  </div>
+  {{ if not .IsWx }}
+  <iframe src="{{ .Link }}" width='100%' height='100%' frameborder='0'></iframe>
+  {{ end }}
 </body>
 </html>
