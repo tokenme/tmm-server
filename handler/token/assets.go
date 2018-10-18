@@ -168,7 +168,7 @@ func AssetsHandler(c *gin.Context) {
 		updateVal []string
 	)
 	for _, token := range tokenMap {
-		if _, found := knownAddressMap[token.Address]; found {
+		if _, found := knownAddressMap[token.Address]; found && token.Address != Config.TMMTokenAddress {
 			updateVal = append(updateVal, fmt.Sprintf("('%s', %s)", token.Address, token.Price.String()))
 			continue
 		}

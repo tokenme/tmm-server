@@ -51,6 +51,7 @@ const (
 	DUPLICATE_USER_ERROR        ErrorCode = 202
 	UNACTIVATED_USER_ERROR      ErrorCode = 502
 	NOT_ENOUGH_TOKEN_ERROR      ErrorCode = 600
+	DAILY_BONUS_COMMITTED_ERROR ErrorCode = 601
 	NOT_ENOUGH_POINTS_ERROR     ErrorCode = 700
 	INVALID_MIN_POINTS_ERROR    ErrorCode = 701
 	INVALID_MIN_TOKEN_ERROR     ErrorCode = 702
@@ -193,6 +194,7 @@ func ApiCheckFunc() gin.HandlerFunc {
 		}
 		secret := getAppSecret(req.APPKey)
 		if secret == "" {
+			log.Error("empty secret")
 			c.Abort()
 			c.JSON(http.StatusBadRequest, gin.H{
 				"code":    401,

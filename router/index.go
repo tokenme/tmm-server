@@ -47,5 +47,7 @@ func NewRouter(templatePath string, config common.Config) *gin.Engine {
 	orderbookRouter(r)
 	redeemRouter(r)
 	feedbackRouter(r)
+	slackRouter(r)
+	bonusRouter(r)
 	return r
 }
