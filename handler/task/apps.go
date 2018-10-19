@@ -16,6 +16,8 @@ type AppsRequest struct {
 	Page     uint            `json:"page" form:"page"`
 	PageSize uint            `json:"page_size" form:"page_size"`
 	Idfa     string          `json:"idfa" form:"idfa"`
+    Imei     string          `json:"imei" form:"imei"`
+    Mac      string          `json:"mac" form:"mac"`
 	Platform common.Platform `json:"platform" form:"platform" binding:"required"`
 	MineOnly bool            `json:"mine_only" form:"mine_only"`
 }
@@ -40,9 +42,13 @@ func AppsHandler(c *gin.Context) {
 
 	device := common.DeviceRequest{
 		Idfa:     req.Idfa,
-		Platform: req.Platform,
+        Imei:     req.Imei,
+        Mac:      req.Mac,
 	}
 	deviceId := device.DeviceId()
+    if Check(len(deviceId) == 0, "not found", c) {
+		return
+	}
 
 	db := Service.Db
 

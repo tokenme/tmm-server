@@ -11,7 +11,10 @@ import (
 )
 
 type DailyCommitRequest struct {
-	Idfa string `json:"idfa" form:"idfa"`
+	Idfa     string          `json:"idfa" form:"idfa"`
+    Imei     string          `json:"imei" form:"imei"`
+    Mac      string          `json:"mac" form:"mac"`
+	Platform common.Platform `json:"platform" form:"platform"`
 }
 
 func DailyCommitHandler(c *gin.Context) {
@@ -19,11 +22,15 @@ func DailyCommitHandler(c *gin.Context) {
 	if CheckErr(c.Bind(&req), c) {
 		return
 	}
-	deviceRequest := common.DeviceRequest{
-		Platform: common.IOS,
+	device := common.DeviceRequest{
 		Idfa:     req.Idfa,
+        Imei:     req.Imei,
+        Mac:      req.Mac,
 	}
-	deviceId := deviceRequest.DeviceId()
+	deviceId := device.DeviceId()
+    if Check(len(deviceId) == 0, "not found", c) {
+		return
+	}
 
 	userContext, exists := c.Get("USER")
 	if CheckWithCode(!exists, UNAUTHORIZED_ERROR, "need login", c) {

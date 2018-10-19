@@ -11,6 +11,7 @@ import (
 	. "github.com/tokenme/tmm/handler"
 	commonutils "github.com/tokenme/tmm/utils"
 	"net/http"
+    "strings"
 )
 
 func SaveHandler(c *gin.Context) {
@@ -52,7 +53,7 @@ func saveDevice(service *common.Service, deviceRequest common.DeviceRequest, c *
 	if len(rows) > 0 {
 		return nil
 	}
-	query := `INSERT INTO tmm.devices (id, platform, idfa, device_name, system_version, os_version, language, model, timezone, country, is_emulator, is_jailbrojen, is_tablet, lastping_at) VALUES ('%s', '%s', '%s', %s, %s, %s, %s, %s, %s, %s, %d, %d, %d, NOW()) ON DUPLICATE KEY UPDATE idfa=VALUES(idfa), device_name=VALUES(device_name), system_version=VALUES(system_version), os_version=VALUES(os_version), language=VALUES(language), model=VALUES(model), timezone=VALUES(timezone), country=VALUES(country), lastping_at=VALUES(lastping_at)`
+	query := `INSERT INTO tmm.devices (id, platform, idfa, imei, mac, device_name, system_version, os_version, language, model, timezone, country, is_emulator, is_jailbrojen, is_tablet, lastping_at) VALUES ('%s', '%s', '%s', %s, %s, %s, %s, %s, %s, %s, %s, %s, %d, %d, %d, NOW()) ON DUPLICATE KEY UPDATE idfa=VALUES(idfa), imei=VALUES(imei), mac=VALUES(mac), device_name=VALUES(device_name), system_version=VALUES(system_version), os_version=VALUES(os_version), language=VALUES(language), model=VALUES(model), timezone=VALUES(timezone), country=VALUES(country), lastping_at=VALUES(lastping_at)`
 	var (
 		deviceName    = "NULL"
 		systemVersion = "NULL"
@@ -61,6 +62,9 @@ func saveDevice(service *common.Service, deviceRequest common.DeviceRequest, c *
 		model         = "NULL"
 		timezone      = "NULL"
 		country       = "NULL"
+        idfa          = "NULL"
+        imei          = "NULL"
+        mac           = "NULL"
 		isEmulator    = 0
 		isJailBrojen  = 0
 		isTablet      = 0
@@ -86,6 +90,13 @@ func saveDevice(service *common.Service, deviceRequest common.DeviceRequest, c *
 	if deviceRequest.Country != "" {
 		country = fmt.Sprintf("'%s'", db.Escape(deviceRequest.Country))
 	}
+    if deviceRequest.Imei != "" {
+        imei = fmt.Sprintf("'%s'", db.Escape(deviceRequest.Imei))
+    }
+    if deviceRequest.Mac != "" {
+        mac = fmt.Sprintf("'%s'", db.Escape(deviceRequest.Mac))
+        mac = strings.Replace(mac, ":", "", -1)
+    }
 	if deviceRequest.IsEmulator {
 		isEmulator = 1
 	}
@@ -95,7 +106,7 @@ func saveDevice(service *common.Service, deviceRequest common.DeviceRequest, c *
 	if deviceRequest.IsTablet {
 		isTablet = 1
 	}
-	_, _, err = db.Query(query, deviceRequest.DeviceId(), deviceRequest.Platform, db.Escape(deviceRequest.Idfa), deviceName, systemVersion, osVersion, language, model, timezone, country, isEmulator, isJailBrojen, isTablet)
+	_, _, err = db.Query(query, deviceRequest.DeviceId(), deviceRequest.Platform, idfa, imei, mac, deviceName, systemVersion, osVersion, language, model, timezone, country, isEmulator, isJailBrojen, isTablet)
 	if err != nil {
 		raven.CaptureError(err, nil)
 		return err

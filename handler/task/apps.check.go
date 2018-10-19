@@ -11,6 +11,8 @@ import (
 
 type AppsCheckRequest struct {
 	Idfa     string          `json:"idfa" form:"idfa"`
+    Imei     string          `json:"imei" form:"imei"`
+    Mac      string          `json:"mac" form:"mac"`
 	Platform common.Platform `json:"platform" form:"platform" binding:"required"`
 }
 
@@ -25,11 +27,15 @@ func AppsCheckHandler(c *gin.Context) {
 	if CheckErr(c.Bind(&req), c) {
 		return
 	}
-	device := common.DeviceRequest{
+    device := common.DeviceRequest{
 		Idfa:     req.Idfa,
-		Platform: req.Platform,
+        Imei:     req.Imei,
+        Mac:      req.Mac,
 	}
 	deviceId := device.DeviceId()
+    if Check(len(deviceId) == 0, "not found", c) {
+		return
+	}
 	db := Service.Db
 	query := `SELECT
                 dat.task_id,

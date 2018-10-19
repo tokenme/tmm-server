@@ -9,6 +9,13 @@ import (
 	"net/http"
 )
 
+type BindRequest struct {
+    Idfa     string `form:"idfa" json:"idfa"`
+    Platform string `form:"platform" json:"platform"`
+    Imei     string `form:"imei" json:"imei"`
+    Mac      string `form:"mac" json:"mac"`
+}
+
 func BindHandler(c *gin.Context) {
 	var req common.DeviceRequest
 	if CheckErr(c.Bind(&req), c) {
@@ -31,9 +38,9 @@ func BindHandler(c *gin.Context) {
 
 	db := Service.Db
 
-	if Check(req.Idfa == "", "invalid request", c) {
-		return
-	}
+    if Check(req.Idfa == "" && req.Imei == "" && req.Mac == "", "invalid request", c) {
+        return
+    }
 	rows, _, err := db.Query(`SELECT COUNT(*) FROM tmm.devices WHERE user_id=%d`, user.Id)
 	if CheckErr(err, c) {
 		return
@@ -45,11 +52,15 @@ func BindHandler(c *gin.Context) {
 	if CheckWithCode(deviceCount >= Config.MaxBindDevice, MAX_BIND_DEVICE_ERROR, "exceeded maximum binding devices", c) {
 		return
 	}
-	deviceRequest := common.DeviceRequest{
-		Platform: common.IOS,
+	device := common.DeviceRequest{
 		Idfa:     req.Idfa,
+        Imei:     req.Imei,
+        Mac:      req.Mac,
 	}
-	deviceId := deviceRequest.DeviceId()
+	deviceId := device.DeviceId()
+    if Check(len(deviceId) == 0, "not found", c) {
+		return
+	}
 	_, ret, err := db.Query(`UPDATE tmm.devices SET user_id=%d WHERE id='%s' AND user_id=0`, user.Id, deviceId)
 	if CheckErr(err, c) {
 		return

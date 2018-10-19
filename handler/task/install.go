@@ -14,6 +14,8 @@ import (
 
 type AppInstallRequest struct {
 	Idfa     string          `json:"idfa" form:"idfa"`
+    Imei     string          `json:"imei" form:"imei"`
+    Mac      string          `json:"mac" form:"mac"`
 	BundleId string          `json:"bundle_id" form:"bundle_id" binding:"required"`
 	Platform common.Platform `json:"platform" form:"platform" binding:"required"`
 	TaskId   uint64          `json:"task_id" form:"task_id" binding:"required"`
@@ -32,11 +34,15 @@ func AppInstallHandler(c *gin.Context) {
 		return
 	}
 	db := Service.Db
-	device := common.DeviceRequest{
+    device := common.DeviceRequest{
 		Idfa:     req.Idfa,
-		Platform: req.Platform,
+        Imei:     req.Imei,
+        Mac:      req.Mac,
 	}
 	deviceId := device.DeviceId()
+    if Check(len(deviceId) == 0, "not found", c) {
+		return
+	}
 	rows, _, err := db.Query(`SELECT 1 FROM tmm.devices WHERE user_id=%d AND id='%s' LIMIT 1`, user.Id, db.Escape(deviceId))
 	if CheckErr(err, c) {
 		return
