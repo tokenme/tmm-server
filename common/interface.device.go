@@ -20,6 +20,8 @@ type Device struct {
 	Model        string          `json:"model,omitempty"`
 	Platform     Platform        `json:"platform,omitempty"`
 	Idfa         string          `json:"idfa,omitempty"`
+    Mac          string          `json:"mac,omitempty"`
+    Imei         string          `json:"imei,omitempty"`
 	IsTablet     bool            `json:"is_tablet,omitempty"`
 	TotalTs      uint64          `json:"total_ts,omitempty"`
 	TotalApps    uint            `json:"total_apps,omitempty"`
