@@ -98,6 +98,7 @@ func main() {
 	}
 
 	handler.InitHandler(service, config)
+	handler.Start()
 
 	gcHandler := gc.New(service, config)
 	if config.EnableGC {
@@ -135,7 +136,17 @@ func main() {
 		r := router.NewRouter(templatePath, config)
 		log.Info("%s started at:0.0.0.0:%d", config.AppName, config.Port)
 		defer log.Info("%s exit from:0.0.0.0:%d", config.AppName, config.Port)
-		endless.ListenAndServe(fmt.Sprintf(":%d", config.Port), r)
+		srv := endless.NewServer(fmt.Sprintf(":%d", config.Port), r)
+		srv.SignalHooks[endless.PRE_SIGNAL][syscall.SIGINT] = append(
+			srv.SignalHooks[endless.PRE_SIGNAL][syscall.SIGINT],
+			func() {
+				handler.ExitCh <- struct{}{}
+			})
+		err := srv.ListenAndServe()
+		if err != nil {
+			log.Error(err.Error())
+			return
+		}
 	} else {
 		exitChan := make(chan struct{}, 1)
 		go func() {
@@ -152,6 +163,7 @@ func main() {
 	//		queue.Stop()
 	//	}
 	//}
+	handler.Close()
 	gcHandler.Stop()
 	if config.EnableOrderBook {
 		orderbookServer.Stop()

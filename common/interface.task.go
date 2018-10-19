@@ -23,11 +23,11 @@ type ShareTask struct {
 	InsertedAt   string          `json:"inserted_at,omitempty"`
 	UpdatedAt    string          `json:"updated_at,omitempty"`
 	OnlineStatus int8            `json:"online_status,omitempty"`
-	IsWx         bool            `json:"-"`
+	InIframe     bool            `json:"-"`
 }
 
-func (this ShareTask) CheckIsWechat() bool {
-	return strings.HasPrefix(this.Link, "https://mp.weixin.qq.com")
+func (this ShareTask) ShouldUseIframe() bool {
+	return !strings.HasPrefix(this.Link, "https://mp.weixin.qq.com") && !strings.HasPrefix(this.Link, "https://www.taobao.com")
 }
 
 func (this ShareTask) GetShareLink(deviceId string, config Config) (string, error) {

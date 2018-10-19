@@ -49,5 +49,6 @@ func NewRouter(templatePath string, config common.Config) *gin.Engine {
 	feedbackRouter(r)
 	slackRouter(r)
 	bonusRouter(r)
+	blowupRouter(r)
 	return r
 }
