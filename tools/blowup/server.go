@@ -22,15 +22,20 @@ type Server struct {
 	sync.RWMutex
 }
 
+type EventType = string
+
+const (
+	SessionEvent EventType = "session"
+	BiddingEvent EventType = "bid"
+	EscapeEvent  EventType = "escape"
+)
+
 type Event struct {
+	Type      EventType       `json:"type"`
 	SessionId uint64          `json:"session_id"`
 	Rate      decimal.Decimal `json:"rate"`
-	Value     decimal.Decimal `json:"value,omitempty"`
-}
-
-type Bid struct {
-	SessionId uint64
-	Value     decimal.Decimal
+	Value     decimal.Decimal `json:"value"`
+	Nick      string          `json:"nick"`
 }
 
 func NewServer(service *common.Service, config common.Config) *Server {
@@ -112,6 +117,24 @@ func (this *Server) Channel(uid string) chan Event {
 	return nil
 }
 
+func (this *Server) NewBid(sessionId uint64, points decimal.Decimal, rate decimal.Decimal) {
+	this.eventsCh <- Event{
+		Type:      BiddingEvent,
+		SessionId: sessionId,
+		Value:     points,
+		Rate:      rate,
+	}
+}
+
+func (this *Server) NewEscape(sessionId uint64, points decimal.Decimal, rate decimal.Decimal) {
+	this.eventsCh <- Event{
+		Type:      EscapeEvent,
+		SessionId: sessionId,
+		Value:     points,
+		Rate:      rate,
+	}
+}
+
 func (this *Server) checkSession() error {
 	db := this.service.Db
 	rows, _, err := db.Query(`SELECT id, NOW()-created_at FROM tmm.blowup_sessions WHERE finish_at>NOW() LIMIT 1`)
@@ -129,7 +152,7 @@ func (this *Server) checkSession() error {
 			log.Error(err.Error())
 			return err
 		}
-		this.eventsCh <- Event{}
+		this.eventsCh <- Event{Type: SessionEvent}
 		go func() {
 			time.Sleep(20 * time.Second)
 			this.createSession()
@@ -140,6 +163,7 @@ func (this *Server) checkSession() error {
 	row := rows[0]
 	rate := row.Int64(1)
 	this.eventsCh <- Event{
+		Type:      SessionEvent,
 		SessionId: row.Uint64(0),
 		Rate:      decimal.New(rate, -2),
 	}
@@ -162,6 +186,7 @@ func (this *Server) createSession() error {
 		return err
 	}
 	this.eventsCh <- Event{
+		Type:      SessionEvent,
 		SessionId: ret.InsertId(),
 	}
 	return nil

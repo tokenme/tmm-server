@@ -39,13 +39,14 @@ func BidHandler(c *gin.Context) {
 	ts := req.Points.Div(pointsTsRate)
 
 	db := Service.Db
-	rows, _, err := db.Query(`SELECT 1 FROM tmm.blowup_sessions WHERE id=%d LIMIT 1`, req.SessionId)
+	rows, _, err := db.Query(`SELECT (NOW()-created_at)/100 FROM tmm.blowup_sessions WHERE id=%d LIMIT 1`, req.SessionId)
 	if CheckErr(err, c) {
 		return
 	}
 	if CheckWithCode(len(rows) == 0, NOTFOUND_ERROR, "not found", c) {
 		return
 	}
+	rate, _ := decimal.NewFromString(rows[0].Str(0))
 	_, ret, err := db.Query(`INSERT IGNORE INTO tmm.blowup_bids (user_id, session_id, points, ts) VALUES (%d, %d, %s, %s)`, user.Id, req.SessionId, req.Points.String(), ts.String())
 	if CheckErr(err, c) {
 		return
@@ -60,6 +61,8 @@ func BidHandler(c *gin.Context) {
 			return
 		}
 	}
+
+	BlowupService.NewBid(req.SessionId, req.Points, rate)
 
 	c.JSON(http.StatusOK, APIResponse{Msg: "ok"})
 }

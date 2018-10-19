@@ -76,6 +76,7 @@ const (
 	OTHER_BIND_DEVICE_ERROR     ErrorCode = 1101
 	INVALID_CDP_VENDOR_ERROR    ErrorCode = 1200
 	BLOWUP_ESCAPE_LATE_ERROR    ErrorCode = 1300
+	BLOWUP_ESCAPE_EARLY_ERROR   ErrorCode = 1301
 )
 
 type APIError struct {

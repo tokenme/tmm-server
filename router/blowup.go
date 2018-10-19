@@ -12,5 +12,6 @@ func blowupRouter(r *gin.Engine) {
 		blowupGroup.GET("/notify", blowup.NotifyHandler)
 		blowupGroup.POST("/bid", blowup.BidHandler)
 		blowupGroup.POST("/escape", blowup.EscapeHandler)
+		blowupGroup.GET("/bids", blowup.BidsHandler)
 	}
 }
