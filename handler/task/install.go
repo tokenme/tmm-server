@@ -77,7 +77,7 @@ func AppInstallHandler(c *gin.Context) {
 		}
 		query := `UPDATE tmm.devices AS d, tmm.device_app_tasks AS dat, tmm.app_tasks AS appt
 SET d.points = d.points + IF(appt.points_left > appt.bonus, appt.bonus, appt.points_left),
-    d.total_ts = d.total_ts + CEIL(IF(appt.points_left > appt.bonus, appt.bonus, appt.points_left) / %s)
+    d.total_ts = d.total_ts + CEIL(IF(appt.points_left > appt.bonus, appt.bonus, appt.points_left) / %s),
     appt.points_left = IF(appt.points_left > appt.bonus, appt.points_left - appt.bonus, 0),
     appt.downloads = appt.downloads + 1,
     dat.points = IF(appt.points_left > appt.bonus, appt.bonus, appt.points_left),
@@ -159,7 +159,7 @@ ORDER BY d.lastping_at DESC LIMIT 1) AS t2`
 		}
 		query := `UPDATE tmm.devices AS d, tmm.device_app_tasks AS dat, tmm.app_tasks AS appt
 SET d.points = IF(d.points > dat.points, d.points - dat.points, 0),
-    d.consumed_ts = d.consumed_ts + CEIL(IF(d.points > dat.points, d.points - dat.points, 0) / %s)
+    d.consumed_ts = d.consumed_ts + CEIL(IF(d.points > dat.points, d.points - dat.points, 0) / %s),
     appt.points_left = appt.points_left + IF(d.points > dat.points, dat.points, 0),
     appt.downloads = appt.downloads - IF(d.points > dat.points, 1, 0),
     dat.status = -1

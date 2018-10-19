@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/shopspring/decimal"
 	"github.com/tokenme/tmm/utils"
+	"strings"
 )
 
 type ShareTask struct {
@@ -22,6 +23,11 @@ type ShareTask struct {
 	InsertedAt   string          `json:"inserted_at,omitempty"`
 	UpdatedAt    string          `json:"updated_at,omitempty"`
 	OnlineStatus int8            `json:"online_status,omitempty"`
+	IsWx         bool            `json:"-"`
+}
+
+func (this ShareTask) CheckIsWechat() bool {
+	return strings.HasPrefix(this.Link, "https://mp.weixin.qq.com")
 }
 
 func (this ShareTask) GetShareLink(deviceId string, config Config) (string, error) {

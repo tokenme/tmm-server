@@ -3,6 +3,7 @@ package bonus
 import (
 	//"github.com/davecgh/go-spew/spew"
 	"github.com/gin-gonic/gin"
+	//"github.com/mkideal/log"
 	"github.com/shopspring/decimal"
 	"github.com/tokenme/tmm/common"
 	. "github.com/tokenme/tmm/handler"
@@ -30,7 +31,7 @@ func DailyCommitHandler(c *gin.Context) {
 	}
 	user := userContext.(common.User)
 	db := Service.Db
-	_, ret, err := db.Query(`INSERT INTO tmm.daily_bonus_logs (user_id, updated_on, days) VALUES (%d, NOW(), 1) ON DUPLICATE KEY UPDATE days=IF(updated_on=DATE_SUB(NOW(), INTERVAL 1 DAY), days+1, IF(updated_on=DATE(NOW()), days, 1)), updated_on=VALUES(updated_on)`, user.Id)
+	_, ret, err := db.Query(`INSERT INTO tmm.daily_bonus_logs (user_id, updated_on, days) VALUES (%d, NOW(), 1) ON DUPLICATE KEY UPDATE days=IF(updated_on=DATE(DATE_SUB(NOW(), INTERVAL 1 DAY)), days+1, IF(updated_on=DATE(NOW()), days, 1)), updated_on=VALUES(updated_on)`, user.Id)
 	if CheckErr(err, c) {
 		return
 	}

@@ -64,8 +64,6 @@ func PointsHandler(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{"title": title, "desc": desc, "icon": icon, "link": link})
 			return
 		}
-	} else {
-		log.Error(err.Error())
 	}
 	c.JSON(http.StatusOK, APIResponse{Msg: "ok"})
 }
