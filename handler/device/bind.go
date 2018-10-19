@@ -52,20 +52,15 @@ func BindHandler(c *gin.Context) {
 	if CheckWithCode(deviceCount >= Config.MaxBindDevice, MAX_BIND_DEVICE_ERROR, "exceeded maximum binding devices", c) {
 		return
 	}
-	var deviceRequest common.DeviceRequest
-    if (len(req.Platform) == 0 || req.Platform == common.IOS) && len(req.Idfa) > 0 {
-        deviceRequest = common.DeviceRequest{
-            Platform: common.IOS,
-            Idfa:     req.Idfa,
-        }
-    } else if len(req.Imei) > 0 {
-        deviceRequest = common.DeviceRequest{
-            Platform: common.ANDROID,
-            Imei:     req.Imei,
-            Mac:      req.Mac,
-        }
-    }
-	deviceId := deviceRequest.DeviceId()
+	device := common.DeviceRequest{
+		Idfa:     req.Idfa,
+        Imei:     req.Imei,
+        Mac:      req.Mac,
+	}
+	deviceId := device.DeviceId()
+    if Check(len(deviceId) == 0, "not found", c) {
+		return
+	}
 	_, ret, err := db.Query(`UPDATE tmm.devices SET user_id=%d WHERE id='%s' AND user_id=0`, user.Id, deviceId)
 	if CheckErr(err, c) {
 		return

@@ -50,20 +50,15 @@ func SharesHandler(c *gin.Context) {
 		onlineStatusConstrain = fmt.Sprintf("AND st.creator = %d", user.Id)
 		orderBy = "st.id DESC"
 	}
-	var deviceRequest common.DeviceRequest
-    if (len(req.Platform) == 0 || req.Platform == common.IOS) && len(req.Idfa) > 0 {
-        deviceRequest = common.DeviceRequest{
-            Platform: common.IOS,
-            Idfa:     req.Idfa,
-        }
-    } else if len(req.Imei) > 0 {
-        deviceRequest = common.DeviceRequest{
-            Platform: common.ANDROID,
-            Imei:     req.Imei,
-            Mac:      req.Mac,
-        }
-    }
-    deviceId := deviceRequest.DeviceId()
+	device := common.DeviceRequest{
+		Idfa:     req.Idfa,
+        Imei:     req.Imei,
+        Mac:      req.Mac,
+	}
+	deviceId := device.DeviceId()
+    if Check(len(deviceId) == 0, "not found", c) {
+		return
+	}
 
 	db := Service.Db
 	query := `SELECT

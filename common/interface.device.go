@@ -69,25 +69,29 @@ type DeviceRequest struct {
 }
 
 func (this DeviceRequest) DeviceId() string {
-	if this.Platform == IOS {
+	if len(this.Idfa) > 0 {
+        this.Platform = IOS
 		return utils.Sha1(this.Idfa)
-    } else if (this.Platform == ANDROID) {
-        var str string
-        if len(this.Imei) > 0 {
-            str = this.Imei
-            if len(this.Mac) > 0 && this.Mac != "02:00:00:00:00:00" {
-                str = str + strings.Replace(this.Mac, ":", "", -1)
-            }
-            return utils.Sha1(str)
+    } else if len(this.Imei) > 0 {
+        this.Platform = ANDROID
+        str := this.Imei
+        if len(this.Mac) > 0 && this.Mac != "02:00:00:00:00:00" {
+            str = str + strings.Replace(this.Mac, ":", "", -1)
         }
+        return utils.Sha1(str)
     }
 	return ""
 }
 
 func (this DeviceRequest) AppId() string {
+    /*
 	if this.Platform == IOS {
 		return utils.Sha1(fmt.Sprintf("%s-%s", this.Platform, this.AppBundleId))
 	}
+    */
+    if len(this.AppBundleId) > 0 {
+		return utils.Sha1(fmt.Sprintf("%s-%s", this.Platform, this.AppBundleId))
+    }
 	return ""
 }
 
