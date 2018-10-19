@@ -31,7 +31,9 @@ func ListHandler(c *gin.Context) {
     d.points,
     d.lastping_at,
     d.inserted_at,
-    d.updated_at
+    d.updated_at,
+    d.mac,
+    d.imei
 FROM devices AS d
 LEFT JOIN device_apps AS da ON (da.device_id=d.id)
 INNER JOIN apps AS a ON (a.id=da.app_id)
@@ -63,6 +65,8 @@ GROUP BY d.id`
 			LastPingAt: row.ForceLocaltime(10).Format(time.RFC3339),
 			InsertedAt: row.ForceLocaltime(11).Format(time.RFC3339),
 			UpdatedAt:  row.ForceLocaltime(12).Format(time.RFC3339),
+            Mac:        row.Str(13),
+            Imei:       row.Str(14),
 		}
 		device.GrowthFactor, _ = device.GetGrowthFactor(Service)
 		devices = append(devices, device)
