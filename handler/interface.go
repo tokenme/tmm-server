@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/mkideal/log"
 	"github.com/tokenme/tmm/common"
+	"github.com/tokenme/tmm/tools/blowup"
 	"github.com/tokenme/tmm/utils"
 	//"github.com/tokenme/ucoin/tools/sqs"
 	"net"
@@ -20,9 +21,11 @@ import (
 )
 
 var (
-	Service    *common.Service
-	Config     common.Config
-	GlobalLock *sync.Mutex
+	Service       *common.Service
+	Config        common.Config
+	GlobalLock    *sync.Mutex
+	BlowupService *blowup.Server
+	ExitCh        chan struct{}
 	//Queues  map[string]sqs.Queue
 )
 
@@ -30,8 +33,18 @@ func InitHandler(s *common.Service, c common.Config) {
 	Service = s
 	Config = c
 	GlobalLock = new(sync.Mutex)
+	BlowupService = blowup.NewServer(s, c)
 	//Queues = queues
 	raven.SetDSN(Config.SentryDSN)
+	ExitCh = make(chan struct{}, 1)
+}
+
+func Start() {
+	BlowupService.Start()
+}
+
+func Close() {
+	BlowupService.Stop()
 }
 
 type APIResponse struct {
@@ -62,6 +75,7 @@ const (
 	MAX_BIND_DEVICE_ERROR       ErrorCode = 1100
 	OTHER_BIND_DEVICE_ERROR     ErrorCode = 1101
 	INVALID_CDP_VENDOR_ERROR    ErrorCode = 1200
+	BLOWUP_ESCAPE_LATE_ERROR    ErrorCode = 1300
 )
 
 type APIError struct {

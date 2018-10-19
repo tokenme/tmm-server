@@ -42,6 +42,7 @@ LIMIT 1`
 		return
 	}
 	if Check(len(rows) == 0, "not found", c) {
+		log.Error("Not found")
 		return
 	}
 	row := rows[0]
@@ -59,7 +60,7 @@ LIMIT 1`
 		Points:     points,
 		PointsLeft: pointsLeft,
 	}
-	task.IsWx = task.CheckIsWechat()
+	task.InIframe = task.ShouldUseIframe()
 
 	userViewers := row.Uint(9)
 
@@ -68,6 +69,7 @@ LIMIT 1`
 		ipFound     = false
 	)
 	if _, err := c.Cookie(task.CookieKey()); err == nil {
+		log.Warn("Cookie Found")
 		cookieFound = true
 	}
 	ipInfo := ClientIP(c)
@@ -76,9 +78,10 @@ LIMIT 1`
 	defer redisConn.Close()
 	_, err = redisConn.Do("GET", ipKey)
 	if err == nil {
+		log.Warn("IP Found: %s", ipKey)
 		ipFound = true
 	}
-	if !cookieFound && !ipFound && (task.PointsLeft.GreaterThanOrEqual(bonus) && task.MaxViewers > userViewers) {
+	if (cookieFound || ipFound) && (task.PointsLeft.GreaterThanOrEqual(bonus) && task.MaxViewers > userViewers) {
 		_, _, err := db.Query(`INSERT IGNORE INTO tmm.device_share_tasks (device_id, task_id) VALUES ('%s', %d)`, db.Escape(deviceId), taskId)
 		if err == nil {
 			pointsPerTs, err := common.GetPointsPerTs(Service)
