@@ -77,9 +77,11 @@ func (this DeviceRequest) DeviceId() string {
     } else if len(this.Imei) > 0 {
         this.Platform = ANDROID
         str := this.Imei
+        /*
         if len(this.Mac) > 0 && this.Mac != "02:00:00:00:00:00" {
             str = str + strings.Replace(this.Mac, ":", "", -1)
         }
+        */
         return utils.Sha1(str)
     }
 	return ""
