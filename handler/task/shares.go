@@ -9,6 +9,7 @@ import (
 	"github.com/tokenme/tmm/common"
 	. "github.com/tokenme/tmm/handler"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -17,13 +18,14 @@ const (
 )
 
 type SharesRequest struct {
-	Page     uint            `json:"page" form:"page"`
-	PageSize uint            `json:"page_size" form:"page_size"`
-	Idfa     string          `json:"idfa" form:"idfa"`
-    Imei     string          `json:"imei" form:"imei"`
-    Mac      string          `json:"mac" form:"mac"`
-	Platform common.Platform `json:"platform" form:"platform" binding:"required"`
-	MineOnly bool            `json:"mine_only" form:"mine_only"`
+	Page       uint            `json:"page" form:"page"`
+	PageSize   uint            `json:"page_size" form:"page_size"`
+	Idfa       string          `json:"idfa" form:"idfa"`
+	Imei       string          `json:"imei" form:"imei"`
+	Mac        string          `json:"mac" form:"mac"`
+	Platform   common.Platform `json:"platform" form:"platform" binding:"required"`
+	MineOnly   bool            `json:"mine_only" form:"mine_only"`
+	AppVersion string          `json:"app_version" form:"app_version"`
 }
 
 func SharesHandler(c *gin.Context) {
@@ -51,13 +53,18 @@ func SharesHandler(c *gin.Context) {
 		orderBy = "st.id DESC"
 	}
 	device := common.DeviceRequest{
-		Idfa:     req.Idfa,
-        Imei:     req.Imei,
-        Mac:      req.Mac,
+		Idfa: req.Idfa,
+		Imei: req.Imei,
+		Mac:  req.Mac,
 	}
 	deviceId := device.DeviceId()
-    if Check(len(deviceId) == 0, "not found", c) {
+	if Check(len(deviceId) == 0, "not found", c) {
 		return
+	}
+
+	showBonusHint := true
+	if req.Idfa != "" && strings.Compare(req.AppVersion, Config.AppReleaseVersion.IOS) == 1 {
+		showBonusHint = false
 	}
 
 	db := Service.Db
@@ -90,17 +97,18 @@ ORDER BY %s LIMIT %d, %d`
 		pointsLeft, _ := decimal.NewFromString(row.Str(8))
 		creator := row.Uint64(12)
 		task := common.ShareTask{
-			Id:         row.Uint64(0),
-			Title:      row.Str(1),
-			Summary:    row.Str(2),
-			Link:       row.Str(3),
-			Image:      row.Str(4),
-			MaxViewers: row.Uint(5),
-			Bonus:      bonus,
-			Points:     points,
-			PointsLeft: pointsLeft,
-			InsertedAt: row.ForceLocaltime(10).Format(time.RFC3339),
-			UpdatedAt:  row.ForceLocaltime(11).Format(time.RFC3339),
+			Id:            row.Uint64(0),
+			Title:         row.Str(1),
+			Summary:       row.Str(2),
+			Link:          row.Str(3),
+			Image:         row.Str(4),
+			MaxViewers:    row.Uint(5),
+			Bonus:         bonus,
+			Points:        points,
+			PointsLeft:    pointsLeft,
+			InsertedAt:    row.ForceLocaltime(10).Format(time.RFC3339),
+			UpdatedAt:     row.ForceLocaltime(11).Format(time.RFC3339),
+			ShowBonusHint: showBonusHint,
 		}
 		if creator == user.Id {
 			task.Viewers = row.Uint(9)

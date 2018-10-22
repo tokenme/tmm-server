@@ -8,22 +8,23 @@ import (
 )
 
 type ShareTask struct {
-	Id           uint64          `json:"id"`
-	Creator      uint64          `json:"creator",omitempty`
-	Title        string          `json:"title"`
-	Summary      string          `json:"summary"`
-	Link         string          `json:"link"`
-	ShareLink    string          `json:"share_link"`
-	Image        string          `json:"image,omitempty"`
-	Points       decimal.Decimal `json:"points,omitempty"`
-	PointsLeft   decimal.Decimal `json:"points_left,omitempty"`
-	Bonus        decimal.Decimal `json:"bonus,omitempty"`
-	MaxViewers   uint            `json:"max_viewers,omitempty"`
-	Viewers      uint            `json:"viewers,omitempty"`
-	InsertedAt   string          `json:"inserted_at,omitempty"`
-	UpdatedAt    string          `json:"updated_at,omitempty"`
-	OnlineStatus int8            `json:"online_status,omitempty"`
-	InIframe     bool            `json:"-"`
+	Id            uint64          `json:"id"`
+	Creator       uint64          `json:"creator",omitempty`
+	Title         string          `json:"title"`
+	Summary       string          `json:"summary"`
+	Link          string          `json:"link"`
+	ShareLink     string          `json:"share_link"`
+	Image         string          `json:"image,omitempty"`
+	Points        decimal.Decimal `json:"points,omitempty"`
+	PointsLeft    decimal.Decimal `json:"points_left,omitempty"`
+	Bonus         decimal.Decimal `json:"bonus,omitempty"`
+	MaxViewers    uint            `json:"max_viewers,omitempty"`
+	Viewers       uint            `json:"viewers,omitempty"`
+	InsertedAt    string          `json:"inserted_at,omitempty"`
+	UpdatedAt     string          `json:"updated_at,omitempty"`
+	OnlineStatus  int8            `json:"online_status,omitempty"`
+	InIframe      bool            `json:"-"`
+	ShowBonusHint bool            `json:"show_bonus_hint,omitempty"`
 }
 
 func (this ShareTask) ShouldUseIframe() bool {

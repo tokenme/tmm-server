@@ -17,7 +17,7 @@ func BidsHandler(c *gin.Context) {
 		return
 	}
 	db := Service.Db
-	rows, _, err := db.Query(`SELECT bb.user_id, u.country_code, u.mobile, bb.points, bb.rate, bb.escaped FROM tmm.blowup_bids AS bb INNER JOIN ucoin.users AS u ON (u.id=bb.user_id) WHERE NOT EXISTS (SELECT 1 FROM tmm.blowup_sessions AS bs WHERE bs.id=bb.session_id LIMIT 1) ORDER BY bb.inserted_at DESC LIMIT 30`)
+	rows, _, err := db.Query(`SELECT bb.user_id, u.country_code, u.mobile, bb.points, bb.rate/100, bb.escaped FROM tmm.blowup_bids AS bb INNER JOIN ucoin.users AS u ON (u.id=bb.user_id) WHERE NOT EXISTS (SELECT 1 FROM tmm.blowup_sessions AS bs WHERE bs.id=bb.session_id LIMIT 1) ORDER BY bb.inserted_at DESC LIMIT 30`)
 	if CheckErr(err, c) {
 		return
 	}

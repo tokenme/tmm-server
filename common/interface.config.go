@@ -45,6 +45,7 @@ type Config struct {
 	InviteBonusRate      float64           `required:"true"`
 	MaxBindDevice        int               `required:"true"`
 	Contact              ContactConfig     `required:"true"`
+	AppReleaseVersion    AppVersion        `required:"true"`
 	Debug                bool              `default:"false"`
 	EnableWeb            bool              `default:"false"`
 	EnableGC             bool              `default:"false"`
@@ -125,4 +126,9 @@ type SlackConfig struct {
 	Token           string `required:"true"`
 	FeedbackChannel string `required:"true"`
 	OpsChannel      string `required:"true"`
+}
+
+type AppVersion struct {
+	IOS     string `required:"true"`
+	Android string `required:"true"`
 }
