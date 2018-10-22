@@ -2,11 +2,12 @@ package token
 
 import (
 	//"github.com/davecgh/go-spew/spew"
-	"github.com/gin-gonic/gin"
-	//"github.com/mkideal/log"
 	"github.com/ethereum/go-ethereum/params"
+	"github.com/gin-gonic/gin"
+	"github.com/mkideal/log"
 	"github.com/shopspring/decimal"
 	"github.com/tokenme/etherscan-api"
+	"github.com/tokenme/tmm/coins/eth/utils"
 	"github.com/tokenme/tmm/common"
 	. "github.com/tokenme/tmm/handler"
 	"net/http"
@@ -35,18 +36,26 @@ func TransactionsHandler(c *gin.Context) {
 	etherValue := decimal.New(params.Ether, 0)
 	txs, err := client.ERC20Transfers(&tokenAddress, &user.Wallet, nil, nil, int(page), int(offset), true)
 	if err != nil || len(txs) == 0 {
+		if err != nil {
+			log.Error(err.Error())
+		}
 		c.JSON(http.StatusOK, transactions)
 		return
 	}
+	token, err := utils.NewToken(tokenAddress, Service.Geth)
+	if CheckErr(err, c) {
+		return
+	}
+	tokenDecimal, err := utils.TokenDecimal(token)
+	if CheckErr(err, c) {
+		return
+	}
 	for _, tx := range txs {
-		if tx.TokenName == "" {
-			continue
-		}
 		transaction := common.Transaction{
 			Receipt:           tx.Hash,
 			From:              tx.From,
 			To:                tx.To,
-			Value:             decimal.NewFromBigInt(tx.Value.Int(), -1*int32(tx.TokenDecimal)),
+			Value:             decimal.NewFromBigInt(tx.Value.Int(), -1*int32(tokenDecimal)),
 			Gas:               decimal.New(int64(tx.Gas), 0).Div(etherValue),
 			GasPrice:          decimal.NewFromBigInt(tx.GasPrice.Int(), 0).Div(etherValue),
 			GasUsed:           decimal.New(int64(tx.GasUsed), 0).Div(etherValue),
