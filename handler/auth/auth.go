@@ -27,10 +27,12 @@ var AuthenticatorFunc = func(loginInfo jwt.Login, c *gin.Context) (string, bool)
 	if loginInfo.CountryCode > 0 && loginInfo.Mobile != "" && loginInfo.Password != "" && loginInfo.Captcha != "" {
 		where = fmt.Sprintf("u.country_code=%d AND u.mobile='%s'", loginInfo.CountryCode, db.Escape(loginInfo.Mobile))
 	} else {
+		log.Error("missing params")
 		return loginInfo.Mobile, false
 	}
 	captchaRes := recaptcha.Verify(Config.ReCaptcha.Secret, Config.ReCaptcha.Hostname, loginInfo.Captcha)
 	if CheckWithCode(!captchaRes.Success, INVALID_CAPTCHA_ERROR, "Invalid captcha", c) {
+		log.Error("invalid captcha")
 		return loginInfo.Mobile, false
 	}
 	query := `SELECT
@@ -65,6 +67,9 @@ var AuthenticatorFunc = func(loginInfo jwt.Login, c *gin.Context) (string, bool)
 	if err != nil || len(rows) == 0 {
 		if err != nil {
 			log.Error(err.Error())
+		}
+		if CheckWithCode(len(rows) == 0, UNACTIVATED_USER_ERROR, "invalid password", c) {
+			return loginInfo.Mobile, false
 		}
 		return loginInfo.Mobile, false
 	}
@@ -156,7 +161,11 @@ var AuthenticatorFunc = func(loginInfo jwt.Login, c *gin.Context) (string, bool)
 	passwdSha1 := utils.Sha1(fmt.Sprintf("%s%s%s", user.Salt, loginInfo.Password, user.Salt))
 	js, err := json.Marshal(user)
 	if err != nil {
+		log.Error(err.Error())
 		return loginInfo.Mobile, false
+	}
+	if CheckWithCode(passwdSha1 != user.Password, INVALID_PASSWD_ERROR, "invalid password", c) {
+		return string(js), false
 	}
 	return string(js), passwdSha1 == user.Password
 }

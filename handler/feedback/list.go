@@ -44,6 +44,7 @@ func ListHandler(c *gin.Context) {
 				replies = append(replies, common.Feedback{
 					Ts:  msg.Timestamp,
 					Msg: msg.Text,
+					Bot: msg.BotID != "",
 				})
 			}
 			fb.Replies = replies

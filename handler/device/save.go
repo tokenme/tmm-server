@@ -11,7 +11,7 @@ import (
 	. "github.com/tokenme/tmm/handler"
 	commonutils "github.com/tokenme/tmm/utils"
 	"net/http"
-    "strings"
+	"strings"
 )
 
 func SaveHandler(c *gin.Context) {
@@ -44,8 +44,12 @@ func SaveHandler(c *gin.Context) {
 }
 
 func saveDevice(service *common.Service, deviceRequest common.DeviceRequest, c *gin.Context) error {
+	deviceId := deviceRequest.DeviceId()
+	if deviceId == "" {
+		return nil
+	}
 	db := service.Db
-	rows, _, err := db.Query(`SELECT 1 FROM tmm.devices WHERE id='%s' LIMIT 1`, db.Escape(deviceRequest.DeviceId()))
+	rows, _, err := db.Query(`SELECT 1 FROM tmm.devices WHERE id='%s' LIMIT 1`, db.Escape(deviceId))
 	if err != nil {
 		raven.CaptureError(err, nil)
 		return err
@@ -62,9 +66,9 @@ func saveDevice(service *common.Service, deviceRequest common.DeviceRequest, c *
 		model         = "NULL"
 		timezone      = "NULL"
 		country       = "NULL"
-        idfa          = "NULL"
-        imei          = "NULL"
-        mac           = "NULL"
+		idfa          = "NULL"
+		imei          = "NULL"
+		mac           = "NULL"
 		isEmulator    = 0
 		isJailBrojen  = 0
 		isTablet      = 0
@@ -90,13 +94,13 @@ func saveDevice(service *common.Service, deviceRequest common.DeviceRequest, c *
 	if deviceRequest.Country != "" {
 		country = fmt.Sprintf("'%s'", db.Escape(deviceRequest.Country))
 	}
-    if deviceRequest.Imei != "" {
-        imei = fmt.Sprintf("'%s'", db.Escape(deviceRequest.Imei))
-    }
-    if deviceRequest.Mac != "" {
-        mac = fmt.Sprintf("'%s'", db.Escape(deviceRequest.Mac))
-        mac = strings.Replace(mac, ":", "", -1)
-    }
+	if deviceRequest.Imei != "" {
+		imei = fmt.Sprintf("'%s'", db.Escape(deviceRequest.Imei))
+	}
+	if deviceRequest.Mac != "" {
+		mac = fmt.Sprintf("'%s'", db.Escape(deviceRequest.Mac))
+		mac = strings.Replace(mac, ":", "", -1)
+	}
 	if deviceRequest.IsEmulator {
 		isEmulator = 1
 	}
@@ -106,7 +110,7 @@ func saveDevice(service *common.Service, deviceRequest common.DeviceRequest, c *
 	if deviceRequest.IsTablet {
 		isTablet = 1
 	}
-	_, _, err = db.Query(query, deviceRequest.DeviceId(), deviceRequest.Platform, idfa, imei, mac, deviceName, systemVersion, osVersion, language, model, timezone, country, isEmulator, isJailBrojen, isTablet)
+	_, _, err = db.Query(query, deviceId, deviceRequest.Platform, idfa, imei, mac, deviceName, systemVersion, osVersion, language, model, timezone, country, isEmulator, isJailBrojen, isTablet)
 	if err != nil {
 		raven.CaptureError(err, nil)
 		return err
@@ -115,14 +119,19 @@ func saveDevice(service *common.Service, deviceRequest common.DeviceRequest, c *
 }
 
 func saveApp(service *common.Service, deviceRequest common.DeviceRequest) error {
+	deviceId := deviceRequest.DeviceId()
+	appId := deviceRequest.AppId()
+	if deviceId == "" || appId == "" {
+		return nil
+	}
 	db := service.Db
 	query := `INSERT INTO tmm.apps (id, platform, bundle_id, name, app_version, build_version, lastping_at) VALUES ('%s', '%s', '%s', '%s', '%s', '%s', NOW()) ON DUPLICATE KEY UPDATE name=VALUES(name), app_version=VALUES(app_version), build_version=VALUES(build_version), lastping_at=VALUES(lastping_at)`
-	_, _, err := db.Query(query, deviceRequest.AppId(), deviceRequest.Platform, db.Escape(deviceRequest.AppBundleId), db.Escape(deviceRequest.AppName), db.Escape(deviceRequest.AppVersion), db.Escape(deviceRequest.AppBuildVersion))
+	_, _, err := db.Query(query, deviceId, deviceRequest.Platform, db.Escape(deviceRequest.AppBundleId), db.Escape(deviceRequest.AppName), db.Escape(deviceRequest.AppVersion), db.Escape(deviceRequest.AppBuildVersion))
 	if err != nil {
 		raven.CaptureError(err, nil)
 		return err
 	}
-	_, _, err = db.Query(`INSERT INTO device_apps (device_id, app_id, lastping_at) VALUES ('%s', '%s', NOW()) ON DUPLICATE KEY UPDATE lastping_at=VALUES(lastping_at)`, deviceRequest.DeviceId(), deviceRequest.AppId())
+	_, _, err = db.Query(`INSERT INTO device_apps (device_id, app_id, lastping_at) VALUES ('%s', '%s', NOW()) ON DUPLICATE KEY UPDATE lastping_at=VALUES(lastping_at)`, deviceId, appId)
 	if err != nil {
 		raven.CaptureError(err, nil)
 		return err

@@ -11,5 +11,6 @@ func feedbackRouter(r *gin.Engine) {
 	{
 		feedbackGroup.POST("/add", feedback.AddHandler)
 		feedbackGroup.GET("/list", feedback.ListHandler)
+		feedbackGroup.POST("/reply", feedback.ReplyHandler)
 	}
 }

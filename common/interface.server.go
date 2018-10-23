@@ -37,7 +37,7 @@ type Service struct {
 func NewService(config Config) *Service {
 
 	mdb := autorc.New("tcp", "", config.MySQL.Host, config.MySQL.User, config.MySQL.Passwd, config.MySQL.DB)
-	mdb.Register("set names utf8")
+	mdb.Register("set names utf8mb4")
 
 	service := &Service{
 		Db: mdb,

@@ -33,6 +33,7 @@ func PingHandler(c *gin.Context) {
 	var pingRequest common.PingRequest
 	err = json.Unmarshal(decrepted, &pingRequest)
 	if CheckErr(err, c) {
+		log.Error(err.Error())
 		raven.CaptureError(err, nil)
 		return
 	}
@@ -121,7 +122,7 @@ func ping(service *common.Service, pingRequest common.PingRequest) {
 }
 
 func validatePingRequest(pingRequest common.PingRequest, deviceId string, appId string, service *common.Service) bool {
-	if pingRequest.Ts <= 0 || pingRequest.Logs == "" {
+	if pingRequest.Ts <= 0 || pingRequest.Logs == "" || deviceId == "" || appId == "" {
 		return false
 	}
 	redisConn := service.Redis.Master.Get()
