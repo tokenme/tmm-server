@@ -89,6 +89,8 @@ type QiniuConfig struct {
 	LogoPath   string `required:"true"`
 	ImagePath  string `required:"true"`
 	Domain     string `required:"true"`
+    Pipeline   string `required:"true"`
+    NotifyURL  string `required:"true"`
 }
 
 type CoinbaseAPIConfig struct {
