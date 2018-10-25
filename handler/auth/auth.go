@@ -21,19 +21,19 @@ import (
 	"time"
 )
 
-var AuthenticatorFunc = func(loginInfo jwt.Login, c *gin.Context) (string, bool) {
+var AuthenticatorFunc = func(loginInfo jwt.Login, c *gin.Context) (string, int, bool) {
 	db := Service.Db
 	var where string
 	if loginInfo.CountryCode > 0 && loginInfo.Mobile != "" && loginInfo.Password != "" && loginInfo.Captcha != "" {
 		where = fmt.Sprintf("u.country_code=%d AND u.mobile='%s'", loginInfo.CountryCode, db.Escape(loginInfo.Mobile))
 	} else {
 		log.Error("missing params")
-		return loginInfo.Mobile, false
+		return loginInfo.Mobile, BADREQUEST_ERROR, false
 	}
 	captchaRes := recaptcha.Verify(Config.ReCaptcha.Secret, Config.ReCaptcha.Hostname, loginInfo.Captcha)
-	if CheckWithCode(!captchaRes.Success, INVALID_CAPTCHA_ERROR, "Invalid captcha", c) {
+	if !captchaRes.Success {
 		log.Error("invalid captcha")
-		return loginInfo.Mobile, false
+		return loginInfo.Mobile, INVALID_CAPTCHA_ERROR, false
 	}
 	query := `SELECT
                 u.id,
@@ -68,10 +68,10 @@ var AuthenticatorFunc = func(loginInfo jwt.Login, c *gin.Context) (string, bool)
 		if err != nil {
 			log.Error(err.Error())
 		}
-		if CheckWithCode(len(rows) == 0, UNACTIVATED_USER_ERROR, "invalid password", c) {
-			return loginInfo.Mobile, false
+		if len(rows) == 0 {
+			return loginInfo.Mobile, UNACTIVATED_USER_ERROR, false
 		}
-		return loginInfo.Mobile, false
+		return loginInfo.Mobile, INTERNAL_ERROR, false
 	}
 	row := rows[0]
 	user := common.User{
@@ -137,20 +137,20 @@ var AuthenticatorFunc = func(loginInfo jwt.Login, c *gin.Context) (string, bool)
 		avatarImg, err := govatar.GenerateFromUsername(gender, user.Wallet)
 		if err != nil {
 			log.Error(err.Error())
-			return loginInfo.Mobile, false
+			return loginInfo.Mobile, INTERNAL_ERROR, false
 		}
 		avatarBuf := new(bytes.Buffer)
 		err = png.Encode(avatarBuf, avatarImg)
 		if err != nil {
 			log.Error(err.Error())
-			return loginInfo.Mobile, false
+			return loginInfo.Mobile, INTERNAL_ERROR, false
 		}
 
 		timestamp := strconv.FormatInt(time.Now().UnixNano(), 10)
 		avatar, _, err := qiniu.Upload(c, Config.Qiniu, fmt.Sprintf("%s/%s", Config.Qiniu.AvatarPath, user.Wallet), timestamp, avatarBuf.Bytes())
 		if err != nil {
 			log.Error(err.Error())
-			return loginInfo.Mobile, false
+			return loginInfo.Mobile, INTERNAL_ERROR, false
 		}
 		user.Avatar = avatar
 		db.Query(`UPDATE ucoin.users SET avatar='%s' WHERE id=%d LIMIT 1`, db.Escape(user.Avatar), user.Id)
@@ -162,12 +162,12 @@ var AuthenticatorFunc = func(loginInfo jwt.Login, c *gin.Context) (string, bool)
 	js, err := json.Marshal(user)
 	if err != nil {
 		log.Error(err.Error())
-		return loginInfo.Mobile, false
+		return loginInfo.Mobile, INTERNAL_ERROR, false
 	}
-	if CheckWithCode(passwdSha1 != user.Password, INVALID_PASSWD_ERROR, "invalid password", c) {
-		return string(js), false
+	if passwdSha1 != user.Password {
+		return string(js), INVALID_PASSWD_ERROR, false
 	}
-	return string(js), passwdSha1 == user.Password
+	return string(js), 200, passwdSha1 == user.Password
 }
 
 var AuthorizatorFunc = func(data string, c *gin.Context) bool {

@@ -126,7 +126,7 @@ func saveApp(service *common.Service, deviceRequest common.DeviceRequest) error 
 	}
 	db := service.Db
 	query := `INSERT INTO tmm.apps (id, platform, bundle_id, name, app_version, build_version, lastping_at) VALUES ('%s', '%s', '%s', '%s', '%s', '%s', NOW()) ON DUPLICATE KEY UPDATE name=VALUES(name), app_version=VALUES(app_version), build_version=VALUES(build_version), lastping_at=VALUES(lastping_at)`
-	_, _, err := db.Query(query, deviceId, deviceRequest.Platform, db.Escape(deviceRequest.AppBundleId), db.Escape(deviceRequest.AppName), db.Escape(deviceRequest.AppVersion), db.Escape(deviceRequest.AppBuildVersion))
+	_, _, err := db.Query(query, appId, deviceRequest.Platform, db.Escape(deviceRequest.AppBundleId), db.Escape(deviceRequest.AppName), db.Escape(deviceRequest.AppVersion), db.Escape(deviceRequest.AppBuildVersion))
 	if err != nil {
 		raven.CaptureError(err, nil)
 		return err

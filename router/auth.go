@@ -12,7 +12,7 @@ var AUTH_KEY = []byte("20eefe8d82ba3ca8a417e14a48d24632bc35bbd7")
 const (
 	AUTH_REALM      = "TMM.Server[tokenmama.io]"
 	AUTH_TIMEOUT    = 24 * time.Hour
-	AUTH_MAXREFRESH = 1 * time.Hour
+	AUTH_MAXREFRESH = 24 * 7 * time.Hour
 )
 
 var AuthMiddleware = &jwt.GinJWTMiddleware{
@@ -24,7 +24,7 @@ var AuthMiddleware = &jwt.GinJWTMiddleware{
 	Authorizator:  auth.AuthorizatorFunc,
 	Unauthorized: func(c *gin.Context, code int, message string) {
 		c.JSON(code, gin.H{
-			"code":    401,
+			"code":    code,
 			"message": message,
 		})
 	},
