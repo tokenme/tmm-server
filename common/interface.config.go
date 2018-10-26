@@ -33,6 +33,8 @@ type Config struct {
 	Aliyun               AliyunConfig      `required:"true"`
 	ReCaptcha            ReCaptchaConfig   `required:"true"`
 	Wechat               WechatConfig      `required:"true"`
+	IOSXinge             XingeConfig       `required:"true"`
+	AndroidXinge         XingeConfig       `required:"true"`
 	TwilioToken          string            `required:"true"`
 	EthplorerAPIKey      string            `required:"true"`
 	EtherscanAPIKey      string            `required:"true"`
@@ -90,8 +92,8 @@ type QiniuConfig struct {
 	LogoPath   string `required:"true"`
 	ImagePath  string `required:"true"`
 	Domain     string `required:"true"`
-    Pipeline   string `required:"true"`
-    NotifyURL  string `required:"true"`
+	Pipeline   string `required:"true"`
+	NotifyURL  string `required:"true"`
 }
 
 type CoinbaseAPIConfig struct {
@@ -134,4 +136,9 @@ type SlackConfig struct {
 type AppVersion struct {
 	IOS     string `required:"true"`
 	Android string `required:"true"`
+}
+
+type XingeConfig struct {
+	AccessId  uint64 `required:"true"`
+	SecretKey string `required:"true"`
 }

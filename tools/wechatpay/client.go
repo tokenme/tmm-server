@@ -29,7 +29,6 @@ func (this *Client) Pay(param *Request) (ret Response, err error) {
 	if err != nil {
 		return ret, err
 	}
-	fmt.Println(string(xmlBytes))
 	reader := bytes.NewReader(xmlBytes)
 	request, err := http.NewRequest("POST", GATEWAY_PAY, reader)
 	if err != nil {
@@ -87,7 +86,6 @@ func (param *Request) GenSign(key string) error {
 	sort.Strings(signData)
 	signStr := strings.Join(signData, "&")
 	signStr = signStr + "&key=" + key
-	fmt.Println(signStr)
 	c := md5.New()
 	_, err := c.Write([]byte(signStr))
 	if err != nil {

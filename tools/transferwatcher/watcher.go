@@ -2,11 +2,15 @@ package transferwatcher
 
 import (
 	//"github.com/davecgh/go-spew/spew"
+	"fmt"
 	"github.com/mkideal/log"
-	//"github.com/shopspring/decimal"
+	"github.com/shopspring/decimal"
 	"github.com/tokenme/tmm/coins/eth"
 	"github.com/tokenme/tmm/coins/eth/utils"
 	"github.com/tokenme/tmm/common"
+	"github.com/tokenme/tmm/tools/xinge"
+	"github.com/tokenme/tmm/tools/xinge/push"
+	"strings"
 )
 
 type Watcher struct {
@@ -94,6 +98,90 @@ func (this *Watcher) handleTransfer(ev *eth.TokenTransfer) {
 	}
 	if continueUpdate {
 		_, _, err = db.Query(`UPDATE tmm.orderbook_trades SET tx_status=1 WHERE tx='%s'`, db.Escape(tx))
+		if err != nil {
+			log.Error(err.Error())
+		}
+	}
+	this.push(ev)
+}
+
+func (this *Watcher) push(ev *eth.TokenTransfer) {
+	value := decimal.NewFromBigInt(ev.Value, int32(-1*this.decimals))
+	from := strings.ToLower(ev.From.Hex())
+	to := strings.ToLower(ev.To.Hex())
+	db := this.service.Db
+	rows, _, err := db.Query(`SELECT d.user_id, d.push_token, u.wallet_addr, d.language，d.platform FROM tmm.devices AS d INNER JOIN ucoin.users AS u ON (u.id=d.user_id) WHERE u.wallet_addr IN ('%s', '%s')`, db.Escape(from), db.Escape(to))
+	if err != nil {
+		log.Error(err.Error())
+		return
+	}
+	if len(rows) == 0 {
+		return
+	}
+	for _, row := range rows {
+		language := "en"
+		if strings.Contains(row.Str(3), "zh") {
+			language = "zh"
+		}
+		deviceToken := row.Str(1)
+		platform := row.Str(4)
+		var (
+			title   string
+			content string
+		)
+		if row.Str(2) == from {
+			switch language {
+			case "en":
+				title = "UCoin transfer out notify"
+				content = fmt.Sprintf("You have %s UC sent out.", value.String())
+			case "zh":
+				title = "UCoin 转出提醒"
+				content = fmt.Sprintf("您的账户已转出 %s UC", value.String())
+			}
+		} else {
+			switch language {
+			case "en":
+				title = "UCoin transfer in notify"
+				content = fmt.Sprintf("You received %s UC.", value.String())
+			case "zh":
+				title = "UCoin 接收提醒"
+				content = fmt.Sprintf("您的账户已接收 %s UC", value.String())
+			}
+		}
+		var message string
+		var messageType uint
+		var client *xinge.Client
+		switch platform {
+		case "ios":
+			msg := xinge.IosMessage{
+				Aps: xinge.ApsAttr{
+					Alert: xinge.ApsAlert{
+						Title: title,
+						Body:  content,
+					},
+				},
+			}
+			message = msg.String()
+			messageType = 0
+			client = xinge.NewClient(this.config.IOSXinge.AccessId, this.config.IOSXinge.SecretKey)
+		case "android":
+			msg := xinge.AndroidMessage{
+				Title:   title,
+				Content: content,
+			}
+			message = msg.String()
+			messageType = 1
+			client = xinge.NewClient(this.config.AndroidXinge.AccessId, this.config.AndroidXinge.SecretKey)
+		}
+		req := push.SingleDeviceRequest{
+			BaseRequest: client.DefaultBaseRequest(),
+			DeviceToken: deviceToken,
+			MessageType: messageType,
+			Message:     message,
+			Environment: 1,
+		}
+		var ret = &xinge.BaseResponse{}
+		err = client.Run(req, ret)
 		if err != nil {
 			log.Error(err.Error())
 		}
