@@ -8,21 +8,24 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/tokenme/tmm/common"
 	. "github.com/tokenme/tmm/handler"
+	"github.com/tokenme/tmm/tools/qiniu"
+	"github.com/mkideal/log"
 	"net/http"
 	"strings"
 	"time"
 )
 
 type ShareUpdateRequest struct {
-	Id           uint64          `json:"id" from:"id" binding:"required"`
-	Title        string          `json:"title" form:"title"`
-	Summary      string          `json:"summary" form:"summary"`
-	Link         string          `json:"link" form:"link"`
-	Image        string          `json:"image" form:"image"`
-	Points       decimal.Decimal `json:"points" form:"points"`
-	Bonus        decimal.Decimal `json:"bonus" form:"bonus"`
-	MaxViewers   uint            `json:"max_viewers" form:"max_viewers"`
-	OnlineStatus int8            `json:"online_status" from:"online_status"`
+	Id              uint64          `json:"id" from:"id" binding:"required"`
+	Title           string          `json:"title" form:"title"`
+	Summary         string          `json:"summary" form:"summary"`
+	Link            string          `json:"link" form:"link"`
+	Image           string          `json:"image" form:"image"`
+    FileExtension   string          `json:"image_extension" from:"image_extension"`
+	Points          decimal.Decimal `json:"points" form:"points"`
+	Bonus           decimal.Decimal `json:"bonus" form:"bonus"`
+	MaxViewers      uint            `json:"max_viewers" form:"max_viewers"`
+	OnlineStatus    int8            `json:"online_status" from:"online_status"`
 }
 
 func ShareUpdateHandler(c *gin.Context) {
@@ -111,6 +114,14 @@ ORDER BY d.points DESC LIMIT 1`
 		updates = append(updates, fmt.Sprintf("link='%s'", db.Escape(req.Link)))
 	}
 	if req.Image != "" {
+        if req.FileExtension == "webp" {
+            newImage, _, err := qiniu.ConvertImage(req.Image, "jpeg", Config.Qiniu)
+            if err != nil {
+                log.Error(err.Error())
+            } else {
+                req.Image = newImage
+            }
+        }
 		updates = append(updates, fmt.Sprintf("image='%s'", db.Escape(req.Image)))
 	}
 	if req.Bonus.GreaterThan(decimal.Zero) {
