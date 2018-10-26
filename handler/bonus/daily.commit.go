@@ -12,8 +12,8 @@ import (
 
 type DailyCommitRequest struct {
 	Idfa     string          `json:"idfa" form:"idfa"`
-    Imei     string          `json:"imei" form:"imei"`
-    Mac      string          `json:"mac" form:"mac"`
+	Imei     string          `json:"imei" form:"imei"`
+	Mac      string          `json:"mac" form:"mac"`
 	Platform common.Platform `json:"platform" form:"platform"`
 }
 
@@ -23,12 +23,12 @@ func DailyCommitHandler(c *gin.Context) {
 		return
 	}
 	device := common.DeviceRequest{
-		Idfa:     req.Idfa,
-        Imei:     req.Imei,
-        Mac:      req.Mac,
+		Idfa: req.Idfa,
+		Imei: req.Imei,
+		Mac:  req.Mac,
 	}
 	deviceId := device.DeviceId()
-    if Check(len(deviceId) == 0, "not found", c) {
+	if Check(len(deviceId) == 0, "not found", c) {
 		return
 	}
 
@@ -38,7 +38,7 @@ func DailyCommitHandler(c *gin.Context) {
 	}
 	user := userContext.(common.User)
 	db := Service.Db
-	_, ret, err := db.Query(`INSERT INTO tmm.daily_bonus_logs (user_id, updated_on, days) VALUES (%d, NOW(), 1) ON DUPLICATE KEY UPDATE days=IF(updated_on=DATE(DATE_SUB(NOW(), INTERVAL 1 DAY)), days+1, IF(updated_on=DATE(NOW()), days, 1)), updated_on=VALUES(updated_on)`, user.Id)
+	_, ret, err := db.Query(`INSERT INTO tmm.daily_bonus_logs (user_id, updated_on, days) VALUES (%d, NOW(), 1) ON DUPLICATE KEY UPDATE days=IF(updated_on=DATE(DATE_SUB(NOW(), INTERVAL 1 DAY)) AND days<7, days+1, IF(updated_on=DATE(NOW()), days, 1)), updated_on=VALUES(updated_on)`, user.Id)
 	if CheckErr(err, c) {
 		return
 	}

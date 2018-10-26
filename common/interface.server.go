@@ -30,6 +30,7 @@ type Service struct {
 	Redis     *RedisConn        `json:"-"`
 	redisConf *RedisConf        `json:"-"`
 	Geth      *ethclient.Client `json:"-"`
+	GethWSS   *ethclient.Client `json:"-"`
 	GeoIP     *geoip2.Reader    `json:"-"`
 	Slack     *slack.Client     `json:"-"`
 }
@@ -45,6 +46,7 @@ func NewService(config Config) *Service {
 
 	service.RedisPool(config.Redis.Master, config.Redis.Slave, 10, 120)
 	service.NewGeth(config.Geth)
+	service.NewGethWSS(config.GethWSS)
 	service.NewGeoIP(config.GeoIP)
 	service.NewSlack(config.Slack.Token)
 	return service
@@ -60,6 +62,15 @@ func (this *Service) NewGeth(ipcLocation string) (*ethclient.Client, error) {
 		return nil, err
 	}
 	this.Geth = geth
+	return geth, nil
+}
+
+func (this *Service) NewGethWSS(ipcLocation string) (*ethclient.Client, error) {
+	geth, err := ethclient.Dial(ipcLocation)
+	if err != nil {
+		return nil, err
+	}
+	this.GethWSS = geth
 	return geth, nil
 }
 

@@ -8,6 +8,7 @@ type Config struct {
 	QRCodeUrl            string            `default:"qr.tmm.io"`
 	Port                 int               `default:"8008"`
 	Geth                 string            `default:"geth.xibao100.com"`
+	GethWSS              string            `required:"true"`
 	ShareUrl             string            `required:"true"`
 	Template             string            `required:"true"`
 	LogPath              string            `required:"true"`

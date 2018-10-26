@@ -15,6 +15,7 @@ import (
 	"github.com/tokenme/tmm/tools/gc"
 	"github.com/tokenme/tmm/tools/orderbook-server"
 	"github.com/tokenme/tmm/tools/tokenprofile"
+	"github.com/tokenme/tmm/tools/transferwatcher"
 	"os"
 	"os/signal"
 	"path"
@@ -112,6 +113,16 @@ func main() {
 		}
 		go orderbookServer.Start()
 	}
+	transferWatcher, err := transferwatcher.NewWatcher(config.TMMTokenAddress, service, config)
+	if err != nil {
+		log.Error(err.Error())
+		return
+	}
+	err = transferWatcher.Start()
+	if err != nil {
+		log.Error(err.Error())
+		//return
+	}
 	//queueManager := sqs.NewManager(config.SQS)
 	//queues := make(map[string]sqs.Queue)
 	//queues = map[string]sqs.Queue{
@@ -168,4 +179,5 @@ func main() {
 	if config.EnableOrderBook {
 		orderbookServer.Stop()
 	}
+	transferWatcher.Stop()
 }

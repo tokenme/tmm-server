@@ -23,5 +23,8 @@ func DailyStatusHandler(c *gin.Context) {
 	if len(rows) > 0 {
 		days = rows[0].Int(0)
 	}
+	if days == 7 {
+		days = 0
+	}
 	c.JSON(http.StatusOK, gin.H{"days": days})
 }

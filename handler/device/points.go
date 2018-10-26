@@ -52,7 +52,7 @@ func PointsHandler(c *gin.Context) {
 	if err == nil {
 		lastPoints, _ := decimal.NewFromString(lastPointsStr)
 		increasedPoints := points.Sub(lastPoints)
-		if err == nil && increasedPoints.GreaterThan(decimal.New(1, -4)) {
+		if lastPoints.GreaterThan(decimal.Zero) && increasedPoints.GreaterThan(decimal.New(1, -4)) {
 			title := "New UCoin Points"
 			desc := fmt.Sprintf("You just earn %s UCoin points, check UCoin Wallet for more information.", increasedPoints.StringFixed(4))
 			icon := "https://static.tianxi100.com/ucoin/icon-ios-marketing-1024@1x.png"
