@@ -2,14 +2,18 @@ package transferwatcher
 
 import (
 	//"github.com/davecgh/go-spew/spew"
+	"encoding/json"
 	"fmt"
+	"github.com/FrontMage/xinge"
+	"github.com/FrontMage/xinge/auth"
+	xgreq "github.com/FrontMage/xinge/req"
 	"github.com/mkideal/log"
 	"github.com/shopspring/decimal"
 	"github.com/tokenme/tmm/coins/eth"
 	"github.com/tokenme/tmm/coins/eth/utils"
 	"github.com/tokenme/tmm/common"
-	"github.com/tokenme/tmm/tools/xinge"
-	"github.com/tokenme/tmm/tools/xinge/push"
+	"io/ioutil"
+	"net/http"
 	"strings"
 )
 
@@ -148,42 +152,49 @@ func (this *Watcher) push(ev *eth.TokenTransfer) {
 				content = fmt.Sprintf("您的账户已接收 %s UC", value.String())
 			}
 		}
-		var message string
-		var messageType uint
-		var client *xinge.Client
+		var auther auth.Auther
+		var pushReq *http.Request
 		switch platform {
 		case "ios":
-			msg := xinge.IosMessage{
-				Aps: xinge.ApsAttr{
-					Alert: xinge.ApsAlert{
-						Title: title,
-						Body:  content,
-					},
-				},
-			}
-			message = msg.String()
-			messageType = 0
-			client = xinge.NewClient(this.config.IOSXinge.AccessId, this.config.IOSXinge.SecretKey)
+			pushReq, _ = xgreq.NewPushReq(
+				&xinge.Request{},
+				xgreq.Platform(xinge.PlatformiOS),
+				xgreq.EnvProd(),
+				xgreq.AudienceType(xinge.AdToken),
+				xgreq.MessageType(xinge.MsgTypeNotify),
+				xgreq.TokenList([]string{deviceToken}),
+				xgreq.PushID("0"),
+				xgreq.Message(xinge.Message{
+					Title:   title,
+					Content: content,
+				}),
+			)
+			auther = auth.Auther{AppID: this.config.IOSXinge.AppId, SecretKey: this.config.IOSXinge.SecretKey}
 		case "android":
-			msg := xinge.AndroidMessage{
-				Title:   title,
-				Content: content,
-			}
-			message = msg.String()
-			messageType = 1
-			client = xinge.NewClient(this.config.AndroidXinge.AccessId, this.config.AndroidXinge.SecretKey)
+			pushReq, _ = xgreq.NewPushReq(
+				&xinge.Request{},
+				xgreq.Platform(xinge.PlatformAndroid),
+				xgreq.EnvProd(),
+				xgreq.AudienceType(xinge.AdToken),
+				xgreq.MessageType(xinge.MsgTypeNotify),
+				xgreq.TokenList([]string{deviceToken}),
+				xgreq.PushID("0"),
+				xgreq.Message(xinge.Message{
+					Title:   title,
+					Content: content,
+				}),
+			)
+			auther = auth.Auther{AppID: this.config.AndroidXinge.AppId, SecretKey: this.config.AndroidXinge.SecretKey}
 		}
-		req := push.SingleDeviceRequest{
-			BaseRequest: client.DefaultBaseRequest(),
-			DeviceToken: deviceToken,
-			MessageType: messageType,
-			Message:     message,
-			Environment: 1,
-		}
-		var ret = &xinge.BaseResponse{}
-		err = client.Run(req, ret)
+		auther.Auth(pushReq)
+		rsp, err := http.DefaultClient.Do(pushReq)
 		if err != nil {
 			log.Error(err.Error())
 		}
+		defer rsp.Body.Close()
+		body, _ := ioutil.ReadAll(rsp.Body)
+		var r xinge.CommonRsp
+		json.Unmarshal(body, r)
+		log.Info("%+v", r)
 	}
 }

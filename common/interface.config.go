@@ -139,6 +139,6 @@ type AppVersion struct {
 }
 
 type XingeConfig struct {
-	AccessId  uint64 `required:"true"`
+	AppId     string `required:"true"`
 	SecretKey string `required:"true"`
 }

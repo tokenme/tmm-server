@@ -59,7 +59,7 @@ func PointsHandler(c *gin.Context) {
 			link := "https://tmm.tokenmama.io"
 			if strings.HasPrefix(deviceRequest.Language, "zh") {
 				title = "UCoin 积分提醒"
-				desc = fmt.Sprintf("您刚刚获得 %s UCoin积分，打开 UCoin 钱包查看详情。", points.StringFixed(4))
+				desc = fmt.Sprintf("您刚刚获得 %s UCoin积分，打开 UCoin 钱包查看详情。", increasedPoints.StringFixed(4))
 			}
 			c.JSON(http.StatusOK, gin.H{"title": title, "desc": desc, "icon": icon, "link": link})
 			return
