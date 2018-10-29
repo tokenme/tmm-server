@@ -8,6 +8,16 @@
   version = "v0.3.0"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/FrontMage/xinge"
+  packages = [
+    ".",
+    "auth",
+    "req"
+  ]
+  revision = "d2c01811ed4d2c2f4b02cf23067e45d321323898"
+
+[[projects]]
   name = "github.com/HuKeping/rbtree"
   packages = ["."]
   revision = "0a7018020338cfd53ae43c6fa0a6a1a1ae216714"
@@ -615,6 +625,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "7b59e297cd68bb1724c80cf0b4271009874c3cfb7bfce68e47db52397415c20f"
+  inputs-digest = "b553c6aadef151117cefbc67485541834b20f8c3e246067fae803d00bb408d8c"
   solver-name = "gps-cdcl"
   solver-version = 1
