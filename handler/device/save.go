@@ -57,7 +57,7 @@ func saveDevice(service *common.Service, deviceRequest common.DeviceRequest, c *
 	if len(rows) > 0 {
 		return nil
 	}
-	query := `INSERT INTO tmm.devices (id, platform, idfa, imei, mac, device_name, system_version, os_version, language, model, timezone, country, is_emulator, is_jailbrojen, is_tablet, lastping_at) VALUES ('%s', '%s', '%s', %s, %s, %s, %s, %s, %s, %s, %s, %s, %d, %d, %d, NOW()) ON DUPLICATE KEY UPDATE idfa=VALUES(idfa), imei=VALUES(imei), mac=VALUES(mac), device_name=VALUES(device_name), system_version=VALUES(system_version), os_version=VALUES(os_version), language=VALUES(language), model=VALUES(model), timezone=VALUES(timezone), country=VALUES(country), lastping_at=VALUES(lastping_at)`
+	query := `INSERT INTO tmm.devices (id, platform, idfa, imei, mac, device_name, system_version, os_version, language, model, timezone, country, is_emulator, is_jailbrojen, is_tablet, lastping_at) VALUES ('%s', '%s', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %d, %d, %d, NOW()) ON DUPLICATE KEY UPDATE idfa=VALUES(idfa), imei=VALUES(imei), mac=VALUES(mac), device_name=VALUES(device_name), system_version=VALUES(system_version), os_version=VALUES(os_version), language=VALUES(language), model=VALUES(model), timezone=VALUES(timezone), country=VALUES(country), lastping_at=VALUES(lastping_at)`
 	var (
 		deviceName    = "NULL"
 		systemVersion = "NULL"
@@ -93,6 +93,9 @@ func saveDevice(service *common.Service, deviceRequest common.DeviceRequest, c *
 	}
 	if deviceRequest.Country != "" {
 		country = fmt.Sprintf("'%s'", db.Escape(deviceRequest.Country))
+	}
+	if deviceRequest.Idfa != "" {
+		idfa = fmt.Sprintf("'%s'", db.Escape(deviceRequest.Idfa))
 	}
 	if deviceRequest.Imei != "" {
 		imei = fmt.Sprintf("'%s'", db.Escape(deviceRequest.Imei))
