@@ -11,5 +11,6 @@ func bonusRouter(r *gin.Engine) {
 	{
 		bonusGroup.GET("/daily/status", bonus.DailyStatusHandler)
 		bonusGroup.POST("/daily/commit", bonus.DailyCommitHandler)
+		bonusGroup.POST("/reading", bonus.ReadingHandler)
 	}
 }

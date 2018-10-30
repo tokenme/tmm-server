@@ -207,7 +207,7 @@ func ApiCheckFunc() gin.HandlerFunc {
 				"message": "expired request"})
 			return
 		}
-		secret := getAppSecret(req.APPKey)
+		secret := GetAppSecret(req.APPKey)
 		if secret == "" {
 			log.Error("empty secret")
 			c.Abort()
@@ -230,7 +230,7 @@ func ApiCheckFunc() gin.HandlerFunc {
 	}
 }
 
-func getAppSecret(appKey string) string {
+func GetAppSecret(appKey string) string {
 	redisMasterConn := Service.Redis.Master.Get()
 	defer redisMasterConn.Close()
 	redisKey := fmt.Sprintf("tmm-app-%s", appKey)
