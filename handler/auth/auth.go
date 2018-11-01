@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	//"github.com/davecgh/go-spew/spew"
+	"encoding/base64"
 	"github.com/getsentry/raven-go"
 	"github.com/gin-gonic/gin"
 	"github.com/mkideal/log"
@@ -21,6 +22,11 @@ import (
 	"time"
 )
 
+type Biometric struct {
+	Passwd string `json:"passwd"`
+	Ts     int64  `json:"ts"`
+}
+
 var AuthenticatorFunc = func(loginInfo jwt.Login, c *gin.Context) (string, int, bool) {
 	db := Service.Db
 	var where string
@@ -30,10 +36,40 @@ var AuthenticatorFunc = func(loginInfo jwt.Login, c *gin.Context) (string, int, 
 		log.Error("missing params")
 		return loginInfo.Mobile, BADREQUEST_ERROR, false
 	}
-	captchaRes := recaptcha.Verify(Config.ReCaptcha.Secret, Config.ReCaptcha.Hostname, loginInfo.Captcha)
-	if !captchaRes.Success {
-		log.Error("invalid captcha")
-		return loginInfo.Mobile, INVALID_CAPTCHA_ERROR, false
+	var loginPasswd string
+	if loginInfo.Biometric {
+		secret := GetAppSecret(loginInfo.Captcha)
+		if secret == "" {
+			log.Error("invalid captcha")
+			return loginInfo.Mobile, INVALID_CAPTCHA_ERROR, false
+		}
+		decrepted, err := utils.DesDecrypt(loginInfo.Password, []byte(secret))
+		if err != nil {
+			log.Error(err.Error())
+			return loginInfo.Mobile, INVALID_CAPTCHA_ERROR, false
+		}
+		decodedStr, err := base64.StdEncoding.DecodeString(string(decrepted))
+		if err != nil {
+			log.Error(err.Error())
+			return loginInfo.Mobile, INVALID_CAPTCHA_ERROR, false
+		}
+		var biometric Biometric
+		err = json.Unmarshal([]byte(decodedStr), &biometric)
+		if err != nil {
+			log.Error(err.Error())
+			return loginInfo.Mobile, INVALID_CAPTCHA_ERROR, false
+		}
+		if biometric.Ts < time.Now().Add(-10*time.Minute).Unix() || biometric.Ts > time.Now().Add(10*time.Minute).Unix() {
+			return loginInfo.Mobile, INVALID_CAPTCHA_ERROR, false
+		}
+		loginPasswd = biometric.Passwd
+	} else {
+		captchaRes := recaptcha.Verify(Config.ReCaptcha.Secret, Config.ReCaptcha.Hostname, loginInfo.Captcha)
+		if !captchaRes.Success {
+			log.Error("invalid captcha")
+			return loginInfo.Mobile, INVALID_CAPTCHA_ERROR, false
+		}
+		loginPasswd = loginInfo.Password
 	}
 	query := `SELECT
                 u.id,
@@ -158,7 +194,7 @@ var AuthenticatorFunc = func(loginInfo jwt.Login, c *gin.Context) (string, int, 
 	user.ShowName = user.GetShowName()
 	user.Avatar = user.GetAvatar(Config.CDNUrl)
 	c.Set("USER", user)
-	passwdSha1 := utils.Sha1(fmt.Sprintf("%s%s%s", user.Salt, loginInfo.Password, user.Salt))
+	passwdSha1 := utils.Sha1(fmt.Sprintf("%s%s%s", user.Salt, loginPasswd, user.Salt))
 	js, err := json.Marshal(user)
 	if err != nil {
 		log.Error(err.Error())

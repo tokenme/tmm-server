@@ -82,6 +82,7 @@ type Login struct {
 	Mobile      string `form:"mobile" json:"mobile"`
 	Password    string `form:"password" json:"password"`
 	Captcha     string `form:"captcha" json:"captcha"`
+	Biometric   bool   `form:"biometric" json:"biometric"`
 }
 
 // MiddlewareInit initialize jwt configs.
