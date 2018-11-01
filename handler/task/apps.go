@@ -73,7 +73,8 @@ func AppsHandler(c *gin.Context) {
     a.updated_at,
     a.creator,
     IFNULL(asi.id, 0),
-    a.online_status
+    a.online_status,
+    a.download_url
 FROM tmm.app_tasks AS a
 LEFT JOIN tmm.app_scheme_ids AS asi ON (asi.bundle_id = a.bundle_id)
 WHERE a.platform='%s' %s
@@ -89,17 +90,18 @@ ORDER BY %s LIMIT %d, %d`
 		pointsLeft, _ := decimal.NewFromString(row.Str(7))
 		creator := row.Uint64(11)
 		task := common.AppTask{
-			Id:         row.Uint64(0),
-			Platform:   row.Str(1),
-			Name:       row.Str(2),
-			BundleId:   row.Str(3),
-			StoreId:    row.Uint64(4),
-			Bonus:      bonus,
-			Points:     points,
-			PointsLeft: pointsLeft,
-			InsertedAt: row.ForceLocaltime(9).Format(time.RFC3339),
-			UpdatedAt:  row.ForceLocaltime(10).Format(time.RFC3339),
-			SchemeId:   row.Uint64(12),
+			Id:             row.Uint64(0),
+			Platform:       row.Str(1),
+			Name:           row.Str(2),
+			BundleId:       row.Str(3),
+			StoreId:        row.Uint64(4),
+			Bonus:          bonus,
+			Points:         points,
+			PointsLeft:     pointsLeft,
+			InsertedAt:     row.ForceLocaltime(9).Format(time.RFC3339),
+			UpdatedAt:      row.ForceLocaltime(10).Format(time.RFC3339),
+			SchemeId:       row.Uint64(12),
+            DownloadUrl:    row.Str(14),
 		}
 		if creator == user.Id {
 			task.Downloads = row.Uint(8)
