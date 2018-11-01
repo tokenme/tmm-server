@@ -168,7 +168,7 @@ func (this *Crawler) Publish() error {
 		title := row.Str(1)
 		digest := row.Str(2)
 		link := fmt.Sprintf("https://tmm.tokenmama.io/article/show/%d", id)
-		cover := row.Str(3)
+		cover := strings.Replace(row.Str(3), "http://", "https://", -1)
 		ids = append(ids, fmt.Sprintf("%d", id))
 		val = append(val, fmt.Sprintf("(0, '%s', '%s', '%s', '%s', 100, 100, 1, 10)", db.Escape(title), db.Escape(digest), db.Escape(link), db.Escape(cover)))
 	}
