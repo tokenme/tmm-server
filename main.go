@@ -16,6 +16,7 @@ import (
 	"github.com/tokenme/tmm/tools/orderbook-server"
 	"github.com/tokenme/tmm/tools/tokenprofile"
 	"github.com/tokenme/tmm/tools/transferwatcher"
+	"github.com/tokenme/tmm/tools/wechatspider"
 	"os"
 	"os/signal"
 	"path"
@@ -26,10 +27,12 @@ import (
 func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	var (
-		config         common.Config
-		configFlag     common.Config
-		configPath     string
-		parseTokenFlag bool
+		config             common.Config
+		configFlag         common.Config
+		configPath         string
+		parseTokenFlag     bool
+		articleCrawlerFlag bool
+		articlePublishFlag bool
 	)
 
 	os.Setenv("CONFIGOR_ENV_PREFIX", "-")
@@ -42,6 +45,8 @@ func main() {
 	flag.BoolVar(&configFlag.EnableGC, "gc", false, "enable gc")
 	flag.BoolVar(&configFlag.EnableTx, "tx", false, "enable tx queue handler")
 	flag.BoolVar(&parseTokenFlag, "parse-token", false, "enable parse token")
+	flag.BoolVar(&articleCrawlerFlag, "crawle-articles", false, "enable crawle_articles")
+	flag.BoolVar(&articlePublishFlag, "publish-articles", false, "enable publish_articles")
 	flag.BoolVar(&configFlag.EnableOrderBook, "orderbook", false, "enable orderbook handler")
 	flag.Parse()
 
@@ -95,6 +100,21 @@ func main() {
 
 	if parseTokenFlag {
 		tokenprofile.Update(service, config)
+		return
+	}
+
+	if articleCrawlerFlag {
+		crawler := wechatspider.NewCrawler(service, config)
+		crawler.Run()
+		return
+	}
+
+	if articlePublishFlag {
+		crawler := wechatspider.NewCrawler(service, config)
+		err := crawler.Publish()
+		if err != nil {
+			log.Error(err.Error())
+		}
 		return
 	}
 
