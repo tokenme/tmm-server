@@ -41,6 +41,7 @@ type Config struct {
 	Slack                SlackConfig       `required:"true"`
 	CoinbaseAPI          CoinbaseAPIConfig `required:"true"`
 	GeoIP                string            `required:"true"`
+	ProxyApiKey          string            `required:"true"`
 	GrowthRate           float64           `required:"true"`
 	MinGrowthTS          int               `required:"true"`
 	InviteBonus          uint              `required:"true"`
@@ -131,6 +132,7 @@ type SlackConfig struct {
 	Token           string `required:"true"`
 	FeedbackChannel string `required:"true"`
 	OpsChannel      string `required:"true"`
+	CaptchaChannel  string `required:"true"`
 }
 
 type AppVersion struct {

@@ -28,7 +28,7 @@ type ShareTask struct {
 }
 
 func (this ShareTask) ShouldUseIframe() bool {
-	return !strings.HasPrefix(this.Link, "https://mp.weixin.qq.com") && !strings.HasPrefix(this.Link, "https://www.taobao.com")
+	return !strings.HasPrefix(this.Link, "https://mp.weixin.qq.com") && !strings.HasPrefix(this.Link, "https://www.taobao.com") && !strings.HasPrefix(this.Link, "https://tmm.tokenmama.io")
 }
 
 func (this ShareTask) GetShareLink(deviceId string, config Config) (string, error) {
