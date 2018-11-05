@@ -26,6 +26,7 @@ type SharesRequest struct {
 	Platform   common.Platform `json:"platform" form:"platform" binding:"required"`
 	MineOnly   bool            `json:"mine_only" form:"mine_only"`
 	AppVersion string          `json:"app_version" form:"app_version"`
+	Cid        uint            `json:"cid" form:"cid"`
 }
 
 func SharesHandler(c *gin.Context) {
@@ -47,10 +48,14 @@ func SharesHandler(c *gin.Context) {
 	}
 
 	onlineStatusConstrain := "AND st.online_status = 1"
+	var inCidConstrain string
 	orderBy := "st.bonus DESC, st.id DESC"
 	if req.MineOnly {
 		onlineStatusConstrain = fmt.Sprintf("AND st.creator = %d", user.Id)
 		orderBy = "st.id DESC"
+	}
+	if req.Cid > 0 {
+		inCidConstrain = fmt.Sprintf("INNER JOIN tmm.share_task_categories AS stc ON (stc.task_id=st.id AND stc.cid=%d)", req.Cid)
 	}
 	device := common.DeviceRequest{
 		Idfa: req.Idfa,
@@ -84,9 +89,10 @@ func SharesHandler(c *gin.Context) {
     st.creator,
     st.online_status
 FROM tmm.share_tasks AS st
+%s
 WHERE st.points_left>0 %s
 ORDER BY %s LIMIT %d, %d`
-	rows, _, err := db.Query(query, onlineStatusConstrain, orderBy, (req.Page-1)*req.PageSize, req.PageSize)
+	rows, _, err := db.Query(query, inCidConstrain, onlineStatusConstrain, orderBy, (req.Page-1)*req.PageSize, req.PageSize)
 	if CheckErr(err, c) {
 		return
 	}
@@ -109,6 +115,9 @@ ORDER BY %s LIMIT %d, %d`
 			InsertedAt:    row.ForceLocaltime(10).Format(time.RFC3339),
 			UpdatedAt:     row.ForceLocaltime(11).Format(time.RFC3339),
 			ShowBonusHint: showBonusHint,
+		}
+		if strings.HasPrefix(task.Link, "https://tmm.tokenmama.io/article/show") {
+			task.Link = strings.Replace(task.Link, "https://tmm.tokenmama.io/article/show", "https://static.tianxi100.com/article/show", -1)
 		}
 		if creator == user.Id {
 			task.Viewers = row.Uint(9)

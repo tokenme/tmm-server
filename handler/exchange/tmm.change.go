@@ -130,9 +130,9 @@ WHERE d.id='%s' AND d.user_id=%d`
 	var gasPrice *big.Int
 	gas, err := ethgasstation.Gas()
 	if err != nil {
-		gasPrice = new(big.Int).Mul(big.NewInt(2), big.NewInt(params.Shannon))
+		gasPrice = new(big.Int).Mul(big.NewInt(2), big.NewInt(params.GWei))
 	} else {
-		gasPrice = new(big.Int).Mul(big.NewInt(gas.SafeLow.Div(decimal.New(10, 0)).IntPart()), big.NewInt(params.Shannon))
+		gasPrice = new(big.Int).Mul(big.NewInt(gas.SafeLow.Div(decimal.New(10, 0)).IntPart()), big.NewInt(params.GWei))
 	}
 	transactorOpts := eth.TransactorOptions{
 		Nonce:    nonce,
@@ -170,7 +170,7 @@ WHERE d.id='%s' AND d.user_id=%d`
 		return
 	}
 
-	params := slack.PostMessageParameters{Parse: "full", UnfurlMedia: true, Markdown: true}
+	slackParams := slack.PostMessageParameters{Parse: "full", UnfurlMedia: true, Markdown: true}
 	attachment := slack.Attachment{
 		Color:      "success",
 		AuthorName: user.ShowName,
@@ -211,8 +211,8 @@ WHERE d.id='%s' AND d.user_id=%d`
 		},
 		Ts: json.Number(strconv.FormatInt(time.Now().Unix(), 10)),
 	}
-	params.Attachments = []slack.Attachment{attachment}
-	_, _, err = Service.Slack.PostMessage(Config.Slack.OpsChannel, "Point <-> Token", params)
+	slackParams.Attachments = []slack.Attachment{attachment}
+	_, _, err = Service.Slack.PostMessage(Config.Slack.OpsChannel, "Point <-> Token", slackParams)
 	if err != nil {
 		log.Error(err.Error())
 		return

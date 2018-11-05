@@ -13,4 +13,5 @@ func exchangeRouter(r *gin.Engine) {
 		exchangeGroup.GET("/records", exchange.RecordsHandler)
 	}
 	r.GET("/exchange/tmm/rate", exchange.TMMRateHandler)
+	r.GET("/exchange/points/rate", exchange.PointsRateHandler)
 }

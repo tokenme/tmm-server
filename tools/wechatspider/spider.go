@@ -6,7 +6,9 @@ import (
 	"encoding/base64"
 	"fmt"
 	"github.com/PuerkitoBio/goquery"
+	//"github.com/davecgh/go-spew/spew"
 	"github.com/mkideal/log"
+	"github.com/panjf2000/ants"
 	"github.com/tokenme/tmm/common"
 	"github.com/tokenme/tmm/tools/qiniu"
 	"github.com/tokenme/tmm/utils"
@@ -15,6 +17,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -121,14 +124,36 @@ func (this *Crawler) updateArticleImages(a spider.Article) (spider.Article, erro
 	if err != nil {
 		return a, err
 	}
+	var imageMap sync.Map
+	var wg sync.WaitGroup
+	uploadImagePool, _ := ants.NewPoolWithFunc(10, func(src interface{}) error {
+		defer wg.Done()
+		ori := src.(string)
+		link, err := this.uploadImage(ori)
+		if err != nil {
+			log.Error(err.Error())
+			return err
+		}
+		imageMap.Store(ori, link)
+		return nil
+	})
 	doc.Find("img").Each(func(idx int, s *goquery.Selection) {
 		s.SetAttr("class", "image")
 		if src, found := s.Attr("src"); found {
-			link, err := this.uploadImage(src)
-			if err != nil {
-				s.Remove()
+			wg.Add(1)
+			uploadImagePool.Serve(src)
+		} else {
+			s.Remove()
+		}
+	})
+	wg.Wait()
+	doc.Find("img").Each(func(idx int, s *goquery.Selection) {
+		s.SetAttr("class", "image")
+		if src, found := s.Attr("src"); found {
+			if link, found := imageMap.Load(src); found {
+				s.SetAttr("src", link.(string))
 			} else {
-				s.SetAttr("src", link)
+				s.Remove()
 			}
 		} else {
 			s.Remove()
