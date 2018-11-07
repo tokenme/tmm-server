@@ -36,6 +36,14 @@ func NewRouter(templatePath string, config common.Config) *gin.Engine {
 		}})
 		return
 	})
+	r.GET("/ios/download", func(c *gin.Context) {
+		c.Redirect(http.StatusFound, config.App.IOSLink)
+		return
+	})
+	r.GET("/android/download", func(c *gin.Context) {
+		c.Redirect(http.StatusFound, config.App.AndroidLink)
+		return
+	})
 	authRouter(r)
 	userRouter(r)
 	deviceRouter(r)
@@ -51,5 +59,6 @@ func NewRouter(templatePath string, config common.Config) *gin.Engine {
 	bonusRouter(r)
 	blowupRouter(r)
 	articleRouter(r)
+	inviteRouter(r)
 	return r
 }

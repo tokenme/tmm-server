@@ -3,17 +3,17 @@ package device
 import (
 	//"github.com/davecgh/go-spew/spew"
 	"github.com/gin-gonic/gin"
-	//"github.com/mkideal/log"
+	"github.com/mkideal/log"
 	"github.com/tokenme/tmm/common"
 	. "github.com/tokenme/tmm/handler"
 	"net/http"
 )
 
 type BindRequest struct {
-    Idfa     string `form:"idfa" json:"idfa"`
-    Platform string `form:"platform" json:"platform"`
-    Imei     string `form:"imei" json:"imei"`
-    Mac      string `form:"mac" json:"mac"`
+	Idfa     string `form:"idfa" json:"idfa"`
+	Platform string `form:"platform" json:"platform"`
+	Imei     string `form:"imei" json:"imei"`
+	Mac      string `form:"mac" json:"mac"`
 }
 
 func BindHandler(c *gin.Context) {
@@ -38,9 +38,9 @@ func BindHandler(c *gin.Context) {
 
 	db := Service.Db
 
-    if Check(req.Idfa == "" && req.Imei == "" && req.Mac == "", "invalid request", c) {
-        return
-    }
+	if Check(req.Idfa == "" && req.Imei == "" && req.Mac == "", "invalid request", c) {
+		return
+	}
 	rows, _, err := db.Query(`SELECT COUNT(*) FROM tmm.devices WHERE user_id=%d`, user.Id)
 	if CheckErr(err, c) {
 		return
@@ -53,12 +53,12 @@ func BindHandler(c *gin.Context) {
 		return
 	}
 	device := common.DeviceRequest{
-		Idfa:     req.Idfa,
-        Imei:     req.Imei,
-        Mac:      req.Mac,
+		Idfa: req.Idfa,
+		Imei: req.Imei,
+		Mac:  req.Mac,
 	}
 	deviceId := device.DeviceId()
-    if Check(len(deviceId) == 0, "not found", c) {
+	if Check(len(deviceId) == 0, "not found", c) {
 		return
 	}
 	_, ret, err := db.Query(`UPDATE tmm.devices SET user_id=%d WHERE id='%s' AND user_id=0`, user.Id, deviceId)
@@ -74,5 +74,59 @@ func BindHandler(c *gin.Context) {
 			return
 		}
 	}
+	inviteBonus(user, deviceId)
 	c.JSON(http.StatusOK, APIResponse{Msg: "ok"})
+}
+
+func inviteBonus(user common.User, deviceId string) error {
+	db := Service.Db
+	_, ret, err := db.Query(`UPDATE tmm.invite_codes AS t1, tmm.invite_codes AS t2, tmm.invite_submissions AS iss, ucoin.users AS u SET t1.parent_id=t2.user_id, t1.grand_id=t2.parent_id WHERE (t1.parent_id!=t2.user_id OR t1.grand_id!=t2.parent_id) AND t2.user_id!=t1.user_id AND t2.parent_id!=t1.user_id AND t2.id != t1.id AND t2.id=iss.code AND iss.completed=0 AND u.country_code=86 AND iss.tel=u.mobile AND u.mobile='%s'`, db.Escape(user.Mobile))
+	if err != nil {
+		log.Error(err.Error())
+		return err
+	}
+	if ret.AffectedRows() == 0 {
+		return nil
+	}
+
+	_, _, err = db.Query(`UPDATE tmm.invite_submissions iss, ucoin.users AS u SET iss.completed=1 WHERE iss.tel=u.mobile AND u.country_code=86 AND u.mobile='%s'`, db.Escape(user.Mobile))
+	if err != nil {
+		log.Error(err.Error())
+		return err
+	}
+
+	query := `SELECT
+d.id,
+d.user_id
+FROM tmm.devices AS d
+LEFT JOIN tmm.invite_codes AS ic ON (ic.parent_id=d.user_id)
+WHERE ic.user_id = %d
+ORDER BY d.lastping_at DESC LIMIT 1`
+	rows, _, err := db.Query(query, user.Id)
+	if err != nil {
+		log.Error(err.Error())
+		return err
+	}
+	if len(rows) == 0 {
+		return nil
+	}
+	inviterDeviceId := rows[0].Str(0)
+	inviterUserId := rows[0].Uint64(1)
+	_, ret2, err := db.Query(`UPDATE tmm.devices AS d1, tmm.devices AS d2 SET d1.points = d1.points + %d, d2.points = d2.points + %d WHERE d1.id='%s' AND d2.id='%s'`, Config.InviteBonus, Config.InviterBonus, db.Escape(deviceId), db.Escape(inviterDeviceId))
+	if err != nil {
+		log.Error(err.Error())
+		return err
+	}
+	if ret2.AffectedRows() > 0 {
+		_, _, err = db.Query(`INSERT INTO tmm.invite_bonus (user_id, from_user_id, bonus) VALUES (%d, %d, %d), (%d, %d, %d)`, user.Id, user.Id, Config.InviteBonus, inviterUserId, user.Id, Config.InviterBonus)
+		if err != nil {
+			log.Error(err.Error())
+			return err
+		}
+	}
+	_, _, err = db.Query(`UPDATE tmm.invite_codes AS t1, tmm.invite_codes AS t2 SET t1.grand_id=t2.parent_id WHERE t2.user_id=t1.parent_id AND t2.parent_id!=t1.user_id AND t2.user_id=%d`, user.Id)
+	if err != nil {
+		log.Error(err.Error())
+	}
+	return err
 }

@@ -138,11 +138,13 @@ func main() {
 		log.Error(err.Error())
 		return
 	}
-	err = transferWatcher.Start()
-	if err != nil {
-		log.Error(err.Error())
-		//return
-	}
+	go func() {
+		err = transferWatcher.Start()
+		if err != nil {
+			log.Error(err.Error())
+			//return
+		}
+	}()
 	//queueManager := sqs.NewManager(config.SQS)
 	//queues := make(map[string]sqs.Queue)
 	//queues = map[string]sqs.Queue{
