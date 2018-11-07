@@ -528,6 +528,12 @@
   revision = "32e102b79956e1251e70977f951140014705a7cb"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/ua-parser/uap-go"
+  packages = ["uaparser"]
+  revision = "705feb871b1a6ed93a9163eba6d6f2d963eb5020"
+
+[[projects]]
   name = "github.com/ugorji/go"
   packages = ["codec"]
   revision = "b4c50a2b199d93b13dc15e78929cfb23bfdf21ab"
@@ -688,6 +694,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "405a05b687462dca22991249467174993045a1ad65442f72bcb112f3b6a126e0"
+  inputs-digest = "68d1895aa5593c2402749534ade447d6969604a38c3b5ab3d692c66756e53ea1"
   solver-name = "gps-cdcl"
   solver-version = 1

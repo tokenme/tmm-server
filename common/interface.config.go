@@ -42,6 +42,7 @@ type Config struct {
 	CoinbaseAPI          CoinbaseAPIConfig `required:"true"`
 	GeoIP                string            `required:"true"`
 	ProxyApiKey          string            `required:"true"`
+	UAParserPath         string            `required:"true"`
 	GrowthRate           float64           `required:"true"`
 	MinGrowthTS          int               `required:"true"`
 	InviteBonus          uint              `required:"true"`
@@ -49,7 +50,7 @@ type Config struct {
 	InviteBonusRate      float64           `required:"true"`
 	MaxBindDevice        int               `required:"true"`
 	Contact              ContactConfig     `required:"true"`
-	AppReleaseVersion    AppVersion        `required:"true"`
+	App                  AppConfig         `required:"true"`
 	Debug                bool              `default:"false"`
 	EnableWeb            bool              `default:"false"`
 	EnableGC             bool              `default:"false"`
@@ -135,9 +136,10 @@ type SlackConfig struct {
 	CaptchaChannel  string `required:"true"`
 }
 
-type AppVersion struct {
-	IOS     string `required:"true"`
-	Android string `required:"true"`
+type AppConfig struct {
+	SubmitBuild uint   `required:"true"`
+	IOSLink     string `required:"true"`
+	AndroidLink string `required:"true"`
 }
 
 type XingeConfig struct {

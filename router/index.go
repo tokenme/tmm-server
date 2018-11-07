@@ -51,5 +51,6 @@ func NewRouter(templatePath string, config common.Config) *gin.Engine {
 	bonusRouter(r)
 	blowupRouter(r)
 	articleRouter(r)
+	inviteRouter(r)
 	return r
 }

@@ -18,15 +18,15 @@ const (
 )
 
 type SharesRequest struct {
-	Page       uint            `json:"page" form:"page"`
-	PageSize   uint            `json:"page_size" form:"page_size"`
-	Idfa       string          `json:"idfa" form:"idfa"`
-	Imei       string          `json:"imei" form:"imei"`
-	Mac        string          `json:"mac" form:"mac"`
-	Platform   common.Platform `json:"platform" form:"platform" binding:"required"`
-	MineOnly   bool            `json:"mine_only" form:"mine_only"`
-	AppVersion string          `json:"app_version" form:"app_version"`
-	Cid        uint            `json:"cid" form:"cid"`
+	Page     uint            `json:"page" form:"page"`
+	PageSize uint            `json:"page_size" form:"page_size"`
+	Idfa     string          `json:"idfa" form:"idfa"`
+	Imei     string          `json:"imei" form:"imei"`
+	Mac      string          `json:"mac" form:"mac"`
+	Platform common.Platform `json:"platform" form:"platform" binding:"required"`
+	MineOnly bool            `json:"mine_only" form:"mine_only"`
+	Build    uint            `json:"build" form:"build"`
+	Cid      uint            `json:"cid" form:"cid"`
 }
 
 func SharesHandler(c *gin.Context) {
@@ -68,8 +68,8 @@ func SharesHandler(c *gin.Context) {
 	}
 
 	showBonusHint := true
-	if req.Idfa != "" && strings.Compare(req.AppVersion, Config.AppReleaseVersion.IOS) == 1 {
-		showBonusHint = false
+	if req.Idfa != "" && req.Build == Config.App.SubmitBuild {
+		showBonusHint = true
 	}
 
 	db := Service.Db
