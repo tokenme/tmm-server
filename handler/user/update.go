@@ -97,7 +97,7 @@ ORDER BY d.lastping_at DESC LIMIT 1`
 			return
 		}
 		deviceId := rows[0].Str(0)
-		_, ret, err := db.Query(`UPDATE tmm.invite_codes AS t1, tmm.invite_codes AS t2 SET t1.parent_id=t2.user_id, t1.grand_id=t2.parent_id WHERE t2.id != t1.id AND t2.id=%d AND t1.user_id=%d`, req.InviterCode, user.Id)
+		_, ret, err := db.Query(`UPDATE tmm.invite_codes AS t1, tmm.invite_codes AS t2 SET t1.parent_id=t2.user_id, t1.grand_id=t2.parent_id WHERE (t1.parent_id!=t2.user_id OR t1.grand_id!=t2.parent_id) AND t2.user_id!= t1.user_id AND t2.parent_id!= t1.user_id AND t2.id != t1.id AND t2.id=%d AND t1.user_id=%d`, req.InviterCode, user.Id)
 		if CheckErr(err, c) {
 			log.Error(err.Error())
 			raven.CaptureError(err, nil)
@@ -135,7 +135,7 @@ ORDER BY d.lastping_at DESC LIMIT 1`
 				raven.CaptureError(err, nil)
 			}
 		}
-		_, _, err = db.Query(`UPDATE tmm.invite_codes AS t1, tmm.invite_codes AS t2 SET t1.grand_id=t2.parent_id WHERE t2.user_id=t1.parent_id AND t2.user_id=%d`, user.Id)
+		_, _, err = db.Query(`UPDATE tmm.invite_codes AS t1, tmm.invite_codes AS t2 SET t1.grand_id=t2.parent_id WHERE t2.user_id=t1.parent_id AND t2.parent_id!=t1.user_id AND t2.user_id=%d`, user.Id)
 		if CheckErr(err, c) {
 			log.Error(err.Error())
 			raven.CaptureError(err, nil)
