@@ -26,6 +26,7 @@ type UpdateRequest struct {
 	PaymentPasswd string           `form:"payment_passwd" json:"payment_passwd"`
 	InviterCode   tokenUtils.Token `form:"inviter_code" json:"inviter_code"`
 	WxUnionId     string           `form:"wx_union_id" json:"wx_union_id"`
+	WxOpenId      string           `form:"wx_open_id" json:"wx_open_id"`
 	WxNick        string           `form:"wx_nick" json:"wx_nick"`
 	WxAvatar      string           `form:"wx_avatar" json:"wx_avatar"`
 	WxGender      int              `form:"wx_gender" json:"wx_gender"`
@@ -143,7 +144,7 @@ ORDER BY d.lastping_at DESC LIMIT 1`
 		}
 	} else if req.WxUnionId != "" {
 		expires := time.Unix(req.WxExpires/1000, 0)
-		_, _, err := db.Query(`INSERT INTO tmm.wx (user_id, union_id, nick, avatar, gender, access_token, expires) VALUES (%d, '%s', '%s', '%s', %d, '%s', '%s') ON DUPLICATE KEY UPDATE union_id=VALUES(union_id), nick=VALUES(nick), avatar=VALUES(avatar), gender=VALUES(gender), access_token=VALUES(access_token), expires=VALUES(expires)`, user.Id, db.Escape(req.WxUnionId), db.Escape(req.WxNick), db.Escape(req.WxAvatar), req.WxGender, db.Escape(req.WxToken), expires.Format("2006-01-02 15:04:05"))
+		_, _, err := db.Query(`INSERT INTO tmm.wx (user_id, union_id, open_id, nick, avatar, gender, access_token, expires) VALUES (%d, '%s', '%s', '%s', '%s', %d, '%s', '%s') ON DUPLICATE KEY UPDATE union_id=VALUES(union_id), open_id=VALUES(open_id), nick=VALUES(nick), avatar=VALUES(avatar), gender=VALUES(gender), access_token=VALUES(access_token), expires=VALUES(expires)`, user.Id, db.Escape(req.WxUnionId), db.Escape(req.WxOpenId), db.Escape(req.WxNick), db.Escape(req.WxAvatar), req.WxGender, db.Escape(req.WxToken), expires.Format("2006-01-02 15:04:05"))
 		if CheckErr(err, c) {
 			log.Error(err.Error())
 			raven.CaptureError(err, nil)
