@@ -26,13 +26,14 @@ func New(service *common.Service, config common.Config) *Handler {
 
 func (this *Handler) Start() {
 	log.Info("GC Start")
-	hourlyTicker := time.NewTicker(24 * time.Hour)
+	dailyTicker := time.NewTicker(24 * time.Hour)
 	for {
 		select {
-		case <-hourlyTicker.C:
+		case <-dailyTicker.C:
 			this.activeAppRecycle()
+			this.inviteSubmissionRecycle()
 		case <-this.exitCh:
-			hourlyTicker.Stop()
+			dailyTicker.Stop()
 			return
 		}
 	}
@@ -46,5 +47,11 @@ func (this *Handler) Stop() {
 func (this *Handler) activeAppRecycle() error {
 	db := this.Service.Db
 	_, _, err := db.Query(`UPDATE tmm.apps SET is_active=0 WHERE lastping_at<DATE_SUB(NOW(), INTERVAL %d DAY)`, ActiveAppGCDays)
+	return err
+}
+
+func (this *Handler) inviteSubmissionRecycle() error {
+	db := this.Service.Db
+	_, _, err := db.Query(`DELETE FROM tmm.invite_submissions WHERE inserted_at<DATE_SUB(NOW(), INTERVAL 1 DAY)`)
 	return err
 }
