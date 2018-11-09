@@ -16,6 +16,7 @@ import (
 	"github.com/tokenme/tmm/tools/orderbook-server"
 	"github.com/tokenme/tmm/tools/tokenprofile"
 	"github.com/tokenme/tmm/tools/transferwatcher"
+	"github.com/tokenme/tmm/tools/txaccelerate"
 	"github.com/tokenme/tmm/tools/wechatspider"
 	"os"
 	"os/signal"
@@ -33,6 +34,8 @@ func main() {
 		parseTokenFlag     bool
 		articleCrawlerFlag bool
 		articlePublishFlag bool
+		accelerateTxFlag   string
+		accelerateGasFlag  int64
 	)
 
 	os.Setenv("CONFIGOR_ENV_PREFIX", "-")
@@ -48,6 +51,8 @@ func main() {
 	flag.BoolVar(&articleCrawlerFlag, "crawle-articles", false, "enable crawle_articles")
 	flag.BoolVar(&articlePublishFlag, "publish-articles", false, "enable publish_articles")
 	flag.BoolVar(&configFlag.EnableOrderBook, "orderbook", false, "enable orderbook handler")
+	flag.StringVar(&accelerateTxFlag, "accelerate-tx", "", "accelerate tx hex")
+	flag.Int64Var(&accelerateGasFlag, "gas", 0, "set gas price")
 	flag.Parse()
 
 	configor.New(&configor.Config{Verbose: configFlag.Debug, ErrorOnUnmatchedKeys: true, Environment: "production"}).Load(&config, configPath)
@@ -98,6 +103,13 @@ func main() {
 	defer service.Close()
 	service.Db.Reconnect()
 
+	if accelerateTxFlag != "" && accelerateGasFlag > 0 {
+		err := txaccelerate.Accelerate(service, config, accelerateTxFlag, accelerateGasFlag)
+		if err != nil {
+			log.Error(err.Error())
+		}
+		return
+	}
 	if parseTokenFlag {
 		tokenprofile.Update(service, config)
 		return

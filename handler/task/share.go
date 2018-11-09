@@ -60,6 +60,9 @@ LIMIT 1`
 		Points:     points,
 		PointsLeft: pointsLeft,
 	}
+	if strings.HasPrefix(task.Link, "https://tmm.tokenmama.io/article/show") {
+		task.Link = strings.Replace(task.Link, "https://tmm.tokenmama.io/article/show", "https://static.tianxi100.com/article/show", -1)
+	}
 	task.InIframe = task.ShouldUseIframe()
 
 	userViewers := row.Uint(9)
