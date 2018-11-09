@@ -48,6 +48,7 @@ type Config struct {
 	InviteBonus          uint              `required:"true"`
 	InviterBonus         uint              `required:"true"`
 	InviteBonusRate      float64           `required:"true"`
+	GoodCommissionPoints int64             `required:"true"`
 	MaxBindDevice        int               `required:"true"`
 	Contact              ContactConfig     `required:"true"`
 	App                  AppConfig         `required:"true"`

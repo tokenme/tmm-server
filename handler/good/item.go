@@ -3,7 +3,8 @@ package good
 import (
 	//"github.com/davecgh/go-spew/spew"
 	"github.com/gin-gonic/gin"
-	//"github.com/mkideal/log"
+	"github.com/mkideal/log"
+	"github.com/shopspring/decimal"
 	"github.com/tokenme/tmm/common"
 	. "github.com/tokenme/tmm/handler"
 	"github.com/tokenme/tmm/tools/ykt"
@@ -29,5 +30,25 @@ func ItemHandler(c *gin.Context) {
 	if CheckErr(err, c) {
 		return
 	}
-	c.JSON(http.StatusOK, res.Data.Data)
+	good := res.Data.Data
+	good.CommissionPoints = decimal.New(Config.GoodCommissionPoints, 0)
+	db := Service.Db
+	rows, _, err := db.Query(`SELECT points FROM tmm.good_invests WHERE good_id=%d AND user_id=%d LIMIT 1`, good.Id, user.Id)
+	if err == nil && len(rows) > 0 {
+		row := rows[0]
+		points, _ := decimal.NewFromString(row.Str(0))
+		good.InvestPoints = points
+	} else if err != nil {
+		log.Error(err.Error())
+	}
+	rows, _, err = db.Query(`SELECT SUM(points), COUNT(*) FROM tmm.good_invests WHERE good_id=%d`, good.Id)
+	if err == nil && len(rows) > 0 {
+		row := rows[0]
+		points, _ := decimal.NewFromString(row.Str(0))
+		good.TotalInvest = points
+		good.TotalInvestors = row.Uint(1)
+	} else if err != nil {
+		log.Error(err.Error())
+	}
+	c.JSON(http.StatusOK, good)
 }

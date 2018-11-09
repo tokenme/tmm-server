@@ -36,6 +36,11 @@ type Good struct {
 	Price            decimal.Decimal `json:"price,omitempty"`
 	CommissionPrice  decimal.Decimal `json:"commision_price,omitempty"`
 	PurchaseWithdraw decimal.Decimal `json:"purchase_withdraw,omitempty"`
+	CommissionPoints decimal.Decimal `json:"commission_points,omitempty"`
+	InvestPoints     decimal.Decimal `json:"invest_points,omitempty"`
+	TotalInvest      decimal.Decimal `json:"total_invest,omitempty"`
+	TotalInvestors   uint            `json:"total_investors,omitempty"`
+	InvestIncome     decimal.Decimal `json:"invest_income,omitempty"`
 	Name             string          `json:"goods_name,omitempty"`
 	Pic              string          `json:"goods_pic,omitempty"`
 	ShareLink        string          `json:"share_link,omitempty"`
