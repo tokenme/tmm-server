@@ -5,6 +5,8 @@ import (
 	"reflect"
 )
 
+const sliceElemsAllocLimit = 1e4
+
 type Decoder struct {
 	b    []byte
 	r, w int
@@ -168,8 +170,15 @@ func decodeUInt(dec *Decoder, v reflect.Value) {
 }
 func decodeSlice(dec *Decoder, v reflect.Value) {
 	count := int(readUInt32(dec))
-	v.SetLen(count)
+	if v.Cap() >= count {
+		v.Set(v.Slice(0, count))
+	} else if v.Len() < v.Cap() {
+		v.Set(v.Slice(0, v.Cap()))
+	}
 	for i := 0; i < count; i++ {
+		if i >= v.Len() {
+			v.Set(growSliceValue(v, count))
+		}
 		elem := v.Index(i)
 		dec.decodeValue(elem)
 	}
@@ -184,6 +193,15 @@ func decodeMap(dec *Decoder, v reflect.Value) {
 		dec.decodeValue(value)
 		v.SetMapIndex(key, value)
 	}
+}
+
+func growSliceValue(v reflect.Value, n int) reflect.Value {
+	diff := n - v.Len()
+	if diff > sliceElemsAllocLimit {
+		diff = sliceElemsAllocLimit
+	}
+	v = reflect.AppendSlice(v, reflect.MakeSlice(v.Type(), diff, diff))
+	return v
 }
 
 func init() {
