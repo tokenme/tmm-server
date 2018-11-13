@@ -12,6 +12,10 @@ func goodRouter(r *gin.Engine) {
 		goodGroup.GET("/item/:id", good.ItemHandler)
 		goodGroup.POST("/invest", good.InvestHandler)
 		goodGroup.GET("/invests/item/:id/:page/:pageSize", good.ItemInvestsHandler)
+		goodGroup.GET("/invests/my/:page/:pageSize", good.MyInvestsHandler)
+		goodGroup.GET("/invest/withdraw/:id", good.InvestWithdrawHandler)
+		goodGroup.GET("/invest/summary", good.InvestSummaryHandler)
 	}
 	r.GET("/good/list", good.ListHandler)
+	r.POST("/good/txs", good.TxsHandler)
 }

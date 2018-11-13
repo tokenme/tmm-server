@@ -42,6 +42,7 @@ type Config struct {
 	CoinbaseAPI          CoinbaseAPIConfig `required:"true"`
 	GeoIP                string            `required:"true"`
 	ProxyApiKey          string            `required:"true"`
+	YktApiSecret         string            `required:"true"`
 	UAParserPath         string            `required:"true"`
 	GrowthRate           float64           `required:"true"`
 	MinGrowthTS          int               `required:"true"`

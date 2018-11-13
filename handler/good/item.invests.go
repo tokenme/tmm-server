@@ -29,7 +29,7 @@ func ItemInvestsHandler(c *gin.Context) {
 		pageSize = defaultPageSize
 	}
 	db := Service.Db
-	rows, _, err := db.Query(`SELECT u.id, u.country_code, u.mobile, wx.nick, wx.avatar, gi.points FROM tmm.good_invests AS gi LEFT JOIN ucoin.users AS u ON (u.id=gi.user_id) LEFT JOIN tmm.wx AS wx ON (wx.user_id=u.id) WHERE gi.good_id=%d ORDER BY gi.points DESC LIMIT %d, %d`, itemId, (page-1)*pageSize, pageSize)
+	rows, _, err := db.Query(`SELECT u.id, u.country_code, u.mobile, wx.nick, wx.avatar, gi.points FROM tmm.good_invests AS gi LEFT JOIN ucoin.users AS u ON (u.id=gi.user_id) LEFT JOIN tmm.wx AS wx ON (wx.user_id=u.id) WHERE gi.good_id=%d AND gi.redeem_status IN (0, 1) ORDER BY gi.points DESC LIMIT %d, %d`, itemId, (page-1)*pageSize, pageSize)
 	if CheckErr(err, c) {
 		return
 	}
