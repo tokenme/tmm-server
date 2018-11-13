@@ -4,9 +4,6 @@ import (
 	//"github.com/davecgh/go-spew/spew"
 	"github.com/gin-gonic/gin"
 	//"github.com/mkideal/log"
-	"encoding/json"
-	"fmt"
-	"github.com/garyburd/redigo/redis"
 	. "github.com/tokenme/tmm/handler"
 	"html/template"
 	"net/http"
@@ -33,17 +30,6 @@ func ShowHandler(c *gin.Context) {
 	if CheckErr(err, c) {
 		return
 	}
-	redisConn := Service.Redis.Master.Get()
-	defer redisConn.Close()
-	cacheKey := fmt.Sprintf(ARTICLE_CACKE_KEY, articleId)
-	buf, _ := redis.Bytes(redisConn.Do("GET", cacheKey))
-	var article Article
-	json.Unmarshal(buf, &article)
-	if article.Title != "" {
-		article.Content = template.HTML(article.RawContent)
-		c.HTML(http.StatusOK, "article.tmpl", article)
-		return
-	}
 	db := Service.Db
 	rows, _, err := db.Query(`SELECT author, title, source_url, digest, content, cover, published_at FROM tmm.articles WHERE id=%d`, articleId)
 	if CheckErr(err, c) {
@@ -53,7 +39,7 @@ func ShowHandler(c *gin.Context) {
 		return
 	}
 	row := rows[0]
-	article = Article{
+	article := Article{
 		Author:      row.Str(0),
 		Title:       row.Str(1),
 		SourceUrl:   row.Str(2),
@@ -61,10 +47,6 @@ func ShowHandler(c *gin.Context) {
 		RawContent:  row.Str(4),
 		Cover:       row.Str(5),
 		PublishedOn: row.ForceLocaltime(6).Format("2006-01-02"),
-	}
-	js, err := json.Marshal(article)
-	if err == nil {
-		redisConn.Do("SETEX", cacheKey, 24*60*7, string(js))
 	}
 	article.Content = template.HTML(article.RawContent)
 	c.HTML(http.StatusOK, "article.tmpl", article)

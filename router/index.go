@@ -12,7 +12,7 @@ func NewRouter(templatePath string, config common.Config) *gin.Engine {
 	r := gin.New()
 	r.Use(gin.Logger())
 	r.Use(gin.Recovery())
-	r.Use(helmet.Default())
+	r.Use(helmet.NoSniff(), helmet.DNSPrefetchControl(), helmet.FrameGuard("ALLOW-FROM https://tmm.tokenmama.io"), helmet.SetHSTS(true), helmet.IENoOpen(), helmet.XSSFilter())
 	xssMdlwr := &xss.XssMw{
 		FieldsToSkip: []string{"password", "start_date", "end_date", "token"},
 		BmPolicy:     "UGCPolicy",
@@ -60,5 +60,6 @@ func NewRouter(templatePath string, config common.Config) *gin.Engine {
 	blowupRouter(r)
 	articleRouter(r)
 	inviteRouter(r)
+	goodRouter(r)
 	return r
 }

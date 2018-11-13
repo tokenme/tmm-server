@@ -226,7 +226,7 @@ func (this *Server) dealTransfer(ctx context.Context, buyers []ethcommon.Address
 	var gasPrice *big.Int
 	gas, err := ethgasstation.Gas()
 	if err != nil {
-		gasPrice = new(big.Int).Mul(big.NewInt(2), big.NewInt(params.GWei))
+		gasPrice = nil
 	} else {
 		gasPrice = new(big.Int).Mul(big.NewInt(gas.SafeLow.Div(decimal.New(10, 0)).IntPart()), big.NewInt(params.GWei))
 	}

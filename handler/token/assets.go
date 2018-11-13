@@ -50,7 +50,7 @@ func AssetsHandler(c *gin.Context) {
 		tokens = append(tokens, token)
 	}
 
-	gasPrice := decimal.New(2, 0)
+	gasPrice := decimal.New(8, 0)
 	gas, err := ethgasstation.Gas()
 	if err == nil {
 		gas.SafeLow.Div(decimal.New(10, 0))
