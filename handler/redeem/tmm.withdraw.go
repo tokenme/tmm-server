@@ -2,7 +2,7 @@ package redeem
 
 import (
 	"fmt"
-	"github.com/davecgh/go-spew/spew"
+	//"github.com/davecgh/go-spew/spew"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/gin-gonic/gin"
 	"github.com/mkideal/log"
@@ -15,8 +15,10 @@ import (
 	"github.com/tokenme/tmm/tools/ethgasstation-api"
 	"github.com/tokenme/tmm/tools/forex"
 	"github.com/tokenme/tmm/tools/wechatpay"
+	"github.com/tokenme/tmm/tools/ykt"
 	commonutils "github.com/tokenme/tmm/utils"
 	"math/big"
+	"net/http"
 )
 
 type TMMWithdrawRequest struct {
@@ -25,9 +27,11 @@ type TMMWithdrawRequest struct {
 }
 
 func TMMWithdrawHandler(c *gin.Context) {
-	if CheckWithCode(true, FEATURE_NOT_AVAILABLE_ERROR, "feature not available", c) {
-		return
-	}
+	/*
+		if CheckWithCode(true, FEATURE_NOT_AVAILABLE_ERROR, "feature not available", c) {
+			return
+		}
+	*/
 	userContext, exists := c.Get("USER")
 	if CheckWithCode(!exists, UNAUTHORIZED_ERROR, "need login", c) {
 		return
@@ -38,7 +42,7 @@ func TMMWithdrawHandler(c *gin.Context) {
 		return
 	}
 	db := Service.Db
-	rows, _, err := db.Query(`SELECT union_id FROM tmm.wx WHERE user_id=%d LIMIT 1`, user.Id)
+	rows, _, err := db.Query(`SELECT wx.union_id, oi.open_id FROM tmm.wx LEFT JOIN tmm.wx_openids AS oi ON (oi.union_id=wx.union_id AND oi.app_id='%s') WHERE wx.user_id=%d LIMIT 1`, db.Escape(Config.Wechat.AppId), user.Id)
 	if CheckErr(err, c) {
 		return
 	}
@@ -46,6 +50,21 @@ func TMMWithdrawHandler(c *gin.Context) {
 		return
 	}
 	wxUnionId := rows[0].Str(0)
+	wxOpenId := rows[0].Str(1)
+	if wxOpenId == "" {
+		openIdReq := ykt.OpenIdRequest{
+			UnionId: wxUnionId,
+		}
+		openIdRes, err := openIdReq.Run()
+		if CheckWithCode(err != nil, WECHAT_OPENID_ERROR, "need openid", c) {
+			return
+		}
+		wxOpenId = openIdRes.Data.OpenId
+		_, _, err = db.Query(`INSERT INTO tmm.wx_openids (app_id, open_id, union_id) VALUES ('%s', '%s', '%s')`, db.Escape(Config.Wechat.AppId), db.Escape(wxOpenId), db.Escape(wxUnionId))
+		if CheckErr(err, c) {
+			return
+		}
+	}
 
 	recyclePrice := common.GetTMMPrice(Service, Config, common.RecyclePrice)
 	minTmmRequire := decimal.New(int64(Config.MinTMMRedeem), 0)
@@ -91,9 +110,9 @@ func TMMWithdrawHandler(c *gin.Context) {
 		TradeNum:    commonutils.Md5(tradeNumToken.String()),
 		Amount:      cny.Mul(decimal.New(100, 0)).IntPart(),
 		CallbackURL: fmt.Sprintf("%s/wechat/pay/callback", Config.BaseUrl),
-		OpenId:      wxUnionId,
+		OpenId:      wxOpenId,
 		Ip:          ClientIP(c),
-		Desc:        "UCoinWithdraw",
+		Desc:        "UCoin提现",
 	}
 	payParams.Nonce = commonutils.Md5(payParams.TradeNum)
 	payRes, err := payClient.Pay(payParams)
@@ -101,11 +120,9 @@ func TMMWithdrawHandler(c *gin.Context) {
 		log.Error(err.Error())
 		return
 	}
-	spew.Dump(payRes)
 	if CheckWithCode(payRes.ErrCode != "", WECHAT_PAYMENT_ERROR, payRes.ErrCodeDesc, c) {
 		return
 	}
-	return
 	poolPrivKey, err := commonutils.AddressDecrypt(Config.TMMPoolWallet.Data, Config.TMMPoolWallet.Salt, Config.TMMPoolWallet.Key)
 	if CheckErr(err, c) {
 		return
@@ -150,11 +167,10 @@ func TMMWithdrawHandler(c *gin.Context) {
 	if err != nil {
 		log.Error(err.Error())
 	}
-	/*
-		_, _, err = db.Query(`INSERT INTO tmm.exchange_records (tx, status, user_id, device_id, tmm, points, direction) VALUES ('%s', %d, %d, '%s', '%s', '%s', %d)`, db.Escape(receipt.Receipt), receipt.Status, user.Id, db.Escape(req.DeviceId), receipt.Value.String(), req.Points.String(), req.Direction)
-		if CheckErr(err, c) {
-			return
-		}
-		c.JSON(http.StatusOK, receipt)
-	*/
+	receipt := common.TMMWithdrawResponse{
+		TMM:      req.TMM,
+		Cash:     cny,
+		Currency: req.Currency,
+	}
+	c.JSON(http.StatusOK, receipt)
 }

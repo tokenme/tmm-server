@@ -11,4 +11,5 @@ func appRouter(r *gin.Engine) {
 	{
 		appGroup.GET("/sdks/:platform/:page/:pageSize", app.SdksHandler)
 	}
+	r.GET("/download", app.DownloadHandler)
 }
