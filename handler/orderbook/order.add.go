@@ -82,7 +82,9 @@ func OrderAddHandler(c *gin.Context) {
 		}
 
 		transactor := eth.TransactorAccount(agentPrivKey)
-		nonce, err := eth.Nonce(c, Service.Geth, Service.Redis.Master, GlobalLock, agentPubKey, Config.Geth)
+		GlobalLock.Lock()
+		defer GlobalLock.Unlock()
+		nonce, err := eth.Nonce(c, Service.Geth, Service.Redis.Master, agentPubKey, Config.Geth)
 		if CheckErr(err, c) {
 			return
 		}
@@ -96,7 +98,7 @@ func OrderAddHandler(c *gin.Context) {
 		if CheckErr(err, c) {
 			return
 		}
-		err = eth.NonceIncr(c, Service.Geth, Service.Redis.Master, GlobalLock, agentPubKey, Config.Geth)
+		err = eth.NonceIncr(c, Service.Geth, Service.Redis.Master, agentPubKey, Config.Geth)
 		if err != nil {
 			log.Error(err.Error())
 		}
@@ -133,7 +135,9 @@ func OrderAddHandler(c *gin.Context) {
 			return
 		}
 		transactor := eth.TransactorAccount(userPrivateKey)
-		nonce, err := eth.Nonce(c, Service.Geth, Service.Redis.Master, GlobalLock, user.Wallet, Config.Geth)
+		GlobalLock.Lock()
+		defer GlobalLock.Unlock()
+		nonce, err := eth.Nonce(c, Service.Geth, Service.Redis.Master, user.Wallet, Config.Geth)
 		if CheckErr(err, c) {
 			return
 		}
@@ -148,7 +152,7 @@ func OrderAddHandler(c *gin.Context) {
 		if CheckErr(err, c) {
 			return
 		}
-		err = eth.NonceIncr(c, Service.Geth, Service.Redis.Master, GlobalLock, user.Wallet, Config.Geth)
+		err = eth.NonceIncr(c, Service.Geth, Service.Redis.Master, user.Wallet, Config.Geth)
 		if err != nil {
 			log.Error(err.Error())
 		}

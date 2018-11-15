@@ -16,7 +16,6 @@ import (
 	"github.com/mkideal/log"
 	"math/big"
 	"strings"
-	"sync"
 )
 
 var (
@@ -114,9 +113,7 @@ func BalanceOf(client *ethclient.Client, ctx context.Context, addr string) (*big
 	return client.BalanceAt(ctx, common.HexToAddress(addr), nil)
 }
 
-func Nonce(ctx context.Context, client *ethclient.Client, redisConn *redis.Pool, locker *sync.Mutex, addr string, chain string) (uint64, error) {
-	locker.Lock()
-	defer locker.Unlock()
+func Nonce(ctx context.Context, client *ethclient.Client, redisConn *redis.Pool, addr string, chain string) (uint64, error) {
 	conn := redisConn.Get()
 	defer conn.Close()
 	chainType := UC_CHAIN
@@ -138,9 +135,7 @@ func Nonce(ctx context.Context, client *ethclient.Client, redisConn *redis.Pool,
 	return nonceSaved, nil
 }
 
-func NonceIncr(ctx context.Context, client *ethclient.Client, redisConn *redis.Pool, locker *sync.Mutex, addr string, chain string) error {
-	locker.Lock()
-	defer locker.Unlock()
+func NonceIncr(ctx context.Context, client *ethclient.Client, redisConn *redis.Pool, addr string, chain string) error {
 	conn := redisConn.Get()
 	defer conn.Close()
 	chainType := UC_CHAIN
