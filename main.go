@@ -36,6 +36,7 @@ func main() {
 		articleCrawlerFlag         bool
 		articlePublishFlag         bool
 		articleClassifierTrainFlag bool
+		articleClassifyFlag        bool
 		accelerateTxFlag           string
 		accelerateGasFlag          int64
 	)
@@ -56,6 +57,7 @@ func main() {
 	flag.StringVar(&accelerateTxFlag, "accelerate-tx", "", "accelerate tx hex")
 	flag.Int64Var(&accelerateGasFlag, "gas", 0, "set gas price")
 	flag.BoolVar(&articleClassifierTrainFlag, "train-article-classifier", false, "enable article classifer training")
+	flag.BoolVar(&articleClassifyFlag, "classify-articles", false, "enable articles classify")
 	flag.Parse()
 
 	configor.New(&configor.Config{Verbose: configFlag.Debug, ErrorOnUnmatchedKeys: true, Environment: "production"}).Load(&config, configPath)
@@ -134,11 +136,22 @@ func main() {
 	}
 
 	if articleClassifierTrainFlag {
-		classifier := articleclassifier.NewClassifier(service, config)
-		err := classifier.Train()
+		trainer := articleclassifier.NewClassifier(service, config)
+		err := trainer.Train()
 		if err != nil {
 			log.Error(err.Error())
 		}
+		return
+	}
+
+	if articleClassifyFlag {
+		classifier := articleclassifier.NewClassifier(service, config)
+		err := classifier.LoadModel()
+		if err != nil {
+			log.Error(err.Error())
+			return
+		}
+		classifier.ClassifyDocs()
 		return
 	}
 

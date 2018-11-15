@@ -28,6 +28,7 @@ type Config struct {
 	SentryDSN              string            `required:"true"`
 	GseDict                string            `required:"true"`
 	ArticleClassifierModel string            `required:"true"`
+	ArticleClassifierTFIDF string            `required:"true"`
 	MySQL                  MySQLConfig       `required:"true"`
 	Redis                  RedisConfig       `required:"true"`
 	SQS                    SQSConfig         `required:"true"`
