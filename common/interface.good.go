@@ -4,7 +4,6 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/tokenme/tmm/utils"
 	"github.com/tokenme/tmm/utils/binary"
-	"time"
 )
 
 type GoodInvestSummary struct {
@@ -26,12 +25,12 @@ type GoodInvest struct {
 }
 
 type GoodTx struct {
-	OrderId   uint64    `json:"oid"`
-	Uid       uint64    `json:"uid"`
-	GoodId    uint64    `json:"good_id"`
-	Amount    uint      `json:"amount"`
-	Income    uint      `json:"income"`
-	CreatedAt time.Time `json:"created_at"`
+	OrderId   uint64 `json:"oid"`
+	Uid       uint64 `json:"uid"`
+	GoodId    uint64 `json:"good_id"`
+	Amount    uint   `json:"amount"`
+	Income    uint   `json:"income"`
+	CreatedAt string `json:"created_at"`
 }
 
 func (this GoodTx) Encode(key []byte) (string, error) {

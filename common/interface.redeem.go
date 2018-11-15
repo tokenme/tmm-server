@@ -29,3 +29,9 @@ type RedeemCdpRecord struct {
 	Grade      string          `json:"grade"`
 	InsertedAt string          `json:"inserted_at"`
 }
+
+type TMMWithdrawResponse struct {
+	TMM      decimal.Decimal `json:"tmm"`
+	Cash     decimal.Decimal `json:"cash"`
+	Currency string          `json:"currency"`
+}

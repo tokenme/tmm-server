@@ -2,7 +2,7 @@ package good
 
 import (
 	"fmt"
-	"github.com/davecgh/go-spew/spew"
+	//"github.com/davecgh/go-spew/spew"
 	"github.com/gin-gonic/gin"
 	"github.com/mkideal/log"
 	"github.com/shopspring/decimal"
@@ -10,6 +10,7 @@ import (
 	. "github.com/tokenme/tmm/handler"
 	"net/http"
 	"strings"
+	"time"
 )
 
 type GoodTxBonus struct {
@@ -24,14 +25,13 @@ func TxsHandler(c *gin.Context) {
 	if CheckErr(err, c) {
 		return
 	}
-	spew.Dump(txs)
 	db := Service.Db
 	var (
 		val      []string
 		bonusMap = make(map[string]*GoodTxBonus)
 	)
 	for _, tx := range txs {
-		income := decimal.New(int64(tx.Income), -2)
+		income := decimal.New(int64(tx.Income), -4)
 		key := fmt.Sprintf("%d-%d", tx.GoodId, tx.Uid)
 		if bonus, found := bonusMap[key]; found {
 			bonus.Amount += tx.Amount
@@ -42,7 +42,11 @@ func TxsHandler(c *gin.Context) {
 				Amount: tx.Amount,
 			}
 		}
-		val = append(val, fmt.Sprintf("(%d, %d, %d, %d, %s, '%s')", tx.OrderId, tx.Uid, tx.GoodId, tx.Amount, income.String(), tx.CreatedAt.UTC().Format("2006-01-02 15:04:05")))
+		createdAt, err := time.Parse(time.RFC3339, tx.CreatedAt)
+		if CheckErr(err, c) {
+			return
+		}
+		val = append(val, fmt.Sprintf("(%d, %d, %d, %d, %s, '%s')", tx.OrderId, tx.Uid, tx.GoodId, tx.Amount, income.String(), createdAt.UTC().Format("2006-01-02 15:04:05")))
 	}
 	if len(val) > 0 {
 		_, _, err := db.Query(`INSERT INTO tmm.good_txs (oid, uid, good_id, amount, income, created_at) VALUES %s`, strings.Join(val, ","))

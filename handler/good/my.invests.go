@@ -29,19 +29,28 @@ func MyInvestsHandler(c *gin.Context) {
 	}
 	db := Service.Db
 	rows, _, err := db.Query(`SELECT
-            g.id, g.name,
-            g.pic,
-            gi.points,
-            SUM(IFNULL(tx.income, 0)),
-            gi.redeem_status,
-            gi.inserted_at
+        g.id, g.name,
+        g.pic,
+        gi.points,
+        IF(t.points IS NULL, 0, gi.points/t.points * t.income) AS income,
+        gi.redeem_status,
+        gi.inserted_at
+FROM tmm.good_invests AS gi
+INNER JOIN tmm.goods AS g ON (g.id=gi.good_id)
+LEFT JOIN (SELECT good_id, SUM(points) AS points, SUM(income) AS income FROM
+        (SELECT
+                gi.good_id AS good_id,
+                gi.points AS points,
+                SUM(IFNULL(tx.income, 0)) AS income
         FROM tmm.good_invests AS gi
-        INNER JOIN tmm.goods AS g ON (g.id=gi.good_id)
-        LEFT JOIN tmm.good_tx AS tx ON (tx.good_id=gi.good_id AND tx.created_at>=gi.inserted_at)
+        LEFT JOIN tmm.good_txs AS tx ON (tx.good_id=gi.good_id AND tx.created_at>=gi.inserted_at)
         WHERE
-            gi.user_id=%d
-        GROUP BY gi.good_id
-        ORDER BY gi.inserted_at DESC LIMIT %d, %d`, user.Id, (page-1)*pageSize, pageSize)
+                EXISTS (SELECT 1 FROM tmm.good_invests AS gi2 WHERE gi2.good_id=gi.good_id AND gi2.user_id=%d AND gi2.redeem_status=0 AND gi2.inserted_at<=tx.created_at)
+        AND gi.redeem_status = 0
+        GROUP BY gi.good_id) AS tmp GROUP BY good_id) AS t ON (t.good_id = gi.good_id)
+WHERE
+        gi.user_id=%d
+ORDER BY gi.inserted_at DESC LIMIT %d, %d`, user.Id, user.Id, (page-1)*pageSize, pageSize)
 	if CheckErr(err, c) {
 		return
 	}

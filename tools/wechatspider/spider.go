@@ -93,11 +93,15 @@ func (this *Crawler) GetGzhArticles(name string) (int, error) {
 		idMap[row.Uint64(0)] = struct{}{}
 	}
 	for _, a := range articles {
-		if _, found := idMap[a.FileId]; found {
+		if _, found := idMap[a.FileId]; found || a.FileId == 0 {
+			if a.FileId == 0 {
+				log.Warn("Fid: %d", a.FileId)
+			}
 			continue
 		}
 		newA, err := this.updateArticleImages(a)
 		if err != nil {
+			log.Error(err.Error())
 			continue
 		}
 		publishTime := time.Unix(1539857334, 0)
