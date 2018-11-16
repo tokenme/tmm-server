@@ -6,12 +6,12 @@
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <meta name="renderer" content="webkit">
 <meta property="og:type" content="website"/>
-<meta name="description" content="{{ .Summary }}" />
-<meta property="og:title" content="{{ .Title }}"/>
-<meta property="og:image" content="{{ .Image }}"/>
-<meta property="og:url" content="{{ .ShareLink }}"/>
-<title>{{ .Title }}</title>
-{{ if .InIframe }}
+<meta name="description" content="{{ .Task.Summary }}" />
+<meta property="og:title" content="{{ .Task.Title }}"/>
+<meta property="og:image" content="{{ .Task.Image }}"/>
+<meta property="og:url" content="{{ .Task.ShareLink }}"/>
+<title>{{ .Task.Title }}</title>
+{{ if .Task.InIframe }}
 <style media="all" type="text/css">
 html, body, div, iframe {
   margin: 0;
@@ -26,6 +26,52 @@ html, body, div, iframe {
 body {overflow: hidden;}
 iframe {
   display: block;
+  height: 100%;
+  width: 100%;
+  margin-top: 90px;
+  clear: both;
+}
+#banner {
+    position: absolute;
+    top:0;
+    left:0;
+    font-family: BlinkMacSystemFont,-apple-system,"Segoe UI",Roboto,Oxygen,Ubuntu,Cantarell,"Fira Sans","Droid Sans","Helvetica Neue",Helvetica,Arial,sans-serif;
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    height: 90px;
+    align-items: center;
+    text-decoration: none;
+    width: 100%;
+    border-bottom: 1px solid #eee;
+}
+#banner .logo {
+    border: 1px solid #eee;
+    border-radius: 15px;
+    width: 60px;
+    height: 60px;
+    padding: 5px;
+    margin: 10px 10px;
+}
+#banner .title {
+    font-weight: bold;
+    color: #333;
+    font-size: 16px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-evenly;
+    align-items: flex-start;
+    width: auto;
+}
+#banner .title .downloadbtn {
+    background-color: #e91e63;
+    color: white;
+    font-size: 14px;
+    font-weight: normal;
+    border-radius: 14px;
+    padding: 5px 10px;
+    height: auto;
+    width: auto;
 }
 </style>
 {{ else }}
@@ -35,8 +81,15 @@ iframe {
 {{ end  }}
 </head>
 <body>
-  {{ if .InIframe }}
-  <iframe src="{{ .Link }}" width='100%' height='100%' frameborder='0'></iframe>
+  {{ if .Task.InIframe }}
+  <a href="{{ .InviteLink }}" id="banner">
+    <img src="https://ucoin.tianxi100.com/tmm/icon512x512.png" class="logo"/>
+    <div class="title">
+        下载友币APP，躺在家里就挣钱！
+        <div class="downloadbtn">马上下载得红包</div>
+    </div>
+  </a>
+  <iframe src="{{ .Task.Link }}" frameborder='0'></iframe>
   {{ end }}
 </body>
 </html>
