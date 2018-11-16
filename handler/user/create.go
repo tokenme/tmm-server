@@ -6,7 +6,7 @@ import (
 	"github.com/getsentry/raven-go"
 	"github.com/gin-gonic/gin"
 	"github.com/o1egl/govatar"
-	"github.com/tokenme/tmm/tools/recaptcha"
+	//"github.com/tokenme/tmm/tools/recaptcha"
 	"image/png"
 	//"github.com/mkideal/log"
 	"github.com/nu7hatch/gouuid"
@@ -41,14 +41,14 @@ func CreateHandler(c *gin.Context) {
 }
 
 func createByMobile(c *gin.Context, req CreateRequest) {
-	if Check(req.Mobile == "" || req.CountryCode == 0 || req.VerifyCode == "" || req.Password == "" || req.RePassword == "" || req.Captcha == "", "missing params", c) {
+	if Check(req.Mobile == "" || req.CountryCode == 0 || req.VerifyCode == "" || req.Password == "" || req.RePassword == "", "missing params", c) {
 		return
 	}
 	if Check(req.Password != req.RePassword, "repassword!=password", c) {
 		return
 	}
 	passwdLength := len(req.Password)
-	if Check(passwdLength < 8 || passwdLength > 64, "password length must between 8-32", c) {
+	if CheckWithCode(passwdLength < 8 || passwdLength > 64, INVALID_PASSWD_LENGTH, "password length must between 8-32", c) {
 		return
 	}
 	token, err := uuid.NewV4()
@@ -67,11 +67,12 @@ func createByMobile(c *gin.Context, req CreateRequest) {
 	if Check(!ret.Success, ret.Message, c) {
 		return
 	}
-
-	captchaRes := recaptcha.Verify(Config.ReCaptcha.Secret, Config.ReCaptcha.Hostname, req.Captcha)
-	if CheckWithCode(!captchaRes.Success, INVALID_CAPTCHA_ERROR, "Invalid captcha", c) {
-		return
-	}
+	/*
+		captchaRes := recaptcha.Verify(Config.ReCaptcha.Secret, Config.ReCaptcha.Hostname, req.Captcha)
+		if CheckWithCode(!captchaRes.Success, INVALID_CAPTCHA_ERROR, "Invalid captcha", c) {
+			return
+		}
+	*/
 
 	privateKey, _, err := eth.GenerateAccount()
 	if CheckErr(err, c) {
