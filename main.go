@@ -12,6 +12,7 @@ import (
 	"github.com/tokenme/tmm/common"
 	"github.com/tokenme/tmm/handler"
 	"github.com/tokenme/tmm/router"
+	"github.com/tokenme/tmm/tools/articleclassifier"
 	"github.com/tokenme/tmm/tools/gc"
 	"github.com/tokenme/tmm/tools/orderbook-server"
 	"github.com/tokenme/tmm/tools/tokenprofile"
@@ -28,14 +29,16 @@ import (
 func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	var (
-		config             common.Config
-		configFlag         common.Config
-		configPath         string
-		parseTokenFlag     bool
-		articleCrawlerFlag bool
-		articlePublishFlag bool
-		accelerateTxFlag   string
-		accelerateGasFlag  int64
+		config                     common.Config
+		configFlag                 common.Config
+		configPath                 string
+		parseTokenFlag             bool
+		articleCrawlerFlag         bool
+		articlePublishFlag         bool
+		articleClassifierTrainFlag bool
+		articleClassifyFlag        bool
+		accelerateTxFlag           string
+		accelerateGasFlag          int64
 	)
 
 	os.Setenv("CONFIGOR_ENV_PREFIX", "-")
@@ -53,6 +56,8 @@ func main() {
 	flag.BoolVar(&configFlag.EnableOrderBook, "orderbook", false, "enable orderbook handler")
 	flag.StringVar(&accelerateTxFlag, "accelerate-tx", "", "accelerate tx hex")
 	flag.Int64Var(&accelerateGasFlag, "gas", 0, "set gas price")
+	flag.BoolVar(&articleClassifierTrainFlag, "train-article-classifier", false, "enable article classifer training")
+	flag.BoolVar(&articleClassifyFlag, "classify-articles", false, "enable articles classify")
 	flag.Parse()
 
 	configor.New(&configor.Config{Verbose: configFlag.Debug, ErrorOnUnmatchedKeys: true, Environment: "production"}).Load(&config, configPath)
@@ -127,6 +132,26 @@ func main() {
 		if err != nil {
 			log.Error(err.Error())
 		}
+		return
+	}
+
+	if articleClassifierTrainFlag {
+		trainer := articleclassifier.NewClassifier(service, config)
+		err := trainer.Train()
+		if err != nil {
+			log.Error(err.Error())
+		}
+		return
+	}
+
+	if articleClassifyFlag {
+		classifier := articleclassifier.NewClassifier(service, config)
+		err := classifier.LoadModel()
+		if err != nil {
+			log.Error(err.Error())
+			return
+		}
+		classifier.ClassifyDocs()
 		return
 	}
 

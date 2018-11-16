@@ -232,7 +232,9 @@ func (this *Server) dealTransfer(ctx context.Context, buyers []ethcommon.Address
 	}
 	var gasLimit uint64 = 540000
 	transactor := eth.TransactorAccount(this.agentPrivKey)
-	nonce, err := eth.Nonce(ctx, this.service.Geth, this.service.Redis.Master, this.globalLock, this.agentPubKey, this.config.Geth)
+	this.globalLock.Lock()
+	defer this.globalLock.Unlock()
+	nonce, err := eth.Nonce(ctx, this.service.Geth, this.service.Redis.Master, this.agentPubKey, this.config.Geth)
 	if err != nil {
 		return "", err
 	}
@@ -246,7 +248,7 @@ func (this *Server) dealTransfer(ctx context.Context, buyers []ethcommon.Address
 	if err != nil {
 		return "", err
 	}
-	err = eth.NonceIncr(ctx, this.service.Geth, this.service.Redis.Master, this.globalLock, this.agentPubKey, this.config.Geth)
+	err = eth.NonceIncr(ctx, this.service.Geth, this.service.Redis.Master, this.agentPubKey, this.config.Geth)
 	if err != nil {
 		log.Error(err.Error())
 	}

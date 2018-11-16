@@ -13,6 +13,16 @@ func StrToBigInt(value string) (i *big.Int, ok bool) {
 	return new(big.Int).SetString(value, 10)
 }
 
+func Uint16ToByte(i uint16) []byte {
+	b := make([]byte, 2)
+	binary.BigEndian.PutUint16(b, i)
+	return b
+}
+
+func ByteToUint16(b []byte) uint16 {
+	return uint16(binary.BigEndian.Uint16(b))
+}
+
 func Uint64ToByte(i uint64) []byte {
 	b := make([]byte, 8)
 	binary.BigEndian.PutUint64(b, i)

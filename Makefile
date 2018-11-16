@@ -10,5 +10,6 @@ secp256k1:
 install:
 	cp vendor/github.com/xluohome/phonedata/phone.dat /etc/phone.dat;
 	cp uaparser.yml /etc/uaparser.yml;
+	cp gse.dict /etc/gse.dict;
 	cp -f /opt/go/bin/tmm /usr/local/bin/;
 	chmod a+x /usr/local/bin/tmm;

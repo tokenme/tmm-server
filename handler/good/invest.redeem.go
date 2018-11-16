@@ -77,7 +77,7 @@ LEFT JOIN (SELECT good_id, SUM(points) AS points, SUM(income) AS income FROM
         FROM tmm.good_invests AS gi
         LEFT JOIN tmm.good_txs AS tx ON (tx.good_id=gi.good_id AND tx.created_at>=gi.inserted_at)
         WHERE
-                EXISTS (SELECT 1 FROM tmm.good_invests AS gi2 WHERE gi2.good_id=gi.good_id AND gi2.user_id=5 AND gi2.redeem_status=0 AND gi2.inserted_at<=tx.created_at)
+                EXISTS (SELECT 1 FROM tmm.good_invests AS gi2 WHERE gi2.good_id=gi.good_id AND gi2.user_id=%d AND gi2.redeem_status=0 AND gi2.inserted_at<=tx.created_at)
         AND gi.redeem_status = 0%s
         GROUP BY gi.good_id) AS tmp GROUP BY good_id) AS t ON (t.good_id = gi.good_id)
 WHERE
@@ -87,7 +87,7 @@ HAVING income > 0`
 	if len(goodIds) > 0 {
 		where = fmt.Sprintf(" AND gi.good_id IN (%s)", strings.Join(goodIds, ","))
 	}
-	rows, _, err = db.Query(query, where, user.Id, where)
+	rows, _, err = db.Query(query, user.Id, where, user.Id, where)
 	if CheckErr(err, c) {
 		return
 	}

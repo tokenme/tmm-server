@@ -123,7 +123,9 @@ WHERE d.id='%s' AND d.user_id=%d`
 	}
 
 	transactor := eth.TransactorAccount(agentPrivKey)
-	nonce, err := eth.Nonce(c, Service.Geth, Service.Redis.Master, GlobalLock, agentPubKey, Config.Geth)
+	GlobalLock.Lock()
+	defer GlobalLock.Unlock()
+	nonce, err := eth.Nonce(c, Service.Geth, Service.Redis.Master, agentPubKey, Config.Geth)
 	if CheckErr(err, c) {
 		return
 	}
@@ -144,7 +146,7 @@ WHERE d.id='%s' AND d.user_id=%d`
 	if CheckErr(err, c) {
 		return
 	}
-	err = eth.NonceIncr(c, Service.Geth, Service.Redis.Master, GlobalLock, agentPubKey, Config.Geth)
+	err = eth.NonceIncr(c, Service.Geth, Service.Redis.Master, agentPubKey, Config.Geth)
 	if err != nil {
 		log.Error(err.Error())
 	}

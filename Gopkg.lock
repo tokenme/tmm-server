@@ -2,6 +2,65 @@
 
 
 [[projects]]
+  branch = "master"
+  name = "github.com/AlasdairF/BinSearch"
+  packages = [
+    ".",
+    "Limit16",
+    "Limit24",
+    "Limit32",
+    "Limit40",
+    "Limit48",
+    "Limit56",
+    "Limit64",
+    "LimitVal16",
+    "LimitVal24",
+    "LimitVal32",
+    "LimitVal40",
+    "LimitVal48",
+    "LimitVal56",
+    "LimitVal64",
+    "LimitVal8"
+  ]
+  revision = "96187ac05e89bdb5c48367d12472b370a575d0eb"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/AlasdairF/Classifier"
+  packages = ["."]
+  revision = "58a65c45a229cba7c6ef266a883c6c9090de0208"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/AlasdairF/Conv"
+  packages = ["."]
+  revision = "b55e025a049e6ae1ca76be0fde855af441f89141"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/AlasdairF/Custom"
+  packages = ["."]
+  revision = "1889d7b07a22ffb7d32ea0dd070efe6c5121b0d5"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/AlasdairF/Sort"
+  packages = [
+    "IntInt",
+    "IntUint16",
+    "IntUint32",
+    "IntUint64",
+    "IntUint8"
+  ]
+  revision = "ebdbd9946084bb4997c0deecd158fb5fd7cab8d5"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/AlasdairF/snappy"
+  packages = ["."]
+  revision = "d1c9103b7e943501a7d4f21a89a5b532f31a018f"
+
+[[projects]]
   name = "github.com/BurntSushi/toml"
   packages = ["."]
   revision = "3012a1dbe2e4bd1391d42b32f0577cb7bbc7f005"
@@ -226,6 +285,18 @@
   version = "v1.3.0"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/go-ego/cedar"
+  packages = ["."]
+  revision = "0630dde5f3c4a434db484a8b6b377f0470c8d050"
+
+[[projects]]
+  name = "github.com/go-ego/gse"
+  packages = ["."]
+  revision = "d2660f057593f8bc720a09db24e9cb00ffda55a0"
+  version = "0.20.0"
+
+[[projects]]
   name = "github.com/go-ini/ini"
   packages = ["."]
   revision = "9c8236e659b76e87bf02044d06fde8683008ff3e"
@@ -323,6 +394,21 @@
   packages = ["."]
   revision = "1624edc4454b8682399def8740d46db5e4362ba4"
   version = "v1.1.5"
+
+[[projects]]
+  name = "github.com/klauspost/compress"
+  packages = [
+    "flate",
+    "zlib"
+  ]
+  revision = "30be6041bed523c18e269a700ebd9c2ea9328574"
+  version = "v1.4.1"
+
+[[projects]]
+  name = "github.com/klauspost/cpuid"
+  packages = ["."]
+  revision = "e7e905edc00ea8827e58662220139109efea09db"
+  version = "v1.2.0"
 
 [[projects]]
   name = "github.com/levigross/grequests"
@@ -694,6 +780,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "68d1895aa5593c2402749534ade447d6969604a38c3b5ab3d692c66756e53ea1"
+  inputs-digest = "21bc72d373ac23c96034484af324852953b1f1fb757b76a9d45e111d0e02c7c4"
   solver-name = "gps-cdcl"
   solver-version = 1

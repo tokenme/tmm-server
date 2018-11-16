@@ -63,10 +63,26 @@ func InvestHandler(c *gin.Context) {
 	if CheckWithCode(ret.AffectedRows() == 0, NOT_ENOUGH_POINTS_ERROR, "not enough points", c) {
 		return
 	}
-	_, _, err = db.Query(`INSERT INTO tmm.good_invests (good_id, user_id, device_id, points) VALUES (%d, %d, '%s', %s) ON DUPLICATE KEY UPDATE points=points+VALUES(points)`, req.GoodId, user.Id, db.Escape(deviceId), req.Points.String())
+	rows, _, err := db.Query(`SELECT redeem_status FROM tmm.good_invests WHERE good_id=%d AND user_id=%d LIMIT 1`, req.GoodId, user.Id)
 	if CheckErr(err, c) {
 		return
 	}
+	var redeemStatus uint
+	if len(rows) > 0 {
+		redeemStatus = rows[0].Uint(0)
+	}
+	if redeemStatus == 0 {
+		_, _, err = db.Query(`INSERT INTO tmm.good_invests (good_id, user_id, device_id, points) VALUES (%d, %d, '%s', %s) ON DUPLICATE KEY UPDATE points=points+VALUES(points), device_id=VALUES(device_id)`, req.GoodId, user.Id, db.Escape(deviceId), req.Points.String())
+		if CheckErr(err, c) {
+			return
+		}
+	} else {
+		_, _, err = db.Query(`UPDATE tmm.good_invests SET points=%s, device_id='%s', redeem_status=0, bonus=0, inserted_at=NOW(), redeem_at=NULL WHERE good_id=%d AND user_id=%d`, req.Points.String(), db.Escape(deviceId), req.GoodId, user.Id)
+		if CheckErr(err, c) {
+			return
+		}
+	}
+
 	_, _, err = db.Query(`INSERT IGNORE INTO tmm.goods (id, name, pic) VALUES (%d, '%s', '%s')`, req.GoodId, db.Escape(good.Name), db.Escape(good.Pic))
 	if CheckErr(err, c) {
 		return
