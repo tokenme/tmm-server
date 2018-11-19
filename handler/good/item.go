@@ -33,7 +33,7 @@ func ItemHandler(c *gin.Context) {
 	good := res.Data.Data
 	good.CommissionPoints = decimal.New(Config.GoodCommissionPoints, 0)
 	db := Service.Db
-	rows, _, err := db.Query(`SELECT points FROM tmm.good_invests WHERE good_id=%d AND user_id=%d AND gi.redeem_status=0 LIMIT 1`, good.Id, user.Id)
+	rows, _, err := db.Query(`SELECT points FROM tmm.good_invests WHERE good_id=%d AND user_id=%d AND redeem_status=0 LIMIT 1`, good.Id, user.Id)
 	if err == nil && len(rows) > 0 {
 		row := rows[0]
 		points, _ := decimal.NewFromString(row.Str(0))

@@ -8,9 +8,15 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/tokenme/tmm/common"
 	. "github.com/tokenme/tmm/handler"
+	tokenUtils "github.com/tokenme/tmm/utils/token"
 	"net/http"
 	"strings"
 )
+
+type ShareData struct {
+	Task       common.ShareTask
+	InviteLink string
+}
 
 func ShareHandler(c *gin.Context) {
 	taskId, deviceId, err := common.DecryptShareTaskLink(c.Param("encryptedTaskId"), c.Param("encryptedDeviceId"), Config)
@@ -32,9 +38,12 @@ func ShareHandler(c *gin.Context) {
     st.bonus,
     st.points,
     st.points_left,
-    dst.viewers
+    dst.viewers,
+    ic.id
 FROM tmm.share_tasks AS st
 LEFT JOIN tmm.device_share_tasks AS dst ON (dst.task_id=st.id AND dst.device_id='%s')
+LEFT JOIN tmm.devices AS d ON (d.id=dst.device_id)
+LEFT JOIN tmm.invite_codes AS ic ON (ic.user_id=d.user_id)
 WHERE st.id=%d
 LIMIT 1`
 	rows, _, err := db.Query(query, db.Escape(deviceId), taskId)
@@ -66,6 +75,7 @@ LIMIT 1`
 	task.InIframe = task.ShouldUseIframe()
 
 	userViewers := row.Uint(9)
+	inviteCode := tokenUtils.Token(row.Uint64(10))
 
 	var (
 		cookieFound = false
@@ -168,5 +178,5 @@ ORDER BY d.lastping_at DESC LIMIT 1) AS t2`
 			log.Error(err.Error())
 		}
 	}
-	c.HTML(http.StatusOK, "share.tmpl", task)
+	c.HTML(http.StatusOK, "share.tmpl", ShareData{Task: task, InviteLink: fmt.Sprintf("https://tmm.tokenmama.io/invite/%s", inviteCode.Encode())})
 }
