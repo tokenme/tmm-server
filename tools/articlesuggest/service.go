@@ -105,7 +105,6 @@ func (this *Engine) Match(userId uint64, page uint, limit uint) []uint64 {
 			if endId >= totalIds {
 				endId = totalIds
 			}
-			log.Println("Start:", startId, ", End:", endId, ", Total:", totalIds)
 			return taskIds[startId:endId]
 		}
 	}
@@ -119,7 +118,7 @@ func (this *Engine) Match(userId uint64, page uint, limit uint) []uint64 {
 		return nil
 	}
 	db := this.service.Db
-	rows, _, err := db.Query(`SELECT kw, score FROM tmm.user_reading_kws WHERE user_id=%d`, userId)
+	rows, _, err := db.Query(`SELECT kw, score - LOG(TIME_TO_SEC(TIMEDIFF(NOW(), updated_at)) / (3600 * 24)) FROM tmm.user_reading_kws WHERE user_id=%d ORDER BY updated_at LIMIT 2000`, userId)
 	if err != nil {
 		log.Println(err.Error())
 		redisConn.Do("SETEX", infoKey, 1*60, "[]")
@@ -156,7 +155,6 @@ func (this *Engine) Match(userId uint64, page uint, limit uint) []uint64 {
 	if endId >= totalIds {
 		endId = totalIds
 	}
-	log.Println("Start:", startId, ", End:", endId, ", Total:", totalIds)
 	return taskIds[startId:endId]
 }
 

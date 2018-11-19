@@ -2,7 +2,7 @@ package task
 
 import (
 	"fmt"
-	"github.com/davecgh/go-spew/spew"
+	//"github.com/davecgh/go-spew/spew"
 	"github.com/gin-gonic/gin"
 	//"github.com/mkideal/log"
 	"github.com/shopspring/decimal"
@@ -70,7 +70,6 @@ func SharesHandler(c *gin.Context) {
 		inCidConstrain = fmt.Sprintf("INNER JOIN tmm.share_task_categories AS stc ON (stc.task_id=st.id AND stc.cid=%d)", req.Cid)
 	} else if !req.MineOnly {
 		taskIds = SuggestEngine.Match(user.Id, req.Page, req.PageSize)
-		spew.Dump(taskIds)
 	}
 	if len(taskIds) > 0 {
 		var tids []string

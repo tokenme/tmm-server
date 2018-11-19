@@ -32,6 +32,8 @@ func (this *Handler) Start() {
 		case <-dailyTicker.C:
 			this.activeAppRecycle()
 			this.inviteSubmissionRecycle()
+			this.expiredReadingLogs()
+			this.expiredReadingLogKws()
 		case <-this.exitCh:
 			dailyTicker.Stop()
 			return
@@ -53,5 +55,17 @@ func (this *Handler) activeAppRecycle() error {
 func (this *Handler) inviteSubmissionRecycle() error {
 	db := this.Service.Db
 	_, _, err := db.Query(`DELETE FROM tmm.invite_submissions WHERE inserted_at<DATE_SUB(NOW(), INTERVAL 1 DAY)`)
+	return err
+}
+
+func (this *Handler) expiredReadingLogs() error {
+	db := this.Service.Db
+	_, _, err := db.Query(`DELETE FROM tmm.reading_logs WHERE inserted_at<DATE_SUB(NOW(), INTERVAL 30 DAY)`)
+	return err
+}
+
+func (this *Handler) expiredReadingLogKws() error {
+	db := this.Service.Db
+	_, _, err := db.Query(`DELETE FROM tmm.user_reading_kws WHERE updated_at<DATE_SUB(NOW(), INTERVAL 7 DAY)`)
 	return err
 }
