@@ -41,17 +41,14 @@ func ItemHandler(c *gin.Context) {
 	} else if err != nil {
 		log.Error(err.Error())
 	}
-	rows, _, err = db.Query(`SELECT SUM(points), COUNT(*), SUM(income) FROM
-            (SELECT
-                gi.points AS points,
-                gi.bonus AS bonus,
-                SUM(IFNULL(tx.income, 0)) AS income
-            FROM tmm.good_invests AS gi
-            LEFT JOIN tmm.good_txs AS tx ON (tx.good_id=gi.good_id AND tx.created_at>=gi.inserted_at)
-            WHERE
-                gi.good_id=%d
-            AND gi.redeem_status = 0
-            GROUP BY gi.good_id) AS tmp`, good.Id)
+	rows, _, err = db.Query(`SELECT
+        SUM(gi.points) AS points,
+        COUNT(*),
+        (SELECT SUM(income) AS income FROM tmm.good_txs WHERE good_id=%d) AS income
+FROM tmm.good_invests AS gi
+WHERE
+        gi.good_id=%d
+AND gi.redeem_status = 0`, good.Id, good.Id)
 	if err == nil && len(rows) > 0 {
 		row := rows[0]
 		points, _ := decimal.NewFromString(row.Str(0))

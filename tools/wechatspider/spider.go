@@ -199,7 +199,7 @@ func (this *Crawler) Publish() error {
 		link := fmt.Sprintf("https://tmm.tokenmama.io/article/show/%d", id)
 		cover := strings.Replace(row.Str(3), "http://", "https://", -1)
 		ids = append(ids, fmt.Sprintf("%d", id))
-		val = append(val, fmt.Sprintf("(0, '%s', '%s', '%s', '%s', 100, 100, 1, 10)", db.Escape(title), db.Escape(digest), db.Escape(link), db.Escape(cover)))
+		val = append(val, fmt.Sprintf("(0, '%s', '%s', '%s', '%s', 5000, 5000, 10, 10)", db.Escape(title), db.Escape(digest), db.Escape(link), db.Escape(cover)))
 	}
 	if len(val) > 0 {
 		_, _, err := db.Query(`INSERT INTO tmm.share_tasks (creator, title, summary, link, image, points, points_left, bonus, max_viewers) VALUES %s`, strings.Join(val, ","))

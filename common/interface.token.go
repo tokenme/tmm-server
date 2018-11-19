@@ -103,21 +103,31 @@ func GetTMMPrice(service *Service, config Config, priceType PriceType) (price de
 	if err == nil {
 		return priceValue
 	}
-
+	var (
+		salePrice    decimal.Decimal
+		recyclePrice decimal.Decimal
+	)
 	db := service.Db
-	rows, _, err := db.Query("SELECT price FROM tmm.erc20 WHERE address='%s' LIMIT 1", config.TMMTokenAddress)
+	rows, _, err := db.Query("SELECT price, recycle_price FROM tmm.erc20 WHERE address='%s' LIMIT 1", config.TMMTokenAddress)
 	if err != nil {
 		return
 	}
 	if len(rows) > 0 {
-		price, _ = decimal.NewFromString(rows[0].Str(0))
+		salePrice, _ = decimal.NewFromString(rows[0].Str(0))
+		recyclePrice, _ = decimal.NewFromString(rows[0].Str(1))
 	}
-
-	ethPrice := GetETHPrice(service, config)
-	tmmRate := GetTMMRate(service, config)
-	tmmPrice := tmmRate.Mul(ethPrice)
-	if (priceType == CrowsalePrice || priceType == MarketPrice) && tmmPrice.GreaterThan(price) || priceType == RecyclePrice && tmmPrice.LessThan(price) {
-		price = tmmPrice
+	/*
+		ethPrice := GetETHPrice(service, config)
+		tmmRate := GetTMMRate(service, config)
+		tmmPrice := tmmRate.Mul(ethPrice)
+		if (priceType == CrowsalePrice || priceType == MarketPrice) && tmmPrice.GreaterThan(price) || priceType == RecyclePrice && tmmPrice.LessThan(price) {
+			price = tmmPrice
+		}
+	*/
+	if priceType == CrowsalePrice || priceType == MarketPrice {
+		price = salePrice
+	} else if priceType == RecyclePrice {
+		price = recyclePrice
 	}
 	if price.GreaterThan(decimal.Zero) {
 		redisConn.Do("SETEX", cacheKey, 2*60, price.StringFixed(9))

@@ -2,7 +2,7 @@ package task
 
 import (
 	"fmt"
-	//"github.com/davecgh/go-spew/spew"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/gin-gonic/gin"
 	//"github.com/mkideal/log"
 	"github.com/shopspring/decimal"
@@ -47,16 +47,6 @@ func SharesHandler(c *gin.Context) {
 		req.PageSize = DEFAULT_PAGE_SIZE
 	}
 
-	onlineStatusConstrain := "AND st.online_status = 1"
-	var inCidConstrain string
-	orderBy := "st.bonus DESC, st.id DESC"
-	if req.MineOnly {
-		onlineStatusConstrain = fmt.Sprintf("AND st.creator = %d", user.Id)
-		orderBy = "st.id DESC"
-	}
-	if req.Cid > 0 {
-		inCidConstrain = fmt.Sprintf("INNER JOIN tmm.share_task_categories AS stc ON (stc.task_id=st.id AND stc.cid=%d)", req.Cid)
-	}
 	device := common.DeviceRequest{
 		Idfa: req.Idfa,
 		Imei: req.Imei,
@@ -65,6 +55,31 @@ func SharesHandler(c *gin.Context) {
 	deviceId := device.DeviceId()
 	if Check(len(deviceId) == 0, "not found", c) {
 		return
+	}
+
+	var taskIds []uint64
+	limitState := fmt.Sprintf("LIMIT %d, %d", (req.Page-1)*req.PageSize, req.PageSize)
+	onlineStatusConstrain := "st.points_left>0 AND st.online_status = 1"
+	var inCidConstrain string
+	orderBy := "st.bonus DESC, st.id DESC"
+	if req.MineOnly {
+		onlineStatusConstrain = fmt.Sprintf("AND st.creator = %d", user.Id)
+		orderBy = "st.id DESC"
+	}
+	if req.Cid > 0 {
+		inCidConstrain = fmt.Sprintf("INNER JOIN tmm.share_task_categories AS stc ON (stc.task_id=st.id AND stc.cid=%d)", req.Cid)
+	} else if !req.MineOnly {
+		taskIds = SuggestEngine.Match(user.Id, req.Page, req.PageSize)
+		spew.Dump(taskIds)
+	}
+	if len(taskIds) > 0 {
+		var tids []string
+		for _, tid := range taskIds {
+			tids = append(tids, fmt.Sprintf("%d", tid))
+		}
+		onlineStatusConstrain = fmt.Sprintf("st.id IN (%s)", strings.Join(tids, ","))
+		orderBy = "st.bonus DESC"
+		limitState = ""
 	}
 
 	showBonusHint := true
@@ -90,9 +105,9 @@ func SharesHandler(c *gin.Context) {
     st.online_status
 FROM tmm.share_tasks AS st
 %s
-WHERE st.points_left>0 %s
-ORDER BY %s LIMIT %d, %d`
-	rows, _, err := db.Query(query, inCidConstrain, onlineStatusConstrain, orderBy, (req.Page-1)*req.PageSize, req.PageSize)
+WHERE %s
+ORDER BY %s %s`
+	rows, _, err := db.Query(query, inCidConstrain, onlineStatusConstrain, orderBy, limitState)
 	if CheckErr(err, c) {
 		return
 	}
