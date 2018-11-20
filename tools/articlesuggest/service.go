@@ -2,10 +2,10 @@ package articlesuggest
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"github.com/PuerkitoBio/goquery"
 	//"github.com/davecgh/go-spew/spew"
-	"encoding/json"
 	"github.com/garyburd/redigo/redis"
 	"github.com/go-ego/gse"
 	"github.com/tokenme/tmm/common"
@@ -21,6 +21,7 @@ import (
 
 const MaxDocWords int = 200
 const SUGGEST_ENGIN_KEY = "share-task-suggest-%d"
+const SUGGEST_CUR_KEY = "article-usr-cur-%d"
 
 type UserLog struct {
 	UserId    uint64
@@ -88,24 +89,42 @@ func (this *Engine) Stop() {
 func (this *Engine) Match(userId uint64, page uint, limit uint) []uint64 {
 	var taskIds []uint64
 	startId := int((page - 1) * limit)
-	endId := startId + int(limit)
+	var lastCur int
 	redisConn := this.service.Redis.Master.Get()
 	defer redisConn.Close()
 	infoKey := fmt.Sprintf(SUGGEST_ENGIN_KEY, userId)
+	curKey := fmt.Sprintf(SUGGEST_CUR_KEY, userId)
+	if startId > 0 {
+		lastCur, _ = redis.Int(redisConn.Do("GET", curKey))
+		if startId < lastCur {
+			startId = lastCur
+		}
+	}
 	buf, err := redis.Bytes(redisConn.Do("GET", infoKey))
 	if err != nil && buf != nil {
 		err := json.Unmarshal(buf, &taskIds)
 		if err != nil {
 			log.Println(err.Error())
 		} else {
+			readIds := this.getUserReadIds(userId)
 			totalIds := len(taskIds)
 			if startId >= totalIds {
 				return nil
 			}
-			if endId >= totalIds {
-				endId = totalIds
+			cur := startId
+			var retIds []uint64
+			for {
+				taskId := taskIds[cur]
+				cur += 1
+				if _, found := readIds[taskId]; !found {
+					retIds = append(retIds, taskId)
+				}
+				if cur >= totalIds || len(retIds) >= int(limit) {
+					redisConn.Do("SETEX", curKey, 1*60, cur)
+					break
+				}
 			}
-			return taskIds[startId:endId]
+			return retIds
 		}
 	}
 
@@ -124,9 +143,19 @@ func (this *Engine) Match(userId uint64, page uint, limit uint) []uint64 {
 		redisConn.Do("SETEX", infoKey, 1*60, "[]")
 		return nil
 	}
+	if len(rows) == 0 {
+		redisConn.Do("SETEX", infoKey, 1*60, "[]")
+		return nil
+	}
 	words := make(map[string]float64, len(rows))
+	var totalScore float64
 	for _, row := range rows {
-		words[row.Str(0)] = row.Float(1)
+		score := row.Float(1)
+		words[row.Str(0)] = score
+		totalScore += score
+	}
+	for w, v := range words {
+		words[w] = v / totalScore
 	}
 	taskScores := make(map[uint64]float64)
 	for _, task := range tasks {
@@ -148,14 +177,38 @@ func (this *Engine) Match(userId uint64, page uint, limit uint) []uint64 {
 	if err == nil {
 		redisConn.Do("SETEX", infoKey, 1*60, string(js))
 	}
+	readIds := this.getUserReadIds(userId)
 	totalIds := len(taskIds)
 	if startId >= totalIds {
 		return nil
 	}
-	if endId >= totalIds {
-		endId = totalIds
+	cur := startId
+	var retIds []uint64
+	for {
+		taskId := taskIds[cur]
+		cur += 1
+		if _, found := readIds[taskId]; !found {
+			retIds = append(retIds, taskId)
+		}
+		if cur >= totalIds || len(retIds) >= int(limit) {
+			redisConn.Do("SETEX", curKey, 1*60, cur)
+			break
+		}
 	}
-	return taskIds[startId:endId]
+	return retIds
+}
+
+func (this *Engine) getUserReadIds(userId uint64) map[uint64]struct{} {
+	db := this.service.Db
+	rows, _, err := db.Query(`SELECT task_id FROM tmm.reading_logs WHERE user_id=%d`, userId)
+	if err != nil {
+		return nil
+	}
+	idMap := make(map[uint64]struct{}, len(rows))
+	for _, row := range rows {
+		idMap[row.Uint64(0)] = struct{}{}
+	}
+	return idMap
 }
 
 func (this *Engine) getLogs() {
@@ -181,6 +234,9 @@ func (this *Engine) getLogs() {
 			//taskId := row.Uint64(1)
 			link := row.Str(2)
 			ts := row.Uint64(3)
+			if !strings.Contains(link, "https://tmm.tokenmama.io/article/show/") {
+				continue
+			}
 			idStr := strings.Replace(link, "https://tmm.tokenmama.io/article/show/", "", -1)
 			id, err := strconv.ParseUint(idStr, 10, 64)
 			if err != nil || id == 0 {
@@ -270,7 +326,7 @@ func (this *Engine) getTasks() {
     st.link
 FROM tmm.share_tasks AS st
 WHERE st.points_left>0 AND st.online_status = 1
-ORDER BY st.bonus DESC, st.id DESC LIMIT 2000`)
+ORDER BY st.bonus DESC, st.id DESC LIMIT 5000`)
 	if err != nil {
 		log.Println(err.Error())
 		return
@@ -283,6 +339,9 @@ ORDER BY st.bonus DESC, st.id DESC LIMIT 2000`)
 	for _, row := range rows {
 		taskId := row.Uint64(0)
 		link := row.Str(1)
+		if !strings.Contains(link, "https://tmm.tokenmama.io/article/show/") {
+			continue
+		}
 		idStr := strings.Replace(link, "https://tmm.tokenmama.io/article/show/", "", -1)
 		id, err := strconv.ParseUint(idStr, 10, 64)
 		tasks = append(tasks, &Task{TaskId: taskId, ArticleId: id})
