@@ -17,6 +17,7 @@ type GoodTxBonus struct {
 	GoodId uint64
 	UserId uint64
 	Amount uint
+	Bonus  uint
 }
 
 func TxsHandler(c *gin.Context) {
@@ -32,6 +33,7 @@ func TxsHandler(c *gin.Context) {
 	)
 	for _, tx := range txs {
 		income := decimal.New(int64(tx.Income), -4)
+		saleBonus := decimal.New(int64(tx.Bonus), -4)
 		key := fmt.Sprintf("%d-%d", tx.GoodId, tx.Uid)
 		if bonus, found := bonusMap[key]; found {
 			bonus.Amount += tx.Amount
@@ -40,16 +42,17 @@ func TxsHandler(c *gin.Context) {
 				GoodId: tx.GoodId,
 				UserId: tx.Uid,
 				Amount: tx.Amount,
+				Bonus:  tx.Bonus,
 			}
 		}
 		createdAt, err := time.Parse(time.RFC3339, tx.CreatedAt)
 		if CheckErr(err, c) {
 			return
 		}
-		val = append(val, fmt.Sprintf("(%d, %d, %d, %d, %s, '%s')", tx.OrderId, tx.Uid, tx.GoodId, tx.Amount, income.String(), createdAt.UTC().Format("2006-01-02 15:04:05")))
+		val = append(val, fmt.Sprintf("(%d, %d, %d, %d, %s, %s, '%s')", tx.OrderId, tx.Uid, tx.GoodId, tx.Amount, income.String(), saleBonus.String(), createdAt.UTC().Format("2006-01-02 15:04:05")))
 	}
 	if len(val) > 0 {
-		_, _, err := db.Query(`INSERT INTO tmm.good_txs (oid, uid, good_id, amount, income, created_at) VALUES %s`, strings.Join(val, ","))
+		_, _, err := db.Query(`INSERT INTO tmm.good_txs (oid, uid, good_id, amount, income, bonus, created_at) VALUES %s`, strings.Join(val, ","))
 		if CheckErr(err, c) {
 			return
 		}
