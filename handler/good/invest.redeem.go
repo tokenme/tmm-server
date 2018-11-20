@@ -65,23 +65,15 @@ func InvestRedeemHandler(c *gin.Context) {
 			return
 		}
 	}
-	query := `SELECT
-        gi.good_id,
-        IF(t.points IS NULL, 0, gi.points/t.points * t.income) AS income
+	query := `SELECT good_id, SUM(income) AS income
+FROM (
+SELECT gi.good_id AS good_id, IFNULL(tx.income, 0) * gi.points/SUM(gi2.points) AS income
 FROM tmm.good_invests AS gi
-LEFT JOIN (SELECT good_id, SUM(points) AS points, SUM(income) AS income FROM
-        (SELECT
-                gi.good_id AS good_id,
-                gi.points AS points,
-                SUM(IFNULL(tx.income, 0)) AS income
-        FROM tmm.good_invests AS gi
-        LEFT JOIN tmm.good_txs AS tx ON (tx.good_id=gi.good_id AND tx.created_at>=gi.inserted_at)
-        WHERE
-                EXISTS (SELECT 1 FROM tmm.good_invests AS gi2 WHERE gi2.good_id=gi.good_id AND gi2.user_id=%d AND gi2.redeem_status=0 AND gi2.inserted_at<=tx.created_at)
-        AND gi.redeem_status = 0%s
-        GROUP BY gi.good_id) AS tmp GROUP BY good_id) AS t ON (t.good_id = gi.good_id)
-WHERE
-        gi.user_id=%d AND gi.redeem_status=0%s
+INNER JOIN tmm.good_txs AS tx ON (tx.good_id=gi.good_id AND tx.created_at>=gi.inserted_at)
+INNER JOIN tmm.good_invests AS gi2 ON (gi2.good_id=gi.good_id AND gi2.inserted_at<=tx.created_at)
+WHERE gi.user_id=%d%s
+GROUP BY tx.oid) AS tmp
+GROUP BY good_id
 HAVING income > 0`
 	var where string
 	if len(goodIds) > 0 {

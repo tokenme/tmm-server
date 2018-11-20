@@ -114,7 +114,7 @@ func (this *Watcher) push(ev *eth.TokenTransfer) {
 	from := strings.ToLower(ev.From.Hex())
 	to := strings.ToLower(ev.To.Hex())
 	db := this.service.Db
-	rows, _, err := db.Query(`SELECT d.user_id, d.push_token, u.wallet_addr, d.language，d.platform FROM tmm.devices AS d INNER JOIN ucoin.users AS u ON (u.id=d.user_id) WHERE u.wallet_addr IN ('%s', '%s')`, db.Escape(from), db.Escape(to))
+	rows, _, err := db.Query(`SELECT d.user_id, d.push_token, u.wallet_addr, d.language, d.platform FROM tmm.devices AS d INNER JOIN ucoin.users AS u ON (u.id=d.user_id) WHERE u.wallet_addr IN ('%s', '%s')`, db.Escape(from), db.Escape(to))
 	if err != nil {
 		log.Error(err.Error())
 		return

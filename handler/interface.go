@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/mkideal/log"
 	"github.com/tokenme/tmm/common"
+	"github.com/tokenme/tmm/tools/articlesuggest"
 	"github.com/tokenme/tmm/tools/blowup"
 	"github.com/tokenme/tmm/utils"
 	//"github.com/tokenme/ucoin/tools/sqs"
@@ -25,6 +26,7 @@ var (
 	Config        common.Config
 	GlobalLock    *sync.Mutex
 	BlowupService *blowup.Server
+	SuggestEngine *articlesuggest.Engine
 	ExitCh        chan struct{}
 	//Queues  map[string]sqs.Queue
 )
@@ -34,6 +36,7 @@ func InitHandler(s *common.Service, c common.Config) {
 	Config = c
 	GlobalLock = new(sync.Mutex)
 	BlowupService = blowup.NewServer(s, c)
+	SuggestEngine = articlesuggest.NewEngine(s, c)
 	//Queues = queues
 	raven.SetDSN(Config.SentryDSN)
 	ExitCh = make(chan struct{}, 1)
@@ -41,10 +44,12 @@ func InitHandler(s *common.Service, c common.Config) {
 
 func Start() {
 	BlowupService.Start()
+	go SuggestEngine.Start()
 }
 
 func Close() {
 	BlowupService.Stop()
+	SuggestEngine.Stop()
 }
 
 type APIResponse struct {
