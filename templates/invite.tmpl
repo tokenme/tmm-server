@@ -13,7 +13,6 @@ html, body {
     width: 100%;
     height: 100%;
 }
-
 body {
     background-image: url('https://ucoin.tianxi100.com/tmm/invite/page-bg.png');
     background-repeat:no-repeat;
@@ -55,6 +54,38 @@ header {
     font-size: 0.8em;
     line-height: 4em;
 }
+{{ if .submitted }}
+.share-dialog-container{
+    position:fixed;
+    top: 0;
+    display: none;
+}
+.share-dialog-container.show{
+    display: block;
+}
+
+.share-dialog{
+    color: #fff;
+    z-index: 10000;
+    position: fixed;
+    width: 100%;
+}
+.share-dialog .text{
+    text-align: center;
+}
+.share-dia-bg{
+    position: fixed;
+    background-color: rgba(100,100,100,0.5);
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: -1;
+}
+.img-icon {
+    text-align: right;
+}
+{{ end  }}
 </style>
 <body>
     <section class="section">
@@ -72,9 +103,9 @@ header {
                         <div class="action">
                         {{ if .submitted }}
                             <div class="txt">红包将在24小时后过期</div>
-                            <a href="{{ .link }}" class="button is-warning">下载APP 立即领取</a>
+                            <a id="downBtn" href="{{ .link }}" class="button is-warning">下载APP 立即领取</a>
                         {{ else }}
-                            <form method="POST">
+                            <form method="POST" action="?submitted=true">
                                 <div class="field is-grouped is-grouped-centered">
                                     <div class="control">
                                         <input class="input" type="tel" placeholder="输入手机号领红包" name="tel">
@@ -93,5 +124,45 @@ header {
             </div>
         </div>
     </section>
+    {{ if .submitted }}
+    <div class="share-dialog-container">
+        <div class="share-dialog">
+            <div class="img-icon">
+              <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAFQAAADACAMAAACtQrSmAAAAolBMVEUAAAD///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////8ELnaCAAAANXRSTlMADAYRFfFs++PLPyb0v7qlghtlUPgy3WA3LMazIdie7OfUe1hLmZWIc1OQRat1rlzPQh6MOorEaDYAAAQySURBVGje7ZnpUuJQEIWTkA0IgYR9VXZBFgH7/V9tSsdx4PYNQvqeKq2Z81Otz4TeTjfWvXJrxYi8OHUsc/Ij+q3wYIw5p08FbTNIZ0PnejLBtGO61FLOdIukai5lJmPi2siSoBySTrEtYDYfSK+im5t58ChLwyQns96gbIXlXMx2QNf00MnBfKIv5N1fskv6UsHqTuaIblCQ3lXuO7pN2zvKvUK36iQo92yNbmMeh3SPdk7+cs9WpfAls/NAmcrbCJ4jul+t41XmKqA8CrtXmOkVZt5GsKfc8rKeNYkov16ujHeuoKd+gHrqVF/w2mRq1BfKT3r6BtbXZ31G0zyxF9W22kcttKSLatOyaup4yhgK+lrKGEQTNdXfxhePaaSFFti/Hye6uRK+v5bHitXSqqKvaV/9mPWWoKaHzvQ2pK2FWuXWZZZkdZUdM0w6KGltln/LGFn8bTJZYS70bvKXziT6SLr2mVHJzB1nGX3Ebnp9PqXVSjyfOtYV6NkvXf/tz1d3W0sO1YyP7wF9RkBL/6EXcn/Mk/5b0J9TpgxqI6CWAU0BUDajAgTUMwF9gkC57ZFrgoBy12dAS27E5VrfZO+Eq3/FBHSjbrgmoH0FWjUBrfBTn1wvCnRtAjrkPlyukB9j5PIUqG8CSoraBpiuCq3LmXxlfZUz+XbZRRjpBDFMHTGSr6YNxDQJTUBP6r5uAlpF9OgY0aPHiHb6COh8DgGaVILoJ00V2jEAnanQgQFoiij9CcKdLhCer4+o0jHC9ESsoACzNEXk/rOcyQ99ZcC+Qw4gTUNEmva+bZo2AGk6YGmKMFIlgOehBJBRHmKHKiKGfhXRoyaIM9/KRPARPWqOcNFFwKXDaQCC3yXArrtHDKiFCnUBcQoRceojVt2aiXpCxKmKOJuHgBvnkRRVEanvI1K/CbiceYhVrw8479MWkaUdwHT2HIDZ31ly1RBZWgRMZ5cADTolwD0mBlw5CoHqTWzA28eIt/cNxD5QoUfARtoD7Hm0BdQ9DQCDpChn2h7g7X1SlQDCFAP2HNqbP0ZQZJs3+jQCTFEDY/QYAJJ0ROa/KSuzB/XkYdqQqhOglQTyauoB8mlPTF1xe3ok86Z0TUxN851EbvXsFuATXQfmQz+LGszrSOfdoOUxqnRrtuPHB5Ua2tKp3AoZdSVkbsdDRq1Iy7NXZNSoLAx8XGFUqYGo7/qMKvV501GVUyNRitrpes6pMv+Q+LWThipacDr+dlJbvlE379SX39SeLXjMejvVUYf5HX6hM1tNddRWJ/+Efy09n1EXn9TxLH9X6jY/qU8X1PyBdwflDGqam+m4xwxqW5DyBTd5o3ZU6sqSQM+o9T/U0+IgOuLa9gV1/06tKcNTQj18UP3EEkI5tW5bYinUFXt1KfX1UCpIcZzKWrKcenSEIE51WYDkSWDsKX8BbLYZuwVl6L0AAAAASUVORK5CYII="
+                alt="">
+            </div>
+            <div class="text">
+              <div>请在浏览器打开</div>
+            </div>
+          </div>
+        <div class="share-dia-bg" ></div>
+    </div>
+<script type="text/javascript">
+var ua = window.navigator.userAgent.toLowerCase();;
+
+function isAndroid(){
+    var match = ua.match(/android/i);
+    if (match && match[0] == "android") {
+      return true;
+    } else {
+      return false;
+    }
+}
+if(isAndroid()){
+    var downBtn = document.getElementById('downBtn');
+    downBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        var modal = document.querySelector('.share-dialog-container');
+        var isshow = modal.classList.contains('show');
+        if(!isshow){
+            modal.classList.add('show');
+        } else{
+            modal.classList.remove('show');
+        }
+        return false;
+    })
+}
+</script>
+{{ end }}
 </body>
 </html>
