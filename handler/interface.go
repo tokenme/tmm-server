@@ -207,7 +207,7 @@ func ApiCheckFunc() gin.HandlerFunc {
 				"message": err.Error()})
 			return
 		}
-		if req.Ts < time.Now().Add(-10*time.Minute).Unix() || req.Ts > time.Now().Add(10*time.Minute).Unix() {
+		if req.Ts < time.Now().Add(-10 * time.Minute).Unix() || req.Ts > time.Now().Add(10 * time.Minute).Unix() {
 			c.Abort()
 			c.JSON(http.StatusBadRequest, gin.H{
 				"code":    401,
@@ -262,4 +262,19 @@ func verifySign(secret string, req APIRequest) bool {
 	reqStr := fmt.Sprintf("k=%s&p=%s&r=%s&t=%d&v=%s", req.APPKey, req.Payload, req.Rand, req.Ts, req.Version)
 	sign := utils.Sha1(fmt.Sprintf("%s%s%s", secret, reqStr, secret))
 	return sign == strings.ToLower(req.Sign)
+}
+
+func VerifyAdmin(mobile string, country uint) bool {
+	db := Service.Db
+	Query := `select uset.role from  ucoin.users as u LEFT JOIN tmm.user_settings AS uset ON( u.id = uset.user_id)
+	where u.mobile='%s' AND u.country_code = %d  `
+	Rows, result, err := db.Query(Query, mobile, country)
+	if err != nil || len(Rows[0]) == 0{
+		return false
+	}
+	if Rows[0].Int(result.Map(`role`)) != 1 {
+		return false
+	}
+	return true
+
 }

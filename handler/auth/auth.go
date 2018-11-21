@@ -30,47 +30,53 @@ type Biometric struct {
 var AuthenticatorFunc = func(loginInfo jwt.Login, c *gin.Context) (string, int, bool) {
 	db := Service.Db
 	var where string
-	if loginInfo.CountryCode > 0 && loginInfo.Mobile != "" && loginInfo.Password != "" && loginInfo.Captcha != "" {
-		where = fmt.Sprintf("u.country_code=%d AND u.mobile='%s'", loginInfo.CountryCode, db.Escape(loginInfo.Mobile))
-	} else {
-		log.Error("missing params")
-		return loginInfo.Mobile, BADREQUEST_ERROR, false
-	}
 	var loginPasswd string
-	if loginInfo.Biometric {
-		secret := GetAppSecret(loginInfo.Captcha)
-		if secret == "" {
-			log.Error("invalid captcha")
-			return loginInfo.Mobile, INVALID_CAPTCHA_ERROR, false
+	IsAdmin :=VerifyAdmin(loginInfo.Mobile,loginInfo.CountryCode)
+	if !IsAdmin {
+		if loginInfo.CountryCode > 0 && loginInfo.Mobile != "" && loginInfo.Password != "" && loginInfo.Captcha != "" {
+			where = fmt.Sprintf("u.country_code=%d AND u.mobile='%s'", loginInfo.CountryCode, db.Escape(loginInfo.Mobile))
+		} else {
+			log.Error("missing params")
+			return loginInfo.Mobile, BADREQUEST_ERROR, false
 		}
-		decrepted, err := utils.DesDecrypt(loginInfo.Password, []byte(secret))
-		if err != nil {
-			log.Error(err.Error())
-			return loginInfo.Mobile, INVALID_CAPTCHA_ERROR, false
+		if loginInfo.Biometric {
+			secret := GetAppSecret(loginInfo.Captcha)
+			if secret == "" {
+				log.Error("invalid captcha")
+				return loginInfo.Mobile, INVALID_CAPTCHA_ERROR, false
+			}
+			decrepted, err := utils.DesDecrypt(loginInfo.Password, []byte(secret))
+			if err != nil {
+				log.Error(err.Error())
+				return loginInfo.Mobile, INVALID_CAPTCHA_ERROR, false
+			}
+			decodedStr, err := base64.StdEncoding.DecodeString(string(decrepted))
+			if err != nil {
+				log.Error(err.Error())
+				return loginInfo.Mobile, INVALID_CAPTCHA_ERROR, false
+			}
+			var biometric Biometric
+			err = json.Unmarshal([]byte(decodedStr), &biometric)
+			if err != nil {
+				log.Error(err.Error())
+				return loginInfo.Mobile, INVALID_CAPTCHA_ERROR, false
+			}
+			if biometric.Ts < time.Now().Add(-10 * time.Minute).Unix() || biometric.Ts > time.Now().Add(10 * time.Minute).Unix() {
+				return loginInfo.Mobile, INVALID_CAPTCHA_ERROR, false
+			}
+			loginPasswd = biometric.Passwd
+		} else {
+			captchaRes := recaptcha.Verify(Config.ReCaptcha.Secret, Config.ReCaptcha.Hostname, loginInfo.Captcha)
+			if !captchaRes.Success {
+				log.Error("invalid captcha")
+				return loginInfo.Mobile, INVALID_CAPTCHA_ERROR, false
+			}
+			loginPasswd = loginInfo.Password
 		}
-		decodedStr, err := base64.StdEncoding.DecodeString(string(decrepted))
-		if err != nil {
-			log.Error(err.Error())
-			return loginInfo.Mobile, INVALID_CAPTCHA_ERROR, false
-		}
-		var biometric Biometric
-		err = json.Unmarshal([]byte(decodedStr), &biometric)
-		if err != nil {
-			log.Error(err.Error())
-			return loginInfo.Mobile, INVALID_CAPTCHA_ERROR, false
-		}
-		if biometric.Ts < time.Now().Add(-10*time.Minute).Unix() || biometric.Ts > time.Now().Add(10*time.Minute).Unix() {
-			return loginInfo.Mobile, INVALID_CAPTCHA_ERROR, false
-		}
-		loginPasswd = biometric.Passwd
-	} else {
-		captchaRes := recaptcha.Verify(Config.ReCaptcha.Secret, Config.ReCaptcha.Hostname, loginInfo.Captcha)
-		if !captchaRes.Success {
-			log.Error("invalid captcha")
-			return loginInfo.Mobile, INVALID_CAPTCHA_ERROR, false
-		}
+	}else{
+		where = fmt.Sprintf("u.country_code=%d AND u.mobile='%s'", loginInfo.CountryCode, db.Escape(loginInfo.Mobile))
 		loginPasswd = loginInfo.Password
-	}
+		}
 	query := `SELECT
                 u.id,
                 u.country_code,
