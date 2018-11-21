@@ -148,7 +148,17 @@ function isAndroid(){
       return false;
     }
 }
-if(isAndroid()){
+
+function isWeixin(){
+    var match = ua.match(/micromessenger/i);
+    if (match && match[0] == "micromessenger") {
+      return true;
+    } else {
+      return false;
+    }
+}
+
+if(isAndroid() && isWeixin()){
     var downBtn = document.getElementById('downBtn');
     downBtn.addEventListener('click', function (e) {
         e.preventDefault();

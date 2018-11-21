@@ -24,6 +24,7 @@ type User struct {
 	InviterCode     tokenUtils.Token `json:"inviter_code,omitempty"`
 	CanPay          uint             `json:"can_pay,omitempty"`
 	ExchangeEnabled bool             `json:"exchange_enabled,omitempty"`
+	WxBinded        bool             `json:"wx_binded,omitempty"`
 	Wechat          *Wechat          `json:"-"`
 }
 

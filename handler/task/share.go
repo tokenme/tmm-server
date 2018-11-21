@@ -3,6 +3,7 @@ package task
 import (
 	"fmt"
 	//"github.com/davecgh/go-spew/spew"
+	"github.com/garyburd/redigo/redis"
 	"github.com/gin-gonic/gin"
 	"github.com/mkideal/log"
 	"github.com/shopspring/decimal"
@@ -11,6 +12,7 @@ import (
 	tokenUtils "github.com/tokenme/tmm/utils/token"
 	"net/http"
 	"strings"
+	"time"
 )
 
 type ShareData struct {
@@ -89,12 +91,12 @@ LIMIT 1`
 	ipKey := task.IpKey(ipInfo)
 	redisConn := Service.Redis.Master.Get()
 	defer redisConn.Close()
-	_, err = redisConn.Do("GET", ipKey)
+	ipV, err := redis.String(redisConn.Do("GET", ipKey))
 	if err == nil {
-		log.Warn("IP Found: %s", ipKey)
+		log.Warn("IP Found: %s, time: %s", ipKey, ipV)
 		ipFound = true
 	}
-	if (cookieFound || ipFound) && (task.PointsLeft.GreaterThanOrEqual(bonus) && task.MaxViewers > userViewers) {
+	if !cookieFound && !ipFound && (task.PointsLeft.GreaterThanOrEqual(bonus) && task.MaxViewers > userViewers) {
 		_, _, err := db.Query(`INSERT IGNORE INTO tmm.device_share_tasks (device_id, task_id) VALUES ('%s', %d)`, db.Escape(deviceId), taskId)
 		if err == nil {
 			pointsPerTs, err := common.GetPointsPerTs(Service)
@@ -120,7 +122,7 @@ LIMIT 1`
 				log.Error(err.Error())
 			}
 			c.SetCookie(task.CookieKey(), "1", 60*60*24*30, "/", Config.Domain, true, true)
-			_, err = redisConn.Do("SETEX", ipKey, 600, true)
+			_, err = redisConn.Do("SETEX", ipKey, 600, time.Now().Format("2006-01-02 15:04:05"))
 			if err != nil {
 				log.Error(err.Error())
 			}
