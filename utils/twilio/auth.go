@@ -28,12 +28,13 @@ type AuthVerificationResponse struct {
 	Success bool   `json:"success"`
 }
 
-func AuthSend(key string, mobile string, country uint) (ret AuthSendResponse, err error) {
+func AuthSend(key string, mobile string, country uint, locale string) (ret AuthSendResponse, err error) {
 	value := url.Values{}
 	value.Add("api_key", key)
 	value.Add("phone_number", mobile)
 	value.Add("country_code", strconv.FormatUint(uint64(country), 10))
 	value.Add("via", "sms")
+	value.Add("locale", locale)
 	resp, err := http.PostForm(AuthSendGatway, value)
 	if err != nil {
 		return ret, err

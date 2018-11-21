@@ -30,6 +30,7 @@ type GoodTx struct {
 	GoodId    uint64 `json:"good_id"`
 	Amount    uint   `json:"amount"`
 	Income    uint   `json:"income"`
+	Bonus     uint   `json:"bonus"`
 	CreatedAt string `json:"created_at"`
 }
 

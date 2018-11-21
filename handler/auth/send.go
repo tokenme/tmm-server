@@ -20,7 +20,17 @@ func SendHandler(c *gin.Context) {
 		return
 	}
 	mobile := strings.Replace(req.Mobile, " ", "", 0)
-	ret, err := twilio.AuthSend(Config.TwilioToken, mobile, req.Country)
+	locale := "en"
+	if req.Country == 86 {
+		locale = "zh-CN"
+	} else if req.Country == 886 || req.Country == 852 {
+		locale = "zh-HK"
+	} else if req.Country == 81 {
+		locale = "ja"
+	} else if req.Country == 82 {
+		locale = "ko"
+	}
+	ret, err := twilio.AuthSend(Config.TwilioToken, mobile, req.Country, locale)
 	if CheckErr(err, c) {
 		raven.CaptureError(err, nil)
 		return
