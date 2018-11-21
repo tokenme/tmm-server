@@ -61,5 +61,6 @@ func NewRouter(templatePath string, config common.Config) *gin.Engine {
 	articleRouter(r)
 	inviteRouter(r)
 	goodRouter(r)
+	AdminRouter(r)
 	return r
 }
