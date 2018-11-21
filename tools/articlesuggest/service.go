@@ -154,17 +154,26 @@ func (this *Engine) Match(userId uint64, page uint, limit uint) []uint64 {
 		words[row.Str(0)] = score
 		totalScore += score
 	}
+	var aScore float64
 	for w, v := range words {
-		words[w] = v / totalScore
+		wScore := v / totalScore
+		words[w] = wScore
+		aScore += wScore * wScore
 	}
 	taskScores := make(map[uint64]float64)
 	for _, task := range tasks {
-		var score float64
+		var (
+			score   float64
+			bScore  float64
+			abScore float64
+		)
 		for w, v := range task.Words {
+			bScore += v * v
 			if uv, found := words[w]; found {
-				score += v * uv
+				abScore += v * uv
 			}
 		}
+		score = 0.5*abScore/(math.Sqrt(bScore)*math.Sqrt(aScore)) + 0.5
 		taskScores[task.TaskId] = score
 	}
 	sorter := NewScoreSorter(taskScores)
