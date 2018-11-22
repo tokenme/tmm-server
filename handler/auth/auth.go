@@ -2,10 +2,10 @@ package auth
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	//"github.com/davecgh/go-spew/spew"
-	"encoding/base64"
 	"github.com/getsentry/raven-go"
 	"github.com/gin-gonic/gin"
 	"github.com/mkideal/log"
@@ -13,6 +13,7 @@ import (
 	"github.com/tokenme/tmm/common"
 	. "github.com/tokenme/tmm/handler"
 	"github.com/tokenme/tmm/middlewares/jwt"
+	"github.com/tokenme/tmm/tools/afs"
 	"github.com/tokenme/tmm/tools/qiniu"
 	"github.com/tokenme/tmm/tools/recaptcha"
 	"github.com/tokenme/tmm/utils"
@@ -30,7 +31,7 @@ type Biometric struct {
 var AuthenticatorFunc = func(loginInfo jwt.Login, c *gin.Context) (string, int, bool) {
 	db := Service.Db
 	var where string
-	if loginInfo.CountryCode > 0 && loginInfo.Mobile != "" && loginInfo.Password != "" && loginInfo.Captcha != "" {
+	if loginInfo.CountryCode > 0 && loginInfo.Mobile != "" && loginInfo.Password != "" && (loginInfo.Captcha != "" || loginInfo.AfsSession != "") {
 		where = fmt.Sprintf("u.country_code=%d AND u.mobile='%s'", loginInfo.CountryCode, db.Escape(loginInfo.Mobile))
 	} else {
 		log.Error("missing params")
@@ -63,10 +64,27 @@ var AuthenticatorFunc = func(loginInfo jwt.Login, c *gin.Context) (string, int, 
 			return loginInfo.Mobile, INVALID_CAPTCHA_ERROR, false
 		}
 		loginPasswd = biometric.Passwd
-	} else {
+	} else if loginInfo.Captcha != "" {
 		captchaRes := recaptcha.Verify(Config.ReCaptcha.Secret, Config.ReCaptcha.Hostname, loginInfo.Captcha)
 		if !captchaRes.Success {
 			log.Error("invalid captcha")
+			return loginInfo.Mobile, INVALID_CAPTCHA_ERROR, false
+		}
+		loginPasswd = loginInfo.Password
+	} else {
+		afsClient, err := afs.NewClientWithAccessKey(Config.Aliyun.RegionId, Config.Aliyun.AK, Config.Aliyun.AS)
+		if err != nil {
+			log.Error(err.Error())
+			return loginInfo.Mobile, INVALID_CAPTCHA_ERROR, false
+		}
+		afsRequest := afs.CreateCreateAfsAppCheckRequest()
+		afsRequest.Session = loginInfo.AfsSession
+		afsResponse, err := afsClient.CreateAfsAppCheck(afsRequest)
+		if err != nil {
+			log.Error(err.Error())
+			return loginInfo.Mobile, INVALID_CAPTCHA_ERROR, false
+		}
+		if afsResponse.Data.SecondCheckResult != 1 {
 			return loginInfo.Mobile, INVALID_CAPTCHA_ERROR, false
 		}
 		loginPasswd = loginInfo.Password
@@ -139,6 +157,7 @@ var AuthenticatorFunc = func(loginInfo jwt.Login, c *gin.Context) (string, int, 
 			Expires:     row.ForceLocaltime(18),
 		}
 		user.Wechat = wechat
+		user.WxBinded = true
 	}
 	if user.Nick == "" {
 		for {

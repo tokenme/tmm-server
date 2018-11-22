@@ -79,8 +79,9 @@ HAVING income > 0`
 	if len(goodIds) > 0 {
 		where = fmt.Sprintf(" AND gi.good_id IN (%s)", strings.Join(goodIds, ","))
 	}
-	rows, _, err = db.Query(query, user.Id, where, user.Id, where)
+	rows, _, err = db.Query(query, user.Id, where)
 	if CheckErr(err, c) {
+		log.Error(err.Error())
 		return
 	}
 	if len(rows) == 0 {
@@ -101,6 +102,7 @@ HAVING income > 0`
 	}
 	_, _, err = db.Query(`UPDATE tmm.good_invests SET redeem_status=1, redeem_at=NOW() WHERE user_id=%d AND good_id IN (%s)`, user.Id, strings.Join(updateGoodIds, ","))
 	if CheckErr(err, c) {
+		log.Error(err.Error())
 		return
 	}
 	tradeNumToken, err := uuid.NewV4()

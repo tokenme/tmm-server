@@ -82,6 +82,7 @@ type Login struct {
 	Mobile      string `form:"mobile" json:"mobile"`
 	Password    string `form:"password" json:"password"`
 	Captcha     string `form:"captcha" json:"captcha"`
+	AfsSession  string `form:"afs_session" json:"afs_session"`
 	Biometric   bool   `form:"biometric" json:"biometric"`
 }
 

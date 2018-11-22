@@ -84,6 +84,7 @@ func InfoGetHandler(c *gin.Context) {
 				Expires:     row.ForceLocaltime(18),
 			}
 			user.Wechat = wechat
+			user.WxBinded = true
 		}
 		user.ShowName = user.GetShowName()
 		user.Avatar = user.GetAvatar(Config.CDNUrl)

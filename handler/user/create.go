@@ -12,6 +12,7 @@ import (
 	"github.com/nu7hatch/gouuid"
 	"github.com/tokenme/tmm/coins/eth"
 	. "github.com/tokenme/tmm/handler"
+	"github.com/tokenme/tmm/tools/afs"
 	"github.com/tokenme/tmm/tools/qiniu"
 	"github.com/tokenme/tmm/utils"
 	tokenUtils "github.com/tokenme/tmm/utils/token"
@@ -30,6 +31,7 @@ type CreateRequest struct {
 	Password    string `form:"passwd" json:"passwd"`
 	RePassword  string `form:"repasswd" json:"repasswd"`
 	Captcha     string `form:"captcha" json:"captcha"`
+	AfsSession  string `form:"afs_session" json:"afs_session"`
 }
 
 func CreateHandler(c *gin.Context) {
@@ -66,6 +68,18 @@ func createByMobile(c *gin.Context, req CreateRequest) {
 	}
 	if Check(!ret.Success, ret.Message, c) {
 		return
+	}
+	if req.AfsSession != "" {
+		afsClient, err := afs.NewClientWithAccessKey(Config.Aliyun.RegionId, Config.Aliyun.AK, Config.Aliyun.AS)
+		if CheckWithCode(err != nil, INVALID_CAPTCHA_ERROR, "Invalid captcha", c) {
+			return
+		}
+		afsRequest := afs.CreateCreateAfsAppCheckRequest()
+		afsRequest.Session = req.AfsSession
+		afsResponse, err := afsClient.CreateAfsAppCheck(afsRequest)
+		if CheckWithCode(err != nil || afsResponse.Data.SecondCheckResult != 1, INVALID_CAPTCHA_ERROR, "Invalid captcha", c) {
+			return
+		}
 	}
 	/*
 		captchaRes := recaptcha.Verify(Config.ReCaptcha.Secret, Config.ReCaptcha.Hostname, req.Captcha)
