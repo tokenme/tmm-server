@@ -15,6 +15,7 @@ import (
 	"github.com/tokenme/tmm/tools/articleclassifier"
 	"github.com/tokenme/tmm/tools/gc"
 	"github.com/tokenme/tmm/tools/orderbook-server"
+	"github.com/tokenme/tmm/tools/tmmwithdraw"
 	"github.com/tokenme/tmm/tools/tokenprofile"
 	"github.com/tokenme/tmm/tools/transferwatcher"
 	"github.com/tokenme/tmm/tools/txaccelerate"
@@ -50,6 +51,7 @@ func main() {
 	flag.BoolVar(&configFlag.EnableWeb, "web", false, "enable http web server")
 	flag.BoolVar(&configFlag.EnableGC, "gc", false, "enable gc")
 	flag.BoolVar(&configFlag.EnableTx, "tx", false, "enable tx queue handler")
+	flag.BoolVar(&configFlag.EnableTokenWithdraw, "withdraw", false, "enable token withdraw queue handler")
 	flag.BoolVar(&parseTokenFlag, "parse-token", false, "enable parse token")
 	flag.BoolVar(&articleCrawlerFlag, "crawle-articles", false, "enable crawle_articles")
 	flag.BoolVar(&articlePublishFlag, "publish-articles", false, "enable publish_articles")
@@ -82,6 +84,10 @@ func main() {
 
 	if configFlag.EnableOrderBook {
 		config.EnableOrderBook = configFlag.EnableOrderBook
+	}
+
+	if configFlag.EnableTokenWithdraw {
+		config.EnableTokenWithdraw = configFlag.EnableTokenWithdraw
 	}
 
 	if configFlag.Debug {
@@ -182,6 +188,10 @@ func main() {
 			//return
 		}
 	}()
+	tokenWithdraw := tmmwithdraw.NewService(service, config)
+	if config.EnableTokenWithdraw {
+		go tokenWithdraw.Start()
+	}
 	//queueManager := sqs.NewManager(config.SQS)
 	//queues := make(map[string]sqs.Queue)
 	//queues = map[string]sqs.Queue{
@@ -237,6 +247,9 @@ func main() {
 	gcHandler.Stop()
 	if config.EnableOrderBook {
 		orderbookServer.Stop()
+	}
+	if config.EnableTokenWithdraw {
+		go tokenWithdraw.Stop()
 	}
 	transferWatcher.Stop()
 }

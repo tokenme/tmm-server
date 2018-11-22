@@ -3,28 +3,33 @@ package redeem
 import (
 	"fmt"
 	//"github.com/davecgh/go-spew/spew"
-	"github.com/ethereum/go-ethereum/params"
+	"encoding/json"
+	//"github.com/ethereum/go-ethereum/params"
+	"github.com/garyburd/redigo/redis"
 	"github.com/gin-gonic/gin"
 	"github.com/mkideal/log"
-	"github.com/nu7hatch/gouuid"
+	"github.com/nlopes/slack"
 	"github.com/shopspring/decimal"
 	"github.com/tokenme/tmm/coins/eth"
 	"github.com/tokenme/tmm/coins/eth/utils"
 	"github.com/tokenme/tmm/common"
 	. "github.com/tokenme/tmm/handler"
-	"github.com/tokenme/tmm/tools/ethgasstation-api"
+	//"github.com/tokenme/tmm/tools/ethgasstation-api"
 	"github.com/tokenme/tmm/tools/forex"
-	"github.com/tokenme/tmm/tools/wechatpay"
 	"github.com/tokenme/tmm/tools/ykt"
 	commonutils "github.com/tokenme/tmm/utils"
 	"math/big"
 	"net/http"
+	"strconv"
+	"time"
 )
 
 type TMMWithdrawRequest struct {
 	TMM      decimal.Decimal `json:"tmm" form:"tmm" binding:"required"`
 	Currency string          `json:"currency" form:"currency" binding:"required"`
 }
+
+const TMMWithdrawRateKey = "TMMWithdrawRate-%d"
 
 func TMMWithdrawHandler(c *gin.Context) {
 	/*
@@ -66,10 +71,22 @@ func TMMWithdrawHandler(c *gin.Context) {
 		}
 	}
 
+	redisConn := Service.Redis.Master.Get()
+	defer redisConn.Close()
+	withdrawRateKey := fmt.Sprintf(TMMWithdrawRateKey, user.Id)
+	withdrawTime, err := redis.String(redisConn.Do("GET", withdrawRateKey))
+	if CheckWithCode(err == nil, TOKEN_WITHDRAW_RATE_LIMIT_ERROR, "每次提现时间间隔不能少于2小时", c) {
+		log.Warn("WithdrawRateLimit: %d, time: %s", user.Id, withdrawTime)
+		return
+	}
 	recyclePrice := common.GetTMMPrice(Service, Config, common.RecyclePrice)
 	minTmmRequire := decimal.New(int64(Config.MinTMMRedeem), 0)
 	if req.TMM.LessThan(minTmmRequire) {
 		c.JSON(INVALID_MIN_TOKEN_ERROR, common.ExchangeRate{MinPoints: minTmmRequire})
+		return
+	}
+
+	if CheckWithCode(req.TMM.LessThan(minTmmRequire) || req.TMM.GreaterThan(decimal.New(10000, 0)), INVALID_TOKEN_WITHDRAW_AMOUNT_ERROR, "提现UCoin超出限制。最小100 UCoin或累计超过10000 UCoin", c) {
 		return
 	}
 
@@ -97,32 +114,14 @@ func TMMWithdrawHandler(c *gin.Context) {
 		return
 	}
 
-	tradeNumToken, err := uuid.NewV4()
-	if CheckErr(err, c) {
-		return
-	}
-
 	forexRate := forex.Rate(Service, "USD", "CNY")
 	cny := cash.Mul(forexRate)
 
-	payClient := wechatpay.NewClient(Config.Wechat.AppId, Config.Wechat.MchId, Config.Wechat.Key, Config.Wechat.CertCrt, Config.Wechat.CertKey)
-	payParams := &wechatpay.Request{
-		TradeNum:    commonutils.Md5(tradeNumToken.String()),
-		Amount:      cny.Mul(decimal.New(100, 0)).IntPart(),
-		CallbackURL: fmt.Sprintf("%s/wechat/pay/callback", Config.BaseUrl),
-		OpenId:      wxOpenId,
-		Ip:          ClientIP(c),
-		Desc:        "UCoin提现",
-	}
-	payParams.Nonce = commonutils.Md5(payParams.TradeNum)
-	payRes, err := payClient.Pay(payParams)
-	if CheckErr(err, c) {
-		log.Error(err.Error())
+	if CheckWithCode(cny.LessThan(decimal.New(1, 0)) || cny.GreaterThan(decimal.New(2000, 0)), WECHAT_PAYMENT_ERROR, "提现金额超出限制。最小金额1元或累计超过2000元", c) {
+		log.Error("cash: %s, tmm: %s, recyclePrice:%s", cny.String(), req.TMM.String(), recyclePrice.String())
 		return
 	}
-	if CheckWithCode(payRes.ErrCode != "", WECHAT_PAYMENT_ERROR, payRes.ErrCodeDesc, c) {
-		return
-	}
+
 	poolPrivKey, err := commonutils.AddressDecrypt(Config.TMMPoolWallet.Data, Config.TMMPoolWallet.Salt, Config.TMMPoolWallet.Key)
 	if CheckErr(err, c) {
 		return
@@ -149,19 +148,19 @@ func TMMWithdrawHandler(c *gin.Context) {
 		return
 	}
 	var gasPrice *big.Int
-	gas, err := ethgasstation.Gas()
+	/*gas, err := ethgasstation.Gas()
 	if err != nil {
 		gasPrice = nil
 	} else {
 		gasPrice = new(big.Int).Mul(big.NewInt(gas.SafeLow.Div(decimal.New(10, 0)).IntPart()), big.NewInt(params.GWei))
-	}
+	}*/
 	transactorOpts := eth.TransactorOptions{
 		Nonce:    nonce,
 		GasPrice: gasPrice,
 		GasLimit: 210000,
 	}
 	eth.TransactorUpdate(transactor, transactorOpts, c)
-	_, err = utils.TransferProxy(token, transactor, user.Wallet, poolPubKey, amount)
+	tx, err := utils.TransferProxy(token, transactor, user.Wallet, poolPubKey, amount)
 	if CheckErr(err, c) {
 		return
 	}
@@ -169,10 +168,61 @@ func TMMWithdrawHandler(c *gin.Context) {
 	if err != nil {
 		log.Error(err.Error())
 	}
+	_, _, err = db.Query(`INSERT INTO tmm.withdraw_txs (tx, user_id, tmm, cny, client_ip) VALUES ('%s', %d, %s, %s, '%s')`, tx.Hash().Hex(), user.Id, req.TMM.String(), cny.String(), ClientIP(c))
+	if CheckErr(err, c) {
+		log.Error(err.Error())
+		return
+	}
+	_, err = redisConn.Do("SETEX", withdrawRateKey, 60*60*2, time.Now().Format("2006-01-02 15:04:05"))
+	if err != nil {
+		log.Error(err.Error())
+	}
 	receipt := common.TMMWithdrawResponse{
 		TMM:      req.TMM,
 		Cash:     cny,
 		Currency: req.Currency,
+	}
+	slackParams := slack.PostMessageParameters{Parse: "full", UnfurlMedia: true, Markdown: true}
+	attachment := slack.Attachment{
+		Color:      "success",
+		AuthorName: user.ShowName,
+		AuthorIcon: user.Avatar,
+		Title:      "Token提现",
+		Fallback:   "Fallback message",
+		Fields: []slack.AttachmentField{
+			{
+				Title: "CountryCode",
+				Value: strconv.FormatUint(uint64(user.CountryCode), 10),
+				Short: true,
+			},
+			{
+				Title: "UserID",
+				Value: strconv.FormatUint(user.Id, 10),
+				Short: true,
+			},
+			{
+				Title: "CNY",
+				Value: cny.StringFixed(2),
+				Short: true,
+			},
+			{
+				Title: "Tokens",
+				Value: req.TMM.StringFixed(4),
+				Short: true,
+			},
+			{
+				Title: "Recept",
+				Value: tx.Hash().Hex(),
+				Short: true,
+			},
+		},
+		Ts: json.Number(strconv.FormatInt(time.Now().Unix(), 10)),
+	}
+	slackParams.Attachments = []slack.Attachment{attachment}
+	_, _, err = Service.Slack.PostMessage(Config.Slack.OpsChannel, "Token提现", slackParams)
+	if err != nil {
+		log.Error(err.Error())
+		return
 	}
 	c.JSON(http.StatusOK, receipt)
 }
