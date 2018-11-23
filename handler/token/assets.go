@@ -36,7 +36,6 @@ func AssetsHandler(c *gin.Context) {
 	if currency == "" {
 		currency = "USD"
 	}
-
 	ethBalance, _ := eth.BalanceOf(Service.Geth, c, user.Wallet)
 	if ethBalance != nil && ethBalance.Cmp(big.NewInt(0)) == 1 {
 		token := &common.Token{

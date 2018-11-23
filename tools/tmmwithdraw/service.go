@@ -69,6 +69,7 @@ func (this *Service) CheckTx(ctx context.Context) error {
 		txHex := row.Str(0)
 		receipt, err := utils.TransactionReceipt(this.service.Geth, ctx, txHex)
 		if err != nil {
+			log.Error(err.Error())
 			continue
 		}
 		if receipt == nil {

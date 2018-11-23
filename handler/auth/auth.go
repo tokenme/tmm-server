@@ -31,7 +31,7 @@ type Biometric struct {
 var AuthenticatorFunc = func(loginInfo jwt.Login, c *gin.Context) (string, int, bool) {
 	db := Service.Db
 	var where string
-	if loginInfo.CountryCode > 0 && loginInfo.Mobile != "" && loginInfo.Password != "" && (loginInfo.Captcha != "" || loginInfo.AfsSession != "") {
+	if loginInfo.CountryCode > 0 && loginInfo.Mobile != "" && loginInfo.Password != "" && (loginInfo.Captcha != "" || loginInfo.AfsSession != "" && loginInfo.AfsToken == "" || loginInfo.AfsToken != "" && loginInfo.AfsSig != "" && loginInfo.AfsSession != "") {
 		where = fmt.Sprintf("u.country_code=%d AND u.mobile='%s'", loginInfo.CountryCode, db.Escape(loginInfo.Mobile))
 	} else {
 		log.Error("missing params")
@@ -71,7 +71,7 @@ var AuthenticatorFunc = func(loginInfo jwt.Login, c *gin.Context) (string, int, 
 			return loginInfo.Mobile, INVALID_CAPTCHA_ERROR, false
 		}
 		loginPasswd = loginInfo.Password
-	} else {
+	} else if loginInfo.AfsSession != "" && loginInfo.AfsToken == "" {
 		afsClient, err := afs.NewClientWithAccessKey(Config.Aliyun.RegionId, Config.Aliyun.AK, Config.Aliyun.AS)
 		if err != nil {
 			log.Error(err.Error())
@@ -85,6 +85,28 @@ var AuthenticatorFunc = func(loginInfo jwt.Login, c *gin.Context) (string, int, 
 			return loginInfo.Mobile, INVALID_CAPTCHA_ERROR, false
 		}
 		if afsResponse.Data.SecondCheckResult != 1 {
+			return loginInfo.Mobile, INVALID_CAPTCHA_ERROR, false
+		}
+		loginPasswd = loginInfo.Password
+	} else {
+		afsClient, err := afs.NewClientWithAccessKey(Config.Aliyun.RegionId, Config.Aliyun.AK, Config.Aliyun.AS)
+		if err != nil {
+			log.Error(err.Error())
+			return loginInfo.Mobile, INVALID_CAPTCHA_ERROR, false
+		}
+		afsRequest := afs.CreateAuthenticateSigRequest()
+		afsRequest.SessionId = loginInfo.AfsSession
+		afsRequest.Token = loginInfo.AfsToken
+		afsRequest.Sig = loginInfo.AfsSig
+		afsRequest.AppKey = Config.Aliyun.AfsAppKey
+		afsRequest.Scene = "android"
+		afsRequest.RemoteIp = ClientIP(c)
+		afsResponse, err := afsClient.AuthenticateSig(afsRequest)
+		if err != nil {
+			log.Error(err.Error())
+			return loginInfo.Mobile, INVALID_CAPTCHA_ERROR, false
+		}
+		if afsResponse.Code != 100 {
 			return loginInfo.Mobile, INVALID_CAPTCHA_ERROR, false
 		}
 		loginPasswd = loginInfo.Password
