@@ -35,3 +35,12 @@ type TMMWithdrawResponse struct {
 	Cash     decimal.Decimal `json:"cash"`
 	Currency string          `json:"currency"`
 }
+
+type TMMWithdrawRecord struct {
+	TMM            decimal.Decimal `json:"tmm"`
+	Cash           decimal.Decimal `json:"cash"`
+	Tx             string          `json:"tx"`
+	TxStatus       uint            `json:"tx_status"`
+	WithdrawStatus uint            `json:"withdraw_status"`
+	InsertedAt     string          `json:"inserted_at"`
+}
