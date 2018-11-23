@@ -83,6 +83,12 @@ func (this *Watcher) handleTransfer(ev *eth.TokenTransfer) {
 		continueUpdate = false
 	}
 	if continueUpdate {
+		_, _, err = db.Query(`UPDATE tmm.withdraw_txs SET tx_status=1 WHERE tx='%s'`, db.Escape(tx))
+		if err != nil {
+			log.Error(err.Error())
+		}
+	}
+	if continueUpdate {
 		_, ret, err = db.Query(`UPDATE tmm.orderbooks SET deposit_status=1 WHERE deposit_tx='%s'`, db.Escape(tx))
 		if err != nil {
 			log.Error(err.Error())
@@ -104,6 +110,9 @@ func (this *Watcher) handleTransfer(ev *eth.TokenTransfer) {
 		_, _, err = db.Query(`UPDATE tmm.orderbook_trades SET tx_status=1 WHERE tx='%s'`, db.Escape(tx))
 		if err != nil {
 			log.Error(err.Error())
+		}
+		if ret.AffectedRows() > 0 {
+			continueUpdate = false
 		}
 	}
 	this.push(ev)
