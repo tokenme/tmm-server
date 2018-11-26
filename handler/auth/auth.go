@@ -125,6 +125,9 @@ var AuthenticatorFunc = func(loginInfo jwt.Login, c *gin.Context) (string, int, 
                 IFNULL(ic.id, 0),
                 IFNULL(ic2.id, 0),
                 IFNULL(us.exchange_enabled, 0),
+                IFNULL(us.level, 0),
+                ul.name,
+                ul.enname,
                 wx.union_id,
                 wx.nick,
                 wx.avatar,
@@ -135,6 +138,7 @@ var AuthenticatorFunc = func(loginInfo jwt.Login, c *gin.Context) (string, int, 
             LEFT JOIN tmm.invite_codes AS ic ON (ic.user_id = u.id)
             LEFT JOIN tmm.invite_codes AS ic2 ON (ic2.user_id = ic.parent_id)
             LEFT JOIN tmm.user_settings AS us ON (us.user_id = u.id)
+            LEFT JOIN tmm.user_levels AS ul ON (ul.id=IFNULL(us.level, 0))
             LEFT JOIN tmm.wx AS wx ON (wx.user_id = u.id)
             WHERE %s
             AND active = 1
@@ -163,20 +167,25 @@ var AuthenticatorFunc = func(loginInfo jwt.Login, c *gin.Context) (string, int, 
 		InviteCode:      tokenUtils.Token(row.Uint64(10)),
 		InviterCode:     tokenUtils.Token(row.Uint64(11)),
 		ExchangeEnabled: row.Int(12) == 1 || row.Uint(1) != 86,
+		Level: common.CreditLevel{
+			Id:     row.Uint(13),
+			Name:   row.Str(14),
+			Enname: row.Str(15),
+		},
 	}
 	paymentPasswd := row.Str(9)
 	if paymentPasswd != "" {
 		user.CanPay = 1
 	}
-	wxUnionId := row.Str(13)
+	wxUnionId := row.Str(16)
 	if wxUnionId != "" {
 		wechat := &common.Wechat{
 			UnionId:     wxUnionId,
-			Nick:        row.Str(14),
-			Avatar:      row.Str(15),
-			Gender:      row.Uint(16),
-			AccessToken: row.Str(17),
-			Expires:     row.ForceLocaltime(18),
+			Nick:        row.Str(17),
+			Avatar:      row.Str(18),
+			Gender:      row.Uint(19),
+			AccessToken: row.Str(20),
+			Expires:     row.ForceLocaltime(21),
 		}
 		user.Wechat = wechat
 		user.WxBinded = true

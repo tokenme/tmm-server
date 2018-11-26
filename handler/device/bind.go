@@ -128,5 +128,18 @@ ORDER BY d.lastping_at DESC LIMIT 1`
 	if err != nil {
 		log.Error(err.Error())
 	}
+	_, _, err = db.Query(`INSERT INTO user_settings (user_id, level)
+(
+SELECT
+i.parent_id, ul.id
+FROM tmm.user_levels AS ul
+INNER JOIN (
+    SELECT parent_id, COUNT(*) AS invites FROM tmm.invite_codes WHERE parent_id=%d
+) AS i ON (i.invites >= ul.invites)
+ORDER BY ul.id DESC LIMIT 1
+) ON DUPLICATE KEY UPDATE level=VALUES(level)`, inviterUserId)
+	if err != nil {
+		log.Error(err.Error())
+	}
 	return err
 }

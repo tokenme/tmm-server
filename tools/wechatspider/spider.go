@@ -88,6 +88,9 @@ func (this *Crawler) GetGzhArticles(name string) (int, error) {
 		}
 		ids = append(ids, fmt.Sprintf("%d", a.FileId))
 	}
+	if len(ids) == 0 {
+		return 0, nil
+	}
 	rows, _, err := db.Query(`SELECT fileid FROM tmm.articles WHERE fileid IN (%s)`, strings.Join(ids, ","))
 	if err != nil {
 		return 0, err
@@ -116,6 +119,7 @@ func (this *Crawler) GetGzhArticles(name string) (int, error) {
 	if count > 0 {
 		_, _, err := db.Query(`INSERT IGNORE INTO tmm.articles (fileid, author, title, link, source_url, cover, published_at, digest, content, sortid) VALUES %s`, strings.Join(val, ","))
 		if err != nil {
+			log.Error(err.Error())
 			return 0, err
 		}
 		_, _, err = db.Query(`UPDATE tmm.wx_gzh SET updated_at=NOW() WHERE name='%s'`, db.Escape(name))

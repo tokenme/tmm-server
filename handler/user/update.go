@@ -142,6 +142,21 @@ ORDER BY d.lastping_at DESC LIMIT 1`
 			raven.CaptureError(err, nil)
 			return
 		}
+		_, _, err = db.Query(`INSERT INTO user_settings (user_id, level)
+(
+SELECT
+i.parent_id, ul.id
+FROM tmm.user_levels AS ul
+INNER JOIN (
+    SELECT parent_id, COUNT(*) AS invites FROM tmm.invite_codes WHERE parent_id=%d
+) AS i ON (i.invites >= ul.invites)
+ORDER BY ul.id DESC LIMIT 1
+) ON DUPLICATE KEY UPDATE level=VALUES(level)`, inviterUserId)
+		if CheckErr(err, c) {
+			log.Error(err.Error())
+			raven.CaptureError(err, nil)
+			return
+		}
 	} else if req.WxUnionId != "" {
 		expires := time.Unix(req.WxExpires/1000, 0)
 		_, _, err := db.Query(`INSERT INTO tmm.wx (user_id, union_id, open_id, nick, avatar, gender, access_token, expires) VALUES (%d, '%s', '%s', '%s', '%s', %d, '%s', '%s') ON DUPLICATE KEY UPDATE union_id=VALUES(union_id), open_id=VALUES(open_id), nick=VALUES(nick), avatar=VALUES(avatar), gender=VALUES(gender), access_token=VALUES(access_token), expires=VALUES(expires)`, user.Id, db.Escape(req.WxUnionId), db.Escape(req.WxOpenId), db.Escape(req.WxNick), db.Escape(req.WxAvatar), req.WxGender, db.Escape(req.WxToken), expires.Format("2006-01-02 15:04:05"))
