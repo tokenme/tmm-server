@@ -1,10 +1,10 @@
 package handler
 
 import (
-	"fmt"
-	//"github.com/davecgh/go-spew/spew"
 	"bytes"
 	"encoding/json"
+	"fmt"
+	//"github.com/davecgh/go-spew/spew"
 	"github.com/garyburd/redigo/redis"
 	"github.com/gin-gonic/gin"
 	"github.com/mkideal/log"
@@ -65,26 +65,44 @@ func ApiSignFunc() gin.HandlerFunc {
 				log.Error(err.Error())
 			} else {
 				for k, v := range postData {
-					requestParams[k] = fmt.Sprintf("%v", v)
+					var param string
+					switch v.(type) {
+					case bool:
+						if v.(bool) {
+							param = "1"
+						} else {
+							param = "0"
+						}
+					default:
+						param = fmt.Sprintf("%v", v)
+					}
+					requestParams[k] = param
 				}
 			}
 			c.Request.Body = ioutil.NopCloser(bytes.NewBuffer(buf))
 		}
 
-		var signData []string
+		var signKeys []string
 		for k, v := range requestParams {
 			if v != "" {
-				signData = append(signData, fmt.Sprintf("%s%s", k, v))
+				signKeys = append(signKeys, k)
 			}
 		}
-		sort.Strings(signData)
+		sort.Strings(signKeys)
+		var signData []string
+		for _, key := range signKeys {
+			v := requestParams[key]
+			if v != "" {
+				signData = append(signData, fmt.Sprintf("%s%s", key, v))
+			}
+		}
 		urlStr := fmt.Sprintf("%s%s", Config.BaseUrl, c.Request.URL.Path)
 		rawSign := fmt.Sprintf("%s%s%s%s", urlStr, appKey, strings.Join(signData, ""), secret)
-		//log.Info(rawSign)
 		verifySign := utils.Md5(rawSign)
-		//log.Info(verifySign)
 		if sign != verifySign {
 			log.Info("invalid sign")
+			log.Info(rawSign)
+			log.Info(verifySign)
 			c.Abort()
 			c.JSON(http.StatusBadRequest, gin.H{
 				"code":    401,

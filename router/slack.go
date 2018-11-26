@@ -8,4 +8,5 @@ import (
 func slackRouter(r *gin.Engine) {
 	slackGroup := r.Group("/slack")
 	slackGroup.POST("/hook", slack.HookHandler)
+	slackGroup.GET("/chart/bar/:data", slack.ChartBarHandler)
 }
