@@ -1,4 +1,5 @@
-package admin
+package user
+
 
 import ("github.com/gin-gonic/gin"
 	. "github.com/tokenme/tmm/handler"
@@ -6,7 +7,7 @@ import ("github.com/gin-gonic/gin"
 	"github.com/tokenme/tmm/common"
 )
 
-func GetInfoHandler(c *gin.Context){
+func GetUserInfoHandler(c *gin.Context){
 	userContext, exists := c.Get("USER")
 	if Check(!exists, `Need login`, c) {
 		return

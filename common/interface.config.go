@@ -115,9 +115,10 @@ type ContactConfig struct {
 }
 
 type AliyunConfig struct {
-	RegionId string `required:"true"`
-	AK       string `required:"true"`
-	AS       string `required:"true"`
+	RegionId  string `required:"true"`
+	AK        string `required:"true"`
+	AS        string `required:"true"`
+	AfsAppKey string `required:"true"`
 }
 
 type ReCaptchaConfig struct {

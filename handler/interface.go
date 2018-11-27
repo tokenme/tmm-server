@@ -263,18 +263,3 @@ func verifySign(secret string, req APIRequest) bool {
 	sign := utils.Sha1(fmt.Sprintf("%s%s%s", secret, reqStr, secret))
 	return sign == strings.ToLower(req.Sign)
 }
-
-func VerifyAdmin(mobile string, country uint) bool {
-	db := Service.Db
-	Query := `select uset.role from  ucoin.users as u LEFT JOIN tmm.user_settings AS uset ON( u.id = uset.user_id)
-	where u.mobile='%s' AND u.country_code = %d  `
-	Rows, result, err := db.Query(Query, mobile, country)
-	if err != nil || len(Rows) == 0{
-		return false
-	}
-	if Rows[0].Int(result.Map(`role`)) != 1 {
-		return false
-	}
-	return true
-
-}

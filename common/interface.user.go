@@ -24,6 +24,11 @@ type User struct {
 	InviterCode     tokenUtils.Token `json:"inviter_code,omitempty"`
 	CanPay          uint             `json:"can_pay,omitempty"`
 	ExchangeEnabled bool             `json:"exchange_enabled,omitempty"`
+	Level           CreditLevel      `json:"level,omitempty"`
+	LevelName       string           `json:"level_name,omitempty"`
+	LevelEnname     string           `json:"level_enname,omitempty"`
+	Role            uint8            `json:"-"`
+	WxBinded        bool             `json:"wx_binded,omitempty"`
 	Wechat          *Wechat          `json:"-"`
 }
 
@@ -34,6 +39,19 @@ type Wechat struct {
 	Avatar      string    `json:"avatar,omitempty"`
 	AccessToken string    `json:"access_token,omitempty"`
 	Expires     time.Time `json:"expires,omitempty"`
+}
+
+type CreditLevel struct {
+	Id      uint   `json:"id,omitemty"`
+	Name    string `json:"name,omitempty"`
+	Enname  string `json:"enname,omitempty"`
+	Desc    string `json:"desc,omitempty"`
+	Endesc  string `json:"endesc,omitempty"`
+	Invites uint   `json:"invites,omitempty"`
+}
+
+func (this User) IsAdmin() bool {
+	return this.Role == 1
 }
 
 func (this User) GetShowName() string {

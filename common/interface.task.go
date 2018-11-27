@@ -25,6 +25,7 @@ type ShareTask struct {
 	OnlineStatus  int8            `json:"online_status,omitempty"`
 	InIframe      bool            `json:"-"`
 	ShowBonusHint bool            `json:"show_bonus_hint,omitempty"`
+	Cid           []int           `json:"cid"`
 }
 
 func (this ShareTask) ShouldUseIframe() bool {
