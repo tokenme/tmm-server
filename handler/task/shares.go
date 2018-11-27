@@ -25,6 +25,7 @@ type SharesRequest struct {
 	Mac      string          `json:"mac" form:"mac"`
 	Platform common.Platform `json:"platform" form:"platform" binding:"required"`
 	MineOnly bool            `json:"mine_only" form:"mine_only"`
+	IsVideo  bool            `json:"is_video" form:"is_video"`
 	Build    uint            `json:"build" form:"build"`
 	Cid      uint            `json:"cid" form:"cid"`
 }
@@ -66,9 +67,12 @@ func SharesHandler(c *gin.Context) {
 		onlineStatusConstrain = fmt.Sprintf("AND st.creator = %d", user.Id)
 		orderBy = "st.id DESC"
 	}
+	if req.IsVideo {
+		onlineStatusConstrain = "st.is_video=1 AND st.points_left>0 AND st.online_status = 1"
+	}
 	if req.Cid > 0 {
 		inCidConstrain = fmt.Sprintf("INNER JOIN tmm.share_task_categories AS stc ON (stc.task_id=st.id AND stc.cid=%d)", req.Cid)
-	} else if !req.MineOnly {
+	} else if !req.MineOnly && !req.IsVideo {
 		taskIds = SuggestEngine.Match(user.Id, req.Page, req.PageSize)
 	}
 	if len(taskIds) > 0 {
@@ -101,6 +105,8 @@ func SharesHandler(c *gin.Context) {
     st.inserted_at,
     st.updated_at,
     st.creator,
+    st.video_link,
+    st.is_video,
     st.online_status
 FROM tmm.share_tasks AS st
 %s
@@ -128,6 +134,8 @@ ORDER BY %s %s`
 			PointsLeft:    pointsLeft,
 			InsertedAt:    row.ForceLocaltime(10).Format(time.RFC3339),
 			UpdatedAt:     row.ForceLocaltime(11).Format(time.RFC3339),
+			VideoLink:     row.Str(13),
+			IsVideo:       uint8(row.Uint(14)),
 			ShowBonusHint: showBonusHint,
 		}
 		if strings.HasPrefix(task.Link, "https://tmm.tokenmama.io/article/show") {
@@ -136,7 +144,7 @@ ORDER BY %s %s`
 		if creator == user.Id {
 			task.Viewers = row.Uint(9)
 			task.Creator = creator
-			task.OnlineStatus = int8(row.Int(13))
+			task.OnlineStatus = int8(row.Int(15))
 		}
 		task.ShareLink, _ = task.GetShareLink(deviceId, Config)
 		tasks = append(tasks, task)
