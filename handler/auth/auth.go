@@ -125,6 +125,7 @@ var AuthenticatorFunc = func(loginInfo jwt.Login, c *gin.Context) (string, int, 
                 IFNULL(ic.id, 0),
                 IFNULL(ic2.id, 0),
                 IFNULL(us.exchange_enabled, 0),
+                IFNULL(us.role, 0),
                 IFNULL(us.level, 0),
                 ul.name,
                 ul.enname,
@@ -167,25 +168,26 @@ var AuthenticatorFunc = func(loginInfo jwt.Login, c *gin.Context) (string, int, 
 		InviteCode:      tokenUtils.Token(row.Uint64(10)),
 		InviterCode:     tokenUtils.Token(row.Uint64(11)),
 		ExchangeEnabled: row.Int(12) == 1 || row.Uint(1) != 86,
+		Role:            uint8(row.Uint(13)),
 		Level: common.CreditLevel{
-			Id:     row.Uint(13),
-			Name:   row.Str(14),
-			Enname: row.Str(15),
+			Id:     row.Uint(14),
+			Name:   row.Str(15),
+			Enname: row.Str(16),
 		},
 	}
 	paymentPasswd := row.Str(9)
 	if paymentPasswd != "" {
 		user.CanPay = 1
 	}
-	wxUnionId := row.Str(16)
+	wxUnionId := row.Str(17)
 	if wxUnionId != "" {
 		wechat := &common.Wechat{
 			UnionId:     wxUnionId,
-			Nick:        row.Str(17),
-			Avatar:      row.Str(18),
-			Gender:      row.Uint(19),
-			AccessToken: row.Str(20),
-			Expires:     row.ForceLocaltime(21),
+			Nick:        row.Str(18),
+			Avatar:      row.Str(19),
+			Gender:      row.Uint(20),
+			AccessToken: row.Str(21),
+			Expires:     row.ForceLocaltime(22),
 		}
 		user.Wechat = wechat
 		user.WxBinded = true

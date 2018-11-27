@@ -27,6 +27,7 @@ type User struct {
 	Level           CreditLevel      `json:"level,omitempty"`
 	LevelName       string           `json:"level_name,omitempty"`
 	LevelEnname     string           `json:"level_enname,omitempty"`
+	Role            uint8            `json:"-"`
 	WxBinded        bool             `json:"wx_binded,omitempty"`
 	Wechat          *Wechat          `json:"-"`
 }
@@ -47,6 +48,10 @@ type CreditLevel struct {
 	Desc    string `json:"desc,omitempty"`
 	Endesc  string `json:"endesc,omitempty"`
 	Invites uint   `json:"invites,omitempty"`
+}
+
+func (this User) IsAdmin() bool {
+	return this.Role == 1
 }
 
 func (this User) GetShowName() string {
