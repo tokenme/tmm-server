@@ -12,9 +12,10 @@ func TaskRouter(r *gin.Engine){
 	 {
 	 	taskR.GET(`/getToken`,qiniu.UpTokenHandler)
 	 	taskR.POST(`/add`,task.AddShareHandler)
-	 	taskR.POST(`/exit`,task.ExitTaskHandler)
+	 	taskR.POST(`/modify`,task.ModifyTaskHandler)
 	 	taskR.GET(`/list`,task.GetShareListHandler)
 	 	taskR.POST(`/online`,task.TaskUpdateHandler)
+	 	taskR.GET(`/edit`,task.EditTaskHandler)
 	 }
 	 }
 

@@ -18,7 +18,7 @@ func GetShareListHandler(c *gin.Context) {
 	var (
 		offset, count   int
 		query, sumquery string
-		cidquery        = `select cid from tmm.share_task_categories where task_id = %d`
+		cidQuery        = `select cid from tmm.share_task_categories where task_id = %d`
 	)
 	if page >= 1 {
 		offset = (page - 1) * limit
@@ -72,7 +72,7 @@ func GetShareListHandler(c *gin.Context) {
 			InsertedAt:   row.Str(result.Map(`inserted_at`)),
 			UpdatedAt:    row.Str(result.Map(`updated_at`)),
 		}
-		rows, _, err = db.Query(cidquery, share.Id)
+		rows, _, err = db.Query(cidQuery, share.Id)
 		for _, row := range rows {
 			cidList = append(cidList, row.Int(0))
 		}
