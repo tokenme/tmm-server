@@ -1,15 +1,20 @@
 package task
 
 import (
+	"errors"
 	"fmt"
 	//"github.com/davecgh/go-spew/spew"
 	"github.com/gin-gonic/gin"
-	//"github.com/mkideal/log"
+	"github.com/mkideal/log"
+	"github.com/panjf2000/ants"
 	"github.com/shopspring/decimal"
 	"github.com/tokenme/tmm/common"
 	. "github.com/tokenme/tmm/handler"
+	"github.com/tokenme/tmm/tools/videospider"
 	"net/http"
+	"sort"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -116,13 +121,31 @@ ORDER BY %s %s`
 	if CheckErr(err, c) {
 		return
 	}
-	var tasks []common.ShareTask
+	var tasks []*common.ShareTask
+	var wg sync.WaitGroup
+	videopider := videospider.NewClient(Service, Config)
+	videoFetchPool, _ := ants.NewPoolWithFunc(10, func(req interface{}) error {
+		defer wg.Done()
+		task := req.(*common.ShareTask)
+		video, err := videopider.Get(task.Link)
+		if err != nil {
+			log.Error(err.Error())
+			return err
+		}
+		if len(video.Files) == 0 {
+			return errors.New("invalid video")
+		}
+		sorter := videospider.NewVideoSorter(video.Files)
+		sort.Sort(sort.Reverse(sorter))
+		task.VideoLink = sorter[0].Link
+		return nil
+	})
 	for _, row := range rows {
 		bonus, _ := decimal.NewFromString(row.Str(6))
 		points, _ := decimal.NewFromString(row.Str(7))
 		pointsLeft, _ := decimal.NewFromString(row.Str(8))
 		creator := row.Uint64(12)
-		task := common.ShareTask{
+		task := &common.ShareTask{
 			Id:            row.Uint64(0),
 			Title:         row.Str(1),
 			Summary:       row.Str(2),
@@ -147,7 +170,12 @@ ORDER BY %s %s`
 			task.OnlineStatus = int8(row.Int(15))
 		}
 		task.ShareLink, _ = task.GetShareLink(deviceId, Config)
+		if task.IsVideo == 1 && strings.Contains(task.VideoLink, "krcom.cn") {
+			wg.Add(1)
+			videoFetchPool.Serve(task)
+		}
 		tasks = append(tasks, task)
 	}
+	wg.Wait()
 	c.JSON(http.StatusOK, tasks)
 }
