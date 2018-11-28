@@ -31,7 +31,7 @@ func ShowHandler(c *gin.Context) {
 		return
 	}
 	db := Service.Db
-	rows, _, err := db.Query(`SELECT author, title, source_url, digest, content, cover, published_at FROM tmm.articles WHERE id=%d`, articleId)
+	rows, _, err := db.Query(`SELECT author, title, source_url, digest, content, cover, published_at, inserted_at FROM tmm.articles WHERE id=%d`, articleId)
 	if CheckErr(err, c) {
 		return
 	}
@@ -47,6 +47,9 @@ func ShowHandler(c *gin.Context) {
 		RawContent:  row.Str(4),
 		Cover:       row.Str(5),
 		PublishedOn: row.ForceLocaltime(6).Format("2006-01-02"),
+	}
+	if article.PublishedOn == "1970-01-01" {
+		article.PublishedOn = row.ForceLocaltime(7).Format("2006-01-02")
 	}
 	article.Content = template.HTML(article.RawContent)
 	c.HTML(http.StatusOK, "article.tmpl", article)

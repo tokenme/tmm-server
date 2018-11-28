@@ -4,6 +4,7 @@ import (
 	//"github.com/davecgh/go-spew/spew"
 	"github.com/gin-gonic/gin"
 	"github.com/mkideal/log"
+	"github.com/shopspring/decimal"
 	"github.com/tokenme/tmm/common"
 	. "github.com/tokenme/tmm/handler"
 	"net/http"
@@ -112,7 +113,9 @@ ORDER BY d.lastping_at DESC LIMIT 1`
 	}
 	inviterDeviceId := rows[0].Str(0)
 	inviterUserId := rows[0].Uint64(1)
-	_, ret2, err := db.Query(`UPDATE tmm.devices AS d1, tmm.devices AS d2 SET d1.points = d1.points + %d, d2.points = d2.points + %d WHERE d1.id='%s' AND d2.id='%s'`, Config.InviteBonus, Config.InviterBonus, db.Escape(deviceId), db.Escape(inviterDeviceId))
+	pointsPerTs, _ := common.GetPointsPerTs(Service)
+	ts := decimal.New(int64(Config.InviteBonus), 0).Div(pointsPerTs)
+	_, ret2, err := db.Query(`UPDATE tmm.devices AS d1, tmm.devices AS d2 SET d1.points = d1.points + %d, d1.total_ts = d1.total_ts + %d, d2.points = d2.points + %d, d2.total_ts = d2.total_ts + %d WHERE d1.id='%s' AND d2.id='%s'`, Config.InviteBonus, ts.IntPart(), Config.InviterBonus, ts.IntPart(), db.Escape(deviceId), db.Escape(inviterDeviceId))
 	if err != nil {
 		log.Error(err.Error())
 		return err
