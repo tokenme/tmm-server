@@ -111,7 +111,7 @@ func (this *Crawler) GetGzhArticles(name string) (int, error) {
 			log.Error(err.Error())
 			continue
 		}
-		publishTime := time.Unix(a.Date, 0)
+		publishTime := time.Unix(a.DateTime, 0)
 		sortId := utils.RangeRandUint64(1, 1000000)
 		val = append(val, fmt.Sprintf("(%d, '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', %d)", newA.FileId, db.Escape(newA.Author), db.Escape(newA.Title), db.Escape(newA.Url), db.Escape(newA.SourceUrl), db.Escape(newA.Thumbnail), publishTime.Format("2006-01-02 15:04:05"), db.Escape(newA.Digest), db.Escape(newA.Markdown), sortId))
 	}
