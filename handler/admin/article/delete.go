@@ -23,6 +23,9 @@ func DeleteArticleHandler(c *gin.Context) {
 	if CheckErr(err, c) {
 		return
 	}
-	c.JSON(http.StatusOK, APIResponse{Msg:""})
+	c.JSON(http.StatusOK, gin.H{
+		"code": http.StatusOK,
+		"msg":  "",
+		"data": ""})
 
 }

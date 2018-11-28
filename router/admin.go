@@ -6,7 +6,7 @@ import (
 
 func AdminRouter(r *gin.Engine) {
 	r.POST(`/admin/auth/login`,AuthMiddleware.LoginHandler)
-	//AricleRouter(r)
+	AricleRouter(r)
 	TaskRouter(r)
 	UserRouter(r)
 }

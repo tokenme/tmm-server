@@ -3,15 +3,14 @@ package task
 import (
 	"github.com/gin-gonic/gin"
 	. "github.com/tokenme/tmm/handler"
-	"github.com/tokenme/tmm/common"
 	"net/http"
 )
 
 func ModifyTaskHandler(c *gin.Context) {
 	var (
-		task      common.ShareTask
+		task      ShareTask
 		query     string
-		cidQuery  = `select cid from tmm.share_task_categories task_id = %d`
+		cidQuery  = `select cid from tmm.share_task_categories where task_id = %d`
 		cidInsert = `Insert INTO tmm.share_task_categories (task_id,cid) VALUE(%d,%d)`
 		db        = Service.Db
 		cliList   = make(map[int]struct{})
@@ -19,11 +18,10 @@ func ModifyTaskHandler(c *gin.Context) {
 	if CheckErr(c.Bind(&task), c) {
 		return
 	}
-	query = `update tmm.share_task set creator = %d, title='%s',summary='%s',link='%s',image='%s'
-	,points='%s',points_left='%s',bonus='%s',max_viewers=%d,viewers=%d,online_status=%d where id = %d `
-	_, _, err := db.Query(query, task.Creator, db.Escape(task.Title), db.Escape(task.Link), db.Escape(task.Image),
-		db.Escape(task.Points.String()), db.Escape(task.PointsLeft.String()), db.Escape(task.Bonus.String()),
-		task.MaxViewers, task.Viewers, task.OnlineStatus,task.Id)
+	query = `update tmm.share_tasks set title='%s',summary='%s',link='%s',image='%s',points='%s',bonus='%s',max_viewers=%d where id = %d `
+	_, _, err := db.Query(query, db.Escape(task.Title), db.Escape(task.Summary), db.Escape(task.Link),
+		db.Escape(task.Image), db.Escape(task.Points), db.Escape(task.Bonus),
+		task.MaxViewers, task.Id)
 	if CheckErr(err, c) {
 		return
 	}
@@ -42,5 +40,9 @@ func ModifyTaskHandler(c *gin.Context) {
 			}
 		}
 	}
-	c.JSON(http.StatusOK,APIResponse{Msg:""})
+	c.JSON(http.StatusOK, gin.H{
+		"code":http.StatusOK,
+		"msg":"",
+		"data":"",
+	})
 }
