@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
-	//"github.com/davecgh/go-spew/spew"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/fvbock/endless"
 	"github.com/getsentry/raven-go"
 	"github.com/gin-gonic/gin"
@@ -19,6 +19,7 @@ import (
 	"github.com/tokenme/tmm/tools/tokenprofile"
 	"github.com/tokenme/tmm/tools/transferwatcher"
 	"github.com/tokenme/tmm/tools/txaccelerate"
+	"github.com/tokenme/tmm/tools/videospider"
 	"github.com/tokenme/tmm/tools/wechatspider"
 	"os"
 	"os/signal"
@@ -38,6 +39,7 @@ func main() {
 		articlePublishFlag         bool
 		articleClassifierTrainFlag bool
 		articleClassifyFlag        bool
+		addVideoFlag               string
 		accelerateTxFlag           string
 		accelerateGasFlag          int64
 	)
@@ -60,6 +62,7 @@ func main() {
 	flag.Int64Var(&accelerateGasFlag, "gas", 0, "set gas price")
 	flag.BoolVar(&articleClassifierTrainFlag, "train-article-classifier", false, "enable article classifer training")
 	flag.BoolVar(&articleClassifyFlag, "classify-articles", false, "enable articles classify")
+	flag.StringVar(&addVideoFlag, "add-video", "", "add video")
 	flag.Parse()
 
 	configor.New(&configor.Config{Verbose: configFlag.Debug, ErrorOnUnmatchedKeys: true, Environment: "production"}).Load(&config, configPath)
@@ -123,6 +126,20 @@ func main() {
 	}
 	if parseTokenFlag {
 		tokenprofile.Update(service, config)
+		return
+	}
+
+	if addVideoFlag != "" {
+		spider := videospider.NewClient(service, config)
+		video, err := spider.Get(addVideoFlag)
+		if err != nil {
+			log.Error(err.Error())
+		}
+		err = spider.Save(video)
+		if err != nil {
+			log.Error(err.Error())
+		}
+		spew.Dump(video)
 		return
 	}
 
