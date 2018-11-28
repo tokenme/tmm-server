@@ -1,4 +1,4 @@
-package Verify
+package verify
 
 import (
 	"github.com/gin-gonic/gin"

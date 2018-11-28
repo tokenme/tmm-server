@@ -10,12 +10,12 @@ import (
 	"time"
 )
 
-func EditArticleHandler(c *gin.Context) {
+func GetArticleHandler(c *gin.Context) {
 	db := Service.Db
 	var (
 		up          = Article{}
 		query       string
-		onlineQuery = `select online_status from tmm.share_tasks where link = '%s'`
+		onlineQuery = `SELECT online_status FROM tmm.share_tasks WHERE link = '%s'`
 		link        string
 	)
 	artId, err := strconv.Atoi(c.Query(`artId`))
@@ -24,9 +24,9 @@ func EditArticleHandler(c *gin.Context) {
 	}
 	link = fmt.Sprintf(`https://tmm.tokenmama.io/article/show/%d`, artId)
 
-	query = `select fileid,author,
+	query = `SELECT fileid,author,
 	title,link,source_url,cover,published_at,
-	digest,content,sortid,published from tmm.articles where id = %d`
+	digest,content,sortid,published FROM tmm.articles WHERE id = %d`
 	rows, result, err := db.Query(query, artId)
 	if CheckErr(err, c) {
 		return

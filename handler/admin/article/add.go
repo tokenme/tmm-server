@@ -28,25 +28,18 @@ VALUES (%d,'%s','%s','%s','%s','%s','%s','%s','%s',%d,%d)`
 	query = `INSERT INTO tmm.share_tasks (creator, title, summary, link,
 	image, points, points_left, bonus, max_viewers,online_status) VALUES(0, '%s', '%s', '%s', '%s', 5000, 5000, 10, 10,-1)`
 
-	_, _, err = db.Query(query, db.Escape(article.Title), db.Escape(article.Digest),
+	_, res, err := db.Query(query, db.Escape(article.Title), db.Escape(article.Digest),
 		db.Escape(link), db.Escape(article.Cover))
 	if CheckErr(err, c) {
 		return
 	}
-	rows, _, err := db.Query(`select id from tmm.share_tasks where link = '%s'`, db.Escape(link))
-	if CheckErr(err, c) {
-		return
-	}
-	if Check(len(rows) == 0, `select Error `, c) {
-		return
-	}
-	_, _, err = db.Query(`INSERT INTO tmm.share_task_categories (task_id,cid,is_auto) VALUES (%d,%d,%d)`, rows[0].Int(0), article.Sortid, 0)
+	_, _, err = db.Query(`INSERT INTO tmm.share_task_categories (task_id,cid,is_auto) VALUES (%d,%d,%d)`, res.InsertId(), article.Sortid, 1)
 	if CheckErr(err, c) {
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"message":  "ok",
-		"data": article},
+		"message": "ok",
+		"data":    article},
 	)
 }

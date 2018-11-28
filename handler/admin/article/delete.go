@@ -15,10 +15,10 @@ func DeleteArticleHandler(c *gin.Context) {
 		return
 	}
 	link := fmt.Sprintf(`https://tmm.tokenmama.io/article/show/%d`, articleId)
-	_, _, err = db.Query(`delete tmm.share_tasks  ,tmm.share_task_categories,tmm.articles  as art
+	_, _, err = db.Query(`DELETE tmm.share_tasks  ,tmm.share_task_categories,tmm.articles  AS art
 	from tmm.share_tasks,tmm.share_task_categories,tmm.articles
-	 where tmm.share_tasks.link = '%s'
-	 and  tmm.share_task_categories.task_id = tmm.share_tasks.id and art.id =%d
+	 WHERE tmm.share_tasks.link = '%s'
+	 AND  tmm.share_task_categories.task_id = tmm.share_tasks.id AND art.id =%d
 		`, db.Escape(link), articleId)
 	if CheckErr(err, c) {
 		return

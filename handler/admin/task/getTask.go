@@ -9,12 +9,12 @@ import (
 	"net/http"
 )
 
-func EditTaskHandler(c *gin.Context) {
+func GetTaskHandler(c *gin.Context) {
 	var (
 		taskid   int
 		db       = Service.Db
 		query    string
-		cidQuery = `select cid from tmm.share_task_categories where task_id = %d`
+		cidQuery = `SELECT cid FROM tmm.share_task_categories WHERE task_id = %d`
 		task     common.ShareTask
 		cidList  []int
 	)
@@ -22,8 +22,8 @@ func EditTaskHandler(c *gin.Context) {
 	if CheckErr(err, c) {
 		return
 	}
-	query = `select creator,title,summary,link,image,points,points_left,
-	bonus,max_viewers,viewers,online_status,inserted_at,updated_at from tmm.share_tasks where id = %d`
+	query = `SELECT creator,title,summary,link,image,points,points_left,
+	bonus,max_viewers,viewers,online_status,inserted_at,updated_at FROM tmm.share_tasks WHERE id = %d`
 	rows, result, err := db.Query(query, taskid)
 	if CheckErr(err, c) {
 		return
@@ -67,7 +67,7 @@ func EditTaskHandler(c *gin.Context) {
 	}
 	task.Cid = cidList
 	c.JSON(http.StatusOK, gin.H{
-		"message":  "ok",
-		"data": task,
+		"message": "ok",
+		"data":    task,
 	})
 }

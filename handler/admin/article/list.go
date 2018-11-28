@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-func GetArticleHandler(c *gin.Context) {
+func GetArticleListHandler(c *gin.Context) {
 	db := Service.Db
 	var (
 		offset, count   int
@@ -27,19 +27,19 @@ func GetArticleHandler(c *gin.Context) {
 
 	if sortid == 0 {
 		query = fmt.Sprintf(`
-	select 	id,fileid,author,
-	title,link,source_url,cover,published_at,
-	digest,content,sortid,published from tmm.articles order by id DESC
-	limit %d offset %d
+	SELECT 	id,fileid,author,
+	title,link,source_url,cover,published_at,			
+	digest,content,sortid,published FROM tmm.articles ORDER BY id DESC
+	LIMIT %d OFFSET %d
 	`, limit, offset)
-		sumquery = `select count(*) from tmm.articles`
+		sumquery = `select count(*) FROM tmm.articles`
 	} else {
 		query = fmt.Sprintf(`
-		select 	id,fileid,author,
+		SELECT 	id,fileid,author,
 		title,link,source_url,cover,published_at,
-		digest,content,sortid,published from tmm.articles
-		order by id DESC where sortid = %d  limit %d offset %d`, sortid, limit, offset)
-		sumquery = fmt.Sprintf(`select count(*) from tmm.articles  where sortid = %d `, sortid)
+		digest,content,sortid,published FROM tmm.articles
+		ORDER BY id DESC WHERE sortid = %d  LIMIT %d OFFSET %d`, sortid, limit, offset)
+		sumquery = fmt.Sprintf(`SELECT count(*) FROM tmm.articles  WHERE sortid = %d `, sortid)
 	}
 
 	rows, result, err := db.Query(query)
@@ -60,7 +60,7 @@ func GetArticleHandler(c *gin.Context) {
 
 	for _, row := range rows {
 		Link := fmt.Sprintf(`https://tmm.tokenmama.io/article/show/%d`, row.Int(result.Map(`id`)))
-		query = `select online_status from tmm.share_tasks where link = '%s'`
+		query = `SELECT online_status FROM tmm.share_tasks WHERE link = '%s'`
 		a, result, err := db.Query(query, Link)
 		if CheckErr(err, c) {
 			return
