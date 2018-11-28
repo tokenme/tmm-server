@@ -14,7 +14,8 @@ func AricleRouter(r *gin.Engine) {
 		aricle.POST(`/add`,article.AddArticleHandler)
 		aricle.GET(`/type`,article.CategoryListHandler)
 		aricle.DELETE(`/delete/:id`,article.DeleteArticleHandler)
-		aricle.POST(`/edit`,article.EditArticleHandler)
+		aricle.GET(`/edit`,article.EditArticleHandler)
+		aricle.POST(`/modify`,article.ModifyArticleHandler)
 		aricle.GET(`/list`,article.GetArticleHandler)
 	}
 	}

@@ -2,35 +2,62 @@ package article
 
 import (
 	"github.com/gin-gonic/gin"
-	"fmt"
 	"net/http"
 	. "github.com/tokenme/tmm/handler"
 
+	"strconv"
+	"fmt"
+	"time"
 )
-
-
 
 func EditArticleHandler(c *gin.Context) {
 	db := Service.Db
-	var up = Article{}
-	if CheckErr(c.Bind(&up), c) {
-		return
-	}
-	query := `update tmm.articles as art ,tmm.share_tasks as task
-	set art.fileid = %d ,art.author='%s',art.title='%s',art.link='%s',art.source_url='%s',
-	art.content='%s' ,art.digest = '%s',art.cover='%s',
-	art.published_at='%s',art.published = %d ,task.summary='%s',task.title='%s',task.image='%s'
-	where art.id = %d and task.link = '%s' `
-	link := fmt.Sprintf(`https://tmm.tokenmama.io/article/show/%d`, up.Id)
-
-	_, _, err := db.Query(query, up.Fileid, db.Escape(up.Author), db.Escape(up.Title),
-		db.Escape(up.Link), db.Escape(up.SourceUrl),
-		db.Escape(up.Content), db.Escape(up.Digest), db.Escape(up.Cover),
-		db.Escape(up.PublishedOn), up.Published, db.Escape(up.Digest), db.Escape(up.Title),
-		db.Escape(up.Cover), up.Id, link)
-
+	var (
+		up          = Article{}
+		query       string
+		onlineQuery = `select online_status from tmm.share_tasks where link = '%s'`
+		link        string
+	)
+	artId, err := strconv.Atoi(c.Query(`artId`))
 	if CheckErr(err, c) {
 		return
 	}
-	c.JSON(http.StatusOK, APIResponse{Msg:"ok"})
+	link = fmt.Sprintf(`https://tmm.tokenmama.io/article/show/%d`, artId)
+
+	query = `select fileid,author,
+	title,link,source_url,cover,published_at,
+	digest,content,sortid,published from tmm.articles where id = %d`
+	rows, result, err := db.Query(query, artId)
+	if CheckErr(err, c) {
+		return
+	}
+	if Check(len(rows) == 0, `Not found`, c) {
+		return
+	}
+	row := rows[0]
+	up = Article{
+		Id:          artId,
+		Fileid:      row.Int(result.Map(`fileid`)),
+		Author:      row.Str(result.Map(`author`)),
+		Link:        row.Str(result.Map(`link`)),
+		SourceUrl:   row.Str(result.Map(`source_url`)),
+		Cover:       row.Str(result.Map(`cover`)),
+		PublishedOn: row.ForceLocaltime(result.Map(`published_at`)).Format(time.RFC3339),
+		Digest:      row.Str(result.Map(`digest`)),
+		Content:     row.Str(result.Map(`content`)),
+		Sortid:      row.Int(result.Map(`sortid`)),
+		Published:   row.Int(result.Map(`published`)),
+	}
+	rows, _, err = db.Query(onlineQuery, link)
+	if CheckErr(err, c) {
+		return
+	}
+	if Check(len(rows) == 0,`Not found Online field`,c){
+		return
+	}
+	up.Online = rows[0].Int(0)
+		c.JSON(http.StatusOK, gin.H{
+			"msg":  "",
+			"data": up,
+		})
 }
