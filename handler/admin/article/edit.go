@@ -57,8 +57,7 @@ func EditArticleHandler(c *gin.Context) {
 	}
 	up.Online = rows[0].Int(0)
 		c.JSON(http.StatusOK, gin.H{
-			"code":http.StatusOK,
-			"msg":  "",
+			"message":  "ok",
 			"data": up,
 		})
 }

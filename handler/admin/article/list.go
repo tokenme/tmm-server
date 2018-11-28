@@ -49,7 +49,7 @@ func GetArticleHandler(c *gin.Context) {
 	if len(rows) == 0 {
 		c.JSON(http.StatusOK, gin.H{
 			"code": http.StatusOK,
-			"msg":  "没有到数据",
+			"message":  "没有到数据",
 			"data": gin.H{
 				"curr_page": page,
 				"data":      "",
@@ -91,8 +91,7 @@ func GetArticleHandler(c *gin.Context) {
 	}
 	count = rows[0].Int(0)
 	c.JSON(http.StatusOK, gin.H{
-		"code": http.StatusOK,
-		"msg":  "",
+		"message":  "ok",
 		"data": gin.H{
 			"curr_page": page,
 			"data":      articleList,

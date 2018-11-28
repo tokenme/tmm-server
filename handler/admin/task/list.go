@@ -15,6 +15,7 @@ func GetShareListHandler(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery(`page`, "1"))
 	limit, _ := strconv.Atoi(c.DefaultQuery(`limit`, "5"))
 	cid, _ := strconv.Atoi(c.DefaultQuery(`cid`, "0"))
+	nocid, _ := strconv.Atoi(c.DefaultQuery(`nocid`, "0"))
 	var (
 		offset, count   int
 		query, sumquery string
@@ -25,17 +26,25 @@ func GetShareListHandler(c *gin.Context) {
 	} else {
 		offset = 0
 	}
-	if cid == 0 {
-		query = fmt.Sprintf(`select id,creator,title,summary,link,image,points,points_left,
+	if nocid != 1 {
+		if cid == 0 {
+			query = fmt.Sprintf(`select id,creator,title,summary,link,image,points,points_left,
 	bonus,max_viewers,viewers,online_status,inserted_at,updated_at from tmm.share_tasks order by id DESC limit %d offset %d`, limit, offset)
-		sumquery = `select count(*) from tmm.share_tasks`
-	} else {
-		query = fmt.Sprintf(`select id,creator,title,summary,link,image,points,points_left,
-	bonus,max_viewers,viewers,online_status,inserted_at,updated_at from tmm.share_tasks LEFT JOIN 
+			sumquery = `select count(*) from tmm.share_tasks`
+		} else {
+			query = fmt.Sprintf(`select id,creator,title,summary,link,image,points,points_left,
+	bonus,max_viewers,viewers,online_status,inserted_at,updated_at from tmm.share_tasks INNER JOIN 
 	share_task_categories ON(id = task_id) where cid = %d order by id DESC 
 	limit %d offset %d`, cid, limit, offset)
-		sumquery = fmt.Sprintf(`select count(*) from tmm.share_tasks INNER JOIN
+			sumquery = fmt.Sprintf(`select count(*) from tmm.share_tasks INNER JOIN
 	    share_task_categories ON(id = task_id) where cid = %d`, cid)
+		}
+	} else {
+		query = fmt.Sprintf(`select id,creator,title,summary,link,image,points,points_left,
+	bonus,max_viewers,viewers,online_status,inserted_at,updated_at from tmm.share_tasks WHERE id not in
+(select id  from tmm.share_tasks INNER JOIN share_task_categories ON(id = task_id)) order by id DESC limit %d offset %d`, limit, offset)
+		sumquery = `select count(*) from tmm.share_tasks WHERE id not in
+(select id  from tmm.share_tasks INNER JOIN share_task_categories ON(id = task_id)) `
 	}
 	rows, result, err := db.Query(query)
 	if CheckErr(err, c) {
@@ -85,8 +94,7 @@ func GetShareListHandler(c *gin.Context) {
 	}
 	count = rows[0].Int(0)
 	c.JSON(http.StatusOK, gin.H{
-		"code": http.StatusOK,
-		"msg":  "",
+		"message":  "ok",
 		"data": gin.H{
 			"curr_page": page,
 			"data":      sharelist,

@@ -14,14 +14,15 @@ import (
 )
 
 type ShareAddRequest struct {
-	Title           string          `json:"title" form:"title" binding:"required"`
-	Summary         string          `json:"summary" form:"summary" binding:"required"`
-	Link            string          `json:"link" form:"link" binding:"required"`
-	Image           string          `json:"image" form:"image"`
-    FileExtension   string          `json:"image_extension" from:"image_extension"`
-	Points          decimal.Decimal `json:"points" form:"points" binding:"required"`
-	Bonus           decimal.Decimal `json:"bonus" form:"bonus" binding:"required"`
-	MaxViewers      uint            `json:"max_viewers" form:"max_viewers" binding:"required"`
+	Title         string          `json:"title" form:"title" binding:"required"`
+	Summary       string          `json:"summary" form:"summary" binding:"required"`
+	Link          string          `json:"link" form:"link" binding:"required"`
+	Image         string          `json:"image" form:"image"`
+	FileExtension string          `json:"image_extension" from:"image_extension"`
+	Points        decimal.Decimal `json:"points" form:"points" binding:"required"`
+	Bonus         decimal.Decimal `json:"bonus" form:"bonus" binding:"required"`
+	MaxViewers    uint            `json:"max_viewers" form:"max_viewers" binding:"required"`
+	Cid           []int           `json:"cid" form:"cid"`
 }
 
 func ShareAddHandler(c *gin.Context) {
@@ -62,14 +63,14 @@ ORDER BY d.points DESC LIMIT 1`
 	if CheckWithCode(ret.AffectedRows() == 0, NOT_ENOUGH_POINTS_ERROR, "not enough points in device", c) {
 		return
 	}
-    if req.Image != "" && req.FileExtension == "webp" {
-        newImage, _, err := qiniu.ConvertImage(req.Image, "jpeg", Config.Qiniu)
-        if err != nil {
-            log.Error(err.Error())
-        } else {
-            req.Image = newImage
-        }
-    }
+	if req.Image != "" && req.FileExtension == "webp" {
+		newImage, _, err := qiniu.ConvertImage(req.Image, "jpeg", Config.Qiniu)
+		if err != nil {
+			log.Error(err.Error())
+		} else {
+			req.Image = newImage
+		}
+	}
 	_, ret, err = db.Query(`INSERT INTO tmm.share_tasks (creator, title, summary, link, image, points, points_left, bonus, max_viewers) VALUES (%d, '%s', '%s', '%s', '%s', %s, %s, %s, %d)`, user.Id, db.Escape(req.Title), db.Escape(req.Summary), db.Escape(req.Link), db.Escape(req.Image), req.Points.String(), req.Points.String(), req.Bonus.String(), req.MaxViewers)
 	if CheckErr(err, c) {
 		return

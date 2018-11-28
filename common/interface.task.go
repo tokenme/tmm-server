@@ -9,7 +9,7 @@ import (
 
 type ShareTask struct {
 	Id            uint64          `json:"id"`
-	Creator       uint64          `json:"creator",omitempty`
+	Creator       uint64          `json:"creator,omitempty"`
 	Title         string          `json:"title"`
 	Summary       string          `json:"summary"`
 	Link          string          `json:"link"`
@@ -25,7 +25,7 @@ type ShareTask struct {
 	OnlineStatus  int8            `json:"online_status,omitempty"`
 	InIframe      bool            `json:"-"`
 	ShowBonusHint bool            `json:"show_bonus_hint,omitempty"`
-	Cid           []int           `json:"cid"`
+	Cid           []int           `json:"cid,omitempty"`
 }
 
 func (this ShareTask) ShouldUseIframe() bool {

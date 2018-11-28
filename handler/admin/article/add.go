@@ -46,8 +46,7 @@ VALUES (%d,'%s','%s','%s','%s','%s','%s','%s','%s',%d,%d)`
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"code": http.StatusOK,
-		"msg":  "",
+		"message":  "ok",
 		"data": article},
 	)
 }

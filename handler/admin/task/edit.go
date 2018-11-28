@@ -67,8 +67,7 @@ func EditTaskHandler(c *gin.Context) {
 	}
 	task.Cid = cidList
 	c.JSON(http.StatusOK, gin.H{
-		"code":http.StatusOK,
-		"msg":  "",
+		"message":  "ok",
 		"data": task,
 	})
 }

@@ -29,8 +29,5 @@ func ModifyArticleHandler(c *gin.Context) {
 	if CheckErr(err, c) {
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{
-		"code": http.StatusOK,
-		"msg":  "",
-		"data": ""})
+	c.JSON(http.StatusOK, APIResponse{Msg: `ok`})
 }

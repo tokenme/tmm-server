@@ -19,13 +19,10 @@ func DeleteArticleHandler(c *gin.Context) {
 	from tmm.share_tasks,tmm.share_task_categories,tmm.articles
 	 where tmm.share_tasks.link = '%s'
 	 and  tmm.share_task_categories.task_id = tmm.share_tasks.id and art.id =%d
-		`, db.Escape(link),articleId)
+		`, db.Escape(link), articleId)
 	if CheckErr(err, c) {
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{
-		"code": http.StatusOK,
-		"msg":  "",
-		"data": ""})
+	c.JSON(http.StatusOK, APIResponse{Msg: `ok`})
 
 }

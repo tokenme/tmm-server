@@ -14,7 +14,6 @@ func TaskRouter(r *gin.Engine){
 	 	taskR.POST(`/add`,task.AddShareHandler)
 	 	taskR.POST(`/modify`,task.ModifyTaskHandler)
 	 	taskR.GET(`/list`,task.GetShareListHandler)
-	 	taskR.POST(`/online`,task.TaskUpdateHandler)
 	 	taskR.GET(`/edit`,task.EditTaskHandler)
 	 }
 	 }

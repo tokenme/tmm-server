@@ -19,8 +19,7 @@ func CategoryListHandler(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"code": http.StatusOK,
-		"msg":  "",
+		"message":  "ok",
 		"data": maps},
 	)
 
