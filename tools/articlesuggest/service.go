@@ -232,17 +232,28 @@ func (this *Engine) getLogs() {
 	)
 	for {
 		endTime = startTime
-		rows, _, err := db.Query(`SELECT l.user_id, st.id, st.link, st.id, l.updated_at FROM tmm.reading_logs AS l INNER JOIN tmm.share_tasks AS st ON (st.id=l.task_id) WHERE st.creator=0 AND l.updated_at>='%s' ORDER BY l.updated_at ASC LIMIT 1000`, startTime)
+		rows, _, err := db.Query(`SELECT l.user_id, st.id, st.link, l.ts, st.title, st.summary, l.updated_at FROM tmm.reading_logs AS l INNER JOIN tmm.share_tasks AS st ON (st.id=l.task_id) WHERE l.updated_at>='%s' ORDER BY l.updated_at ASC LIMIT 1000`, startTime)
 		if err != nil {
 			log.Println(err.Error())
 			break
 		}
 		for _, row := range rows {
-			endTime = row.ForceLocaltime(4).Format("2006-01-02 15:04:05")
+			endTime = row.ForceLocaltime(6).Format("2006-01-02 15:04:05")
 			userId := row.Uint64(0)
 			//taskId := row.Uint64(1)
 			link := row.Str(2)
 			ts := row.Uint64(3)
+			userLog := &UserLog{
+				UserId: userId,
+				Ts:     ts,
+			}
+			topWords, err := this.topWordsFromString(row.Str(4) + row.Str(5))
+			if err != nil {
+				log.Println(err.Error())
+			} else {
+				userLog.Words = topWords
+			}
+			userLogs[userId] = append(userLogs[userId], userLog)
 			if !strings.Contains(link, "https://tmm.tokenmama.io/article/show/") {
 				continue
 			}
@@ -252,12 +263,7 @@ func (this *Engine) getLogs() {
 				log.Println(err.Error())
 				continue
 			}
-			userLog := &UserLog{
-				UserId:    userId,
-				ArticleId: id,
-				Ts:        ts,
-			}
-			userLogs[userId] = append(userLogs[userId], userLog)
+			userLog.ArticleId = id
 			if _, found := idMap[id]; found {
 				continue
 			}
@@ -292,15 +298,19 @@ func (this *Engine) getLogs() {
 	}
 	logs := make(map[uint64]*UserLog)
 	for userId, uLogs := range userLogs {
+		if _, found := logs[userId]; !found {
+			logs[userId] = &UserLog{
+				UserId: userId,
+				Words:  make(map[string]float64),
+			}
+		}
 		for _, log := range uLogs {
 			if task, found := tasks[log.ArticleId]; found {
-				if _, found := logs[userId]; !found {
-					logs[userId] = &UserLog{
-						UserId: userId,
-						Words:  make(map[string]float64),
-					}
-				}
 				for w, v := range task.Words {
+					logs[userId].Words[w] += v * math.Log1p(float64(log.Ts))
+				}
+			} else if len(log.Words) > 0 {
+				for w, v := range log.Words {
 					logs[userId].Words[w] += v * math.Log1p(float64(log.Ts))
 				}
 			}
@@ -332,7 +342,9 @@ func (this *Engine) getTasks() {
 	db := this.service.Db
 	rows, _, err := db.Query(`SELECT
     st.id,
-    st.link
+    st.link,
+    st.title,
+    st.summary
 FROM tmm.share_tasks AS st
 WHERE st.points_left>0 AND st.online_status = 1
 ORDER BY st.bonus DESC, st.id DESC LIMIT 5000`)
@@ -348,16 +360,25 @@ ORDER BY st.bonus DESC, st.id DESC LIMIT 5000`)
 	for _, row := range rows {
 		taskId := row.Uint64(0)
 		link := row.Str(1)
+		text := row.Str(2) + row.Str(3)
+		task := &Task{TaskId: taskId}
+		topWords, err := this.topWordsFromString(text)
+		if err != nil {
+			log.Println(err.Error())
+		} else {
+			task.Words = topWords
+		}
+		tasks = append(tasks, task)
 		if !strings.Contains(link, "https://tmm.tokenmama.io/article/show/") {
 			continue
 		}
 		idStr := strings.Replace(link, "https://tmm.tokenmama.io/article/show/", "", -1)
 		id, err := strconv.ParseUint(idStr, 10, 64)
-		tasks = append(tasks, &Task{TaskId: taskId, ArticleId: id})
 		if err != nil || id == 0 {
 			log.Println(err.Error())
 			continue
 		}
+		task.ArticleId = id
 		idArr = append(idArr, fmt.Sprintf("%d", id))
 	}
 	if len(idArr) > 0 {
@@ -388,13 +409,8 @@ ORDER BY st.bonus DESC, st.id DESC LIMIT 5000`)
 	this.Unlock()
 }
 
-func (this *Engine) topWords(html string) (map[string]float64, error) {
-	reader := bytes.NewBuffer([]byte(html))
-	page, err := goquery.NewDocumentFromReader(reader)
-	if err != nil {
-		return nil, err
-	}
-	segments := this.Gse.Segment([]byte(page.Text()))
+func (this *Engine) topWordsFromString(text string) (map[string]float64, error) {
+	segments := this.Gse.Segment([]byte(text))
 	var words []string
 	for _, seg := range segments {
 		w := strings.ToLower(strings.TrimSpace(seg.Token().Text()))
@@ -415,4 +431,13 @@ func (this *Engine) topWords(html string) (map[string]float64, error) {
 		topWords[item.Key] = item.Val
 	}
 	return topWords, nil
+}
+
+func (this *Engine) topWords(html string) (map[string]float64, error) {
+	reader := bytes.NewBuffer([]byte(html))
+	page, err := goquery.NewDocumentFromReader(reader)
+	if err != nil {
+		return nil, err
+	}
+	return this.topWordsFromString(page.Text())
 }
