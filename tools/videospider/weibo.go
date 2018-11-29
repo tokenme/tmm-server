@@ -15,7 +15,7 @@ func NewWeibo(client *Client) *Weibo {
 		Request{
 			client:   client,
 			name:     "Weibo",
-			patterns: []string{`weibo\.com\/tv\/v\/(\w+)`, `weibo.com\/\d+\/(\w+)`},
+			patterns: []string{`weibo\.com\/tv\/v\/(\w+)`, `weibo.com\/\d+\/(\w+)`, `weibo.cn/status/(\d+)`},
 		},
 	}
 }
@@ -31,6 +31,10 @@ func (this *Weibo) Get(link string) (info Video, err error) {
 	}
 	info.Link = SafeUrl(link)
 	info.Title = R1(`"title":\ "(.+)"`, html)
+	if info.Title == "" {
+		info.Title = R1(`"page_title":\ "(.+)"`, html)
+	}
+	info.Desc = R1(`"content2":\ "(.+)"`, html)
 	info.Cover = R1(`"url":\ "(.+)"`, html)
 	durationStr := R1(`"duration":\ "(\d+)"`, html)
 	duration, _ := strconv.ParseInt(durationStr, 10, 64)
