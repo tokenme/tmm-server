@@ -15,7 +15,7 @@ func NewWeibo(client *Client) *Weibo {
 		Request{
 			client:   client,
 			name:     "Weibo",
-			patterns: []string{`weibo\.com\/tv\/v\/(\w+)`, `weibo.com\/\d+\/(\w+)`, `weibo.cn/[status|detail]/([\w|\d]+)`, `weibo.cn/\d+/\w+`},
+			patterns: []string{`weibo\.com\/tv\/v\/(\w+)`, `weibo.com\/\d+\/(\w+)`, `weibo.cn\/status\/([\w|\d]+)`, `weibo.cn\/detail\/([\w|\d]+)`, `weibo.cn/\d+/\w+`},
 		},
 	}
 }

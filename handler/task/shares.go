@@ -129,6 +129,7 @@ ORDER BY %s %s`
 		task := req.(*common.ShareTask)
 		video, err := videopider.Get(task.Link)
 		if err != nil {
+			log.Warn(task.Link)
 			log.Error(err.Error())
 			return err
 		}
@@ -170,7 +171,7 @@ ORDER BY %s %s`
 			task.OnlineStatus = int8(row.Int(15))
 		}
 		task.ShareLink, _ = task.GetShareLink(deviceId, Config)
-		if task.IsVideo == 1 && (strings.Contains(task.VideoLink, "krcom.cn") || strings.Contains(task.VideoLink, "sinaimg.cn")) {
+		if task.IsVideo == 1 {
 			wg.Add(1)
 			videoFetchPool.Serve(task)
 		}
