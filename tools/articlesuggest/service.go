@@ -175,7 +175,7 @@ func (this *Engine) Match(userId uint64, page uint, limit uint) []uint64 {
 			}
 		}
 		score = 0.5*abScore/(math.Sqrt(bScore)*math.Sqrt(aScore)) + 0.5
-		taskScores[task.TaskId] = score * task.Gravity
+		taskScores[task.TaskId] = score - task.Gravity
 	}
 	sorter := NewScoreSorter(taskScores)
 	sort.Sort(sort.Reverse(sorter))
