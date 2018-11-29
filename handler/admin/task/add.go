@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strings"
 	"github.com/tokenme/tmm/handler/admin"
+	"github.com/tokenme/tmm/tools/videospider"
 )
 
 func AddShareHandler(c *gin.Context) {
@@ -18,6 +19,7 @@ func AddShareHandler(c *gin.Context) {
 	var fieldList []string
 	var valueList []string
 	if req.Link != "" {
+		Video := videospider.NewClient(Service, Config)
 		if video, err := Video.Get(req.Link); err == nil {
 			if CheckErr(Video.Save(video), c) {
 				return

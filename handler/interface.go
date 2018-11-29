@@ -21,7 +21,6 @@ import (
 	"time"
 	"runtime"
 	"path"
-	"github.com/tokenme/tmm/tools/videospider"
 )
 
 var (
@@ -31,7 +30,6 @@ var (
 	BlowupService *blowup.Server
 	SuggestEngine *articlesuggest.Engine
 	ExitCh        chan struct{}
-	Video         *videospider.Client
 	//Queues  map[string]sqs.Queue
 )
 
@@ -41,7 +39,6 @@ func InitHandler(s *common.Service, c common.Config) {
 	GlobalLock = new(sync.Mutex)
 	BlowupService = blowup.NewServer(s, c)
 	SuggestEngine = articlesuggest.NewEngine(s, c)
-	Video = videospider.NewClient(s, c)
 	//Queues = queues
 	raven.SetDSN(Config.SentryDSN)
 	ExitCh = make(chan struct{}, 1)
