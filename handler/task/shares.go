@@ -170,7 +170,7 @@ ORDER BY %s %s`
 			task.OnlineStatus = int8(row.Int(15))
 		}
 		task.ShareLink, _ = task.GetShareLink(deviceId, Config)
-		if task.IsVideo == 1 && strings.Contains(task.VideoLink, "krcom.cn") {
+		if task.IsVideo == 1 && (strings.Contains(task.VideoLink, "krcom.cn") || strings.Contains(task.VideoLink, "sinaimg.cn")) {
 			wg.Add(1)
 			videoFetchPool.Serve(task)
 		}
