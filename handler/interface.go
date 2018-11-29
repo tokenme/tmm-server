@@ -19,6 +19,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"runtime"
+	"path"
 )
 
 var (
@@ -98,7 +100,8 @@ func (this APIError) Error() string {
 func Check(flag bool, err string, c *gin.Context) (ret bool) {
 	ret = flag
 	if ret {
-		log.Error(err)
+		_, file, line, _ := runtime.Caller(1)
+		log.Error("[%s:%d]: %s", path.Base(file), line, err)
 		c.JSON(http.StatusOK, APIError{Code: BADREQUEST_ERROR, Msg: err})
 	}
 	return
@@ -107,8 +110,13 @@ func Check(flag bool, err string, c *gin.Context) (ret bool) {
 func CheckErr(err error, c *gin.Context) (ret bool) {
 	ret = err != nil
 	if ret {
-		log.Error(err.Error())
-		c.JSON(http.StatusOK, APIError{Code: BADREQUEST_ERROR, Msg: err.Error()})
+		_, file, line, _ := runtime.Caller(1)
+		log.Error("[%s:%d]: %s", path.Base(file), line, err.Error())
+		if _, ok := err.(APIError); ok {
+			c.JSON(http.StatusOK, err)
+		} else {
+			c.JSON(http.StatusOK, APIError{Code: BADREQUEST_ERROR, Msg: err.Error()})
+		}
 	}
 	return
 }
