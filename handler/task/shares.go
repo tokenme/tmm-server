@@ -65,15 +65,15 @@ func SharesHandler(c *gin.Context) {
 
 	var taskIds []uint64
 	limitState := fmt.Sprintf("LIMIT %d, %d", (req.Page-1)*req.PageSize, req.PageSize)
-	onlineStatusConstrain := "st.points_left>0 AND st.online_status = 1"
+	onlineStatusConstrain := "st.points_left>0 AND st.online_status=1"
 	var inCidConstrain string
 	orderBy := "st.bonus DESC, st.id DESC"
 	if req.MineOnly {
-		onlineStatusConstrain = fmt.Sprintf("AND st.creator = %d", user.Id)
+		onlineStatusConstrain = fmt.Sprintf("st.creator = %d", user.Id)
 		orderBy = "st.id DESC"
 	}
 	if req.IsVideo {
-		onlineStatusConstrain = "st.is_video=1 AND st.points_left>0 AND st.online_status = 1"
+		onlineStatusConstrain = "st.is_video=1 AND st.points_left>0 AND st.online_status=1"
 	}
 	if req.Cid > 0 {
 		inCidConstrain = fmt.Sprintf("INNER JOIN tmm.share_task_categories AS stc ON (stc.task_id=st.id AND stc.cid=%d)", req.Cid)

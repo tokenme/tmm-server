@@ -5,10 +5,10 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/tokenme/tmm/common"
 	. "github.com/tokenme/tmm/handler"
+	"github.com/tokenme/tmm/handler/admin"
 	"net/http"
 	"strconv"
 	"strings"
-	"github.com/tokenme/tmm/handler/admin"
 )
 
 func ModifyTaskHandler(c *gin.Context) {
@@ -17,7 +17,10 @@ func ModifyTaskHandler(c *gin.Context) {
 	if CheckErr(c.Bind(&task), c) {
 		return
 	}
-	var query []string
+	var (
+		query     []string
+		constrain string
+	)
 	if task.Title != "" {
 		query = append(query, fmt.Sprintf(`title = '%s'`, db.Escape(task.Title)))
 	}
@@ -36,6 +39,7 @@ func ModifyTaskHandler(c *gin.Context) {
 	if task.Points.String() != "0" {
 		query = append(query, fmt.Sprintf(`points='%s'`, db.Escape(task.Points.String())))
 		query = append(query, fmt.Sprintf(`points_left= %s `, db.Escape(task.Points.String())))
+		constrain = " AND creator=0"
 	}
 	if task.Bonus.String() != "0" {
 		query = append(query, fmt.Sprintf(`bonus='%s'`, db.Escape(task.Bonus.String())))
@@ -48,7 +52,7 @@ func ModifyTaskHandler(c *gin.Context) {
 	}
 
 	if len(query) != 0 {
-		_, _, err := db.Query(`UPDATE tmm.share_tasks SET %s WHERE id = %d`, strings.Join(query, `,`), task.Id)
+		_, _, err := db.Query(`UPDATE tmm.share_tasks SET %s WHERE id=%d%s`, strings.Join(query, `,`), task.Id, constrain)
 		if CheckErr(err, c) {
 			return
 		}
@@ -76,8 +80,8 @@ func ModifyTaskHandler(c *gin.Context) {
 			}
 		}
 		if len(insertArray) > 0 {
-			var cidInsert = `INSERT INTO tmm.share_task_categories 
-			(task_id,cid,is_auto) VALUE %s  
+			var cidInsert = `INSERT INTO tmm.share_task_categories
+			(task_id,cid,is_auto) VALUE %s
 			ON DUPLICATE KEY UPDATE cid=VALUES(cid),is_auto=VALUES(is_auto)`
 
 			if _, _, err = db.Query(cidInsert, strings.Join(insertArray, `,`)); CheckErr(err, c) {
