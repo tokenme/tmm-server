@@ -5,25 +5,70 @@ import (
 	. "github.com/tokenme/tmm/handler"
 	"net/http"
 	"fmt"
-	"github.com/tokenme/tmm/handler/task"
 	"strings"
 	"github.com/tokenme/tmm/handler/admin"
+	"github.com/tokenme/tmm/tools/videospider"
 )
 
 func AddShareHandler(c *gin.Context) {
 	var db = Service.Db
-	var req task.ShareAddRequest
+	var req admin.AddRequest
 	if CheckErr(c.Bind(&req), c) {
 		return
 	}
+	var fieldList []string
+	var valueList []string
+	if req.Link != "" {
+		Video := videospider.NewClient(Service, Config)
+		if video, err := Video.Get(req.Link); err == nil {
+			if CheckErr(Video.Save(video), c) {
+				return
+			}
+			c.JSON(http.StatusOK, admin.Response{
+				Code:    0,
+				Message: admin.API_OK,
+				Data:    video,
+			})
+			return
+		}
+		fieldList = append(fieldList, `link`)
+		valueList = append(valueList, fmt.Sprintf(`'%s'`, req.Link))
+	}
+	if req.Title != "" {
+		fieldList = append(fieldList, `title`)
+		valueList = append(valueList, fmt.Sprintf(`'%s'`, req.Title))
+	}
+	if req.Summary != "" {
+		fieldList = append(fieldList, `summary`)
+		valueList = append(valueList, fmt.Sprintf(`'%s'`, req.Summary))
+	}
+	if req.Image != "" {
+		fieldList = append(fieldList, `image`)
+		valueList = append(valueList, fmt.Sprintf(`'%s'`, req.Image))
+	}
+	if req.Points.String() != "0" {
+		fieldList = append(fieldList, `points,points_left`)
+		valueList = append(valueList, fmt.Sprintf(`'%s','%s'`, req.Points.String(), req.Points.String()))
+	}
+	if req.Bonus.String() != "0" {
+		fieldList = append(fieldList, `bonus`)
+		valueList = append(valueList, fmt.Sprintf(`'%s'`, req.Bonus.String()))
+	}
+	if req.MaxViewers != 0 {
+		fieldList = append(fieldList, `max_viewers`)
+		valueList = append(valueList, fmt.Sprintf(`%d`, req.MaxViewers))
+	}
+
 	var query = `
 	INSERT INTO tmm.share_tasks 
-	(creator, title, summary, link,image, points, points_left, bonus, max_viewers) 
-	VALUES 	(%d, '%s', '%s', '%s', '%s', %s, %s, %s, %d)
-	`
-	_, res, err := db.Query(query, 0, db.Escape(req.Title),
-		db.Escape(req.Summary), db.Escape(req.Link), db.Escape(req.Image), db.Escape(req.Points.String()),
-		db.Escape(req.Points.String()), db.Escape(req.Bonus.String()), req.MaxViewers)
+	(%s) 
+	VALUES (%s)`
+	if Check(len(fieldList) == 0 || len(fieldList) != len(valueList), `Invalid param`, c) {
+		return
+	}
+	fieldList = append(fieldList, `creator`)
+	valueList = append(valueList, fmt.Sprintf(`%d`, 0))
+	_, res, err := db.Query(query, strings.Join(fieldList, `,`), strings.Join(valueList, `,`))
 	if CheckErr(err, c) {
 		return
 	}
