@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"fmt"
 	"github.com/tokenme/tmm/common"
+	"github.com/tokenme/tmm/handler/admin"
 )
 
 func GetTaskListHandler(c *gin.Context) {
@@ -104,10 +105,10 @@ func GetTaskListHandler(c *gin.Context) {
 		return
 	}
 	count = rows[0].Int(0)
-	c.JSON(http.StatusOK, Response{
-		code:    0,
-		message: API_OK,
-		data: gin.H{
+	c.JSON(http.StatusOK, admin.Response{
+		Code:    0,
+		Message: admin.API_OK,
+		Data: gin.H{
 			"curr_page": page,
 			"data":      sharelist,
 			"amount":    count,

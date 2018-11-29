@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/tokenme/tmm/handler/task"
 	"strings"
+	"github.com/tokenme/tmm/handler/admin"
 )
 
 func AddShareHandler(c *gin.Context) {
@@ -37,10 +38,10 @@ func AddShareHandler(c *gin.Context) {
 			return
 		}
 	}
-	c.JSON(http.StatusOK, Response{
-		message: API_OK,
-		data:    req,
-		code:    0,
+	c.JSON(http.StatusOK, admin.Response{
+		Message: admin.API_OK,
+		Data:    req,
+		Code:    0,
 	},
 	)
 }

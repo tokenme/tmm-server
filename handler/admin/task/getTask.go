@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"github.com/shopspring/decimal"
 	"net/http"
+	"github.com/tokenme/tmm/handler/admin"
 )
 
 func GetTaskHandler(c *gin.Context) {
@@ -76,8 +77,9 @@ func GetTaskHandler(c *gin.Context) {
 
 	}
 	task.Cid = cidList
-	c.JSON(http.StatusOK, gin.H{
-		"message": "OK",
-		"data":    task,
+	c.JSON(http.StatusOK, admin.Response{
+		Code:    0,
+		Message: admin.API_OK,
+		Data:    task,
 	})
 }

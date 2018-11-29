@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"fmt"
 	"time"
+	"github.com/tokenme/tmm/handler/admin"
 )
 
 func GetArticleHandler(c *gin.Context) {
@@ -24,9 +25,18 @@ func GetArticleHandler(c *gin.Context) {
 	}
 	link = fmt.Sprintf(`https://tmm.tokenmama.io/article/show/%d`, artId)
 
-	query = `SELECT fileid,author,
-	title,link,source_url,cover,published_at,
-	digest,content,sortid,published FROM tmm.articles WHERE id = %d`
+	query = `SELECT 
+	fileid,
+	author,
+	title,
+	link,
+	source_url,
+	cover,
+	published_at,
+	digest,
+	content,
+	sortid,
+	published FROM tmm.articles WHERE id = %d`
 	rows, result, err := db.Query(query, artId)
 	if CheckErr(err, c) {
 		return
@@ -56,8 +66,8 @@ func GetArticleHandler(c *gin.Context) {
 		return
 	}
 	up.Online = rows[0].Int(0)
-		c.JSON(http.StatusOK, gin.H{
-			"message":  "ok",
-			"data": up,
+		c.JSON(http.StatusOK, admin.Response{
+			Message:  admin.API_OK,
+			Data: up,
 		})
 }

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"github.com/tokenme/tmm/handler/admin"
 )
 
 func ModifyTaskHandler(c *gin.Context) {
@@ -93,8 +94,8 @@ func ModifyTaskHandler(c *gin.Context) {
 			return
 		}
 	}
-	c.JSON(http.StatusOK, Response{
-		code:    0,
-		message: API_OK,
+	c.JSON(http.StatusOK, admin.Response{
+		Code:    0,
+		Message: admin.API_OK,
 	})
 }
