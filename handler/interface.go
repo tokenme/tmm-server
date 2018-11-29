@@ -210,7 +210,7 @@ func ApiCheckFunc() gin.HandlerFunc {
 				"message": err.Error()})
 			return
 		}
-		if req.Ts < time.Now().Add(-10*time.Minute).Unix() || req.Ts > time.Now().Add(10*time.Minute).Unix() {
+		if req.Ts < time.Now().Add(-10 * time.Minute).Unix() || req.Ts > time.Now().Add(10 * time.Minute).Unix() {
 			c.Abort()
 			c.JSON(http.StatusBadRequest, gin.H{
 				"code":    401,
