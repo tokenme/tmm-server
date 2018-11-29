@@ -23,11 +23,8 @@ func GetTaskListHandler(c *gin.Context) {
 	} else {
 		offset = 0
 	}
-	var (
-		query    string
-		sumquery string
-	)
-	query = ` SELECT 
+	var sumquery string
+	query := ` SELECT 
 	id,
 	creator,
 	title,
@@ -50,6 +47,9 @@ func GetTaskListHandler(c *gin.Context) {
 			param := fmt.Sprintf(` INNER JOIN share_task_categories ON(id = task_id) where cid = %d `, cid)
 			query = fmt.Sprintf(query, param, limit, offset)
 			sumquery = fmt.Sprintf(sumquery, param)
+		} else {
+			query = fmt.Sprintf(query, "", limit, offset)
+			sumquery = fmt.Sprintf(sumquery, "")
 		}
 	} else {
 		isAuto := `WHERE id NOT IN (SELECT  DISTINCT(id)  FROM tmm.share_tasks 
@@ -59,6 +59,9 @@ func GetTaskListHandler(c *gin.Context) {
 	}
 	rows, res, err := db.Query(query)
 	if CheckErr(err, c) {
+		return
+	}
+	if Check(len(rows) == 0, `Not Find`, c) {
 		return
 	}
 	var sharelist []*common.ShareTask
@@ -101,7 +104,7 @@ func GetTaskListHandler(c *gin.Context) {
 		sharelist = append(sharelist, share)
 	}
 	rows, _, err = db.Query(sumquery)
-	if err != nil {
+	if CheckErr(err, c) {
 		return
 	}
 	count = rows[0].Int(0)
