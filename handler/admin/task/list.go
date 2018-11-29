@@ -55,7 +55,7 @@ func GetTaskListHandler(c *gin.Context) {
 		SELECT 1 FROM tmm.share_task_categories AS stc
 		WHERE stc.is_auto = 1 AND stc.task_id = s.id
 		LIMIT 1
-		)`
+		) AND s.online_status = 1`
 		query = fmt.Sprintf(query, isAuto, limit, offset)
 		sumquery = fmt.Sprintf(sumquery, isAuto)
 	}
