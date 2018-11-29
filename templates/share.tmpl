@@ -23,34 +23,41 @@ html, body, div, iframe {
 }
 body {overflow: hidden;}
 
+.container a{
+    font-family: BlinkMacSystemFont,-apple-system,"Segoe UI",Roboto,Oxygen,Ubuntu,Cantarell,"Fira Sans","Droid Sans","Helvetica Neue",Helvetica,Arial,sans-serif;
+    text-decoration: none;
+
+}
 iframe {
   width: 100vw;
   flex-grow: 2;
 }
 #banner {
-    font-family: BlinkMacSystemFont,-apple-system,"Segoe UI",Roboto,Oxygen,Ubuntu,Cantarell,"Fira Sans","Droid Sans","Helvetica Neue",Helvetica,Arial,sans-serif;
     display: flex;
     flex-direction: row;
     justify-content: flex-start;
     height: 90px;
+    overflow: hidden;
     align-items: center;
-    text-decoration: none;
     width: 100%;
     border-bottom: 1px solid #eee;
-    padding: 8px 0;
+    padding: 8px;
+    box-sizing: border-box;
 }
 #banner .logo {
     border: 1px solid #eee;
     border-radius: 15px;
-    width: 60px;
-    height: 60px;
+    max-height: 100%;
+    /*height: 60px;*/
+    /*width: 60px;
     padding: 5px;
-    margin: 10px 10px;
+    margin: 10px 10px;*/
 }
 #banner .title {
     font-weight: bold;
     color: #333;
     font-size: 16px;
+    margin-left: 16px;
     display: flex;
     flex-direction: column;
     justify-content: space-evenly;
@@ -72,6 +79,42 @@ iframe {
   flex-direction: column;
   height: 100%;
 }
+.iframecontainer{
+  overflow: auto;
+  /*flex-grow: 2;*/
+  height: 100%
+}
+/*iPhone XR 1792x828px at 326ppi */
+@media only screen
+    and (device-width : 414px)
+    and (device-height : 896px)
+    and (-webkit-device-pixel-ratio : 2) {
+        #banner {
+            height: 130px;
+        }
+        #banner .logo {
+            border: 1px solid #eee;
+            border-radius: 15px;
+            width: 60px;
+            height: 60px;
+            padding: 5px;
+            margin: 10px 10px;
+        }
+
+ }
+
+/*iPhone XS 2436x1125px at 458ppi */
+@media only screen
+    and (device-width : 375px)
+    and (device-height : 812px)
+    and (-webkit-device-pixel-ratio : 3) { }
+
+/*iPhone XS Max 2688x1242px at 458ppi */
+@media only screen
+    and (device-width : 414px)
+    and (device-height : 896px) {
+
+    }
 </style>
 {{ else }}
 <script language="javascript" type="text/javascript">
@@ -82,11 +125,13 @@ iframe {
 <body>
   {{ if .Task.InIframe }}
   <div class="container">
-      <a href="{{ .InviteLink }}" id="banner">
-        <img src="https://ucoin.tianxi100.com/tmm/icon512x512.png" class="logo"/>
-        <div class="title">
-            下载友币APP，躺在家里就挣钱！
-            <div class="downloadbtn">马上下载得红包</div>
+      <a href="{{ .InviteLink }}">
+        <div id="banner">
+            <img src="https://ucoin.tianxi100.com/tmm/icon512x512.png" class="logo"/>
+            <div class="title">
+                下载友币APP，躺在家里就挣钱！
+                <div class="downloadbtn">马上下载得红包</div>
+            </div>
         </div>
       </a>
       <iframe src="{{ .Task.Link }}" frameborder='0'{{ if .IsIOS }} scrolling='no' {{ end }}></iframe>
