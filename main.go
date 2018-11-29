@@ -116,7 +116,6 @@ func main() {
 	service := common.NewService(config)
 	defer service.Close()
 	service.Db.Reconnect()
-
 	if accelerateTxFlag != "" && accelerateGasFlag > 0 {
 		err := txaccelerate.Accelerate(service, config, accelerateTxFlag, accelerateGasFlag)
 		if err != nil {
