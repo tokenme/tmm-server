@@ -9,7 +9,7 @@ import (
 
 func CategoryListHandler(c *gin.Context) {
 	db := Service.Db
-	query := `SELECT id,name FROM tmm.article_categories`
+	query := `SELECT id,name FROM tmm.article_categories ORDER BY id`
 	maps := make(map[int]string)
 	rows, _, err := db.Query(query)
 	if CheckErr(err, c) {
