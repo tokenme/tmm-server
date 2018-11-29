@@ -4,7 +4,8 @@ import (
 	//"github.com/davecgh/go-spew/spew"
 	"encoding/json"
 	"fmt"
-	"github.com/ethereum/go-ethereum/params"
+	//"github.com/ethereum/go-ethereum/params"
+	"github.com/garyburd/redigo/redis"
 	"github.com/gin-gonic/gin"
 	"github.com/mkideal/log"
 	"github.com/nlopes/slack"
@@ -13,7 +14,7 @@ import (
 	"github.com/tokenme/tmm/coins/eth/utils"
 	"github.com/tokenme/tmm/common"
 	. "github.com/tokenme/tmm/handler"
-	"github.com/tokenme/tmm/tools/ethgasstation-api"
+	//"github.com/tokenme/tmm/tools/ethgasstation-api"
 	commonutils "github.com/tokenme/tmm/utils"
 	"math/big"
 	"net/http"
@@ -27,6 +28,8 @@ type TMMChangeRequest struct {
 	Direction common.TMMExchangeDirection `json:"direction" form:"direction" binding:"required"`
 }
 
+const TMMChangeRateKey = "TMMChangeRate-%d-%d"
+
 func TMMChangeHandler(c *gin.Context) {
 	userContext, exists := c.Get("USER")
 	if CheckWithCode(!exists, UNAUTHORIZED_ERROR, "need login", c) {
@@ -38,6 +41,16 @@ func TMMChangeHandler(c *gin.Context) {
 	if CheckErr(c.Bind(&req), c) {
 		return
 	}
+
+	redisConn := Service.Redis.Master.Get()
+	defer redisConn.Close()
+	changeRateKey := fmt.Sprintf(TMMChangeRateKey, req.Direction, user.Id)
+	changeTime, err := redis.String(redisConn.Do("GET", changeRateKey))
+	if CheckWithCode(err == nil, TOKEN_CHANGE_RATE_LIMIT_ERROR, "每次兑换时间间隔不能少于2小时", c) {
+		log.Warn("TokenChangeRateLimit: %d, direction: %d, time: %s", user.Id, req.Direction, changeTime)
+		return
+	}
+
 	exchangeRate, pointsPerTs, err := common.GetExchangeRate(Config, Service)
 	if CheckErr(err, c) {
 		return
@@ -130,12 +143,12 @@ WHERE d.id='%s' AND d.user_id=%d`
 		return
 	}
 	var gasPrice *big.Int
-	gas, err := ethgasstation.Gas()
-	if err != nil {
-		gasPrice = nil
-	} else {
-		gasPrice = new(big.Int).Mul(big.NewInt(gas.SafeLow.Div(decimal.New(10, 0)).IntPart()), big.NewInt(params.GWei))
-	}
+	/*gas, err := ethgasstation.Gas()
+		if err != nil {
+			gasPrice = nil
+		} else {
+	       gasPrice = new(big.Int).Mul(big.NewInt(gas.SafeLow.Div(decimal.New(10, 0)).IntPart()), big.NewInt(params.GWei))
+		}*/
 	transactorOpts := eth.TransactorOptions{
 		Nonce:    nonce,
 		GasPrice: gasPrice,
@@ -170,6 +183,11 @@ WHERE d.id='%s' AND d.user_id=%d`
 	}
 	if CheckErr(err, c) {
 		return
+	}
+
+	_, err = redisConn.Do("SETEX", changeRateKey, 60*60*2, time.Now().Format("2006-01-02 15:04:05"))
+	if err != nil {
+		log.Error(err.Error())
 	}
 
 	slackParams := slack.PostMessageParameters{Parse: "full", UnfurlMedia: true, Markdown: true}

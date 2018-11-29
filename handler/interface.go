@@ -61,31 +61,34 @@ type APIResponse struct {
 type ErrorCode = int
 
 const (
-	BADREQUEST_ERROR            ErrorCode = 400
-	INTERNAL_ERROR              ErrorCode = 500
-	NOTFOUND_ERROR              ErrorCode = 404
-	UNAUTHORIZED_ERROR          ErrorCode = 401
-	FEATURE_NOT_AVAILABLE_ERROR ErrorCode = 402
-	INVALID_PASSWD_ERROR        ErrorCode = 409
-	INVALID_CAPTCHA_ERROR       ErrorCode = 408
-	INVALID_PASSWD_LENGTH       ErrorCode = 407
-	DUPLICATE_USER_ERROR        ErrorCode = 202
-	UNACTIVATED_USER_ERROR      ErrorCode = 502
-	NOT_ENOUGH_TOKEN_ERROR      ErrorCode = 600
-	DAILY_BONUS_COMMITTED_ERROR ErrorCode = 601
-	NOT_ENOUGH_POINTS_ERROR     ErrorCode = 700
-	INVALID_MIN_POINTS_ERROR    ErrorCode = 701
-	INVALID_MIN_TOKEN_ERROR     ErrorCode = 702
-	WECHAT_UNAUTHORIZED_ERROR   ErrorCode = 703
-	WECHAT_PAYMENT_ERROR        ErrorCode = 704
-	WECHAT_OPENID_ERROR         ErrorCode = 705
-	NOT_ENOUGH_ETH_ERROR        ErrorCode = 800
-	INVALID_INVITE_CODE_ERROR   ErrorCode = 1000
-	MAX_BIND_DEVICE_ERROR       ErrorCode = 1100
-	OTHER_BIND_DEVICE_ERROR     ErrorCode = 1101
-	INVALID_CDP_VENDOR_ERROR    ErrorCode = 1200
-	BLOWUP_ESCAPE_LATE_ERROR    ErrorCode = 1300
-	BLOWUP_ESCAPE_EARLY_ERROR   ErrorCode = 1301
+	BADREQUEST_ERROR                    ErrorCode = 400
+	INTERNAL_ERROR                      ErrorCode = 500
+	NOTFOUND_ERROR                      ErrorCode = 404
+	UNAUTHORIZED_ERROR                  ErrorCode = 401
+	FEATURE_NOT_AVAILABLE_ERROR         ErrorCode = 402
+	INVALID_PASSWD_ERROR                ErrorCode = 409
+	INVALID_CAPTCHA_ERROR               ErrorCode = 408
+	INVALID_PASSWD_LENGTH               ErrorCode = 407
+	DUPLICATE_USER_ERROR                ErrorCode = 202
+	UNACTIVATED_USER_ERROR              ErrorCode = 502
+	NOT_ENOUGH_TOKEN_ERROR              ErrorCode = 600
+	DAILY_BONUS_COMMITTED_ERROR         ErrorCode = 601
+	NOT_ENOUGH_POINTS_ERROR             ErrorCode = 700
+	INVALID_MIN_POINTS_ERROR            ErrorCode = 701
+	INVALID_MIN_TOKEN_ERROR             ErrorCode = 702
+	INVALID_TOKEN_WITHDRAW_AMOUNT_ERROR ErrorCode = 706
+	WECHAT_UNAUTHORIZED_ERROR           ErrorCode = 703
+	WECHAT_PAYMENT_ERROR                ErrorCode = 704
+	WECHAT_OPENID_ERROR                 ErrorCode = 705
+	TOKEN_WITHDRAW_RATE_LIMIT_ERROR     ErrorCode = 707
+	TOKEN_CHANGE_RATE_LIMIT_ERROR       ErrorCode = 708
+	NOT_ENOUGH_ETH_ERROR                ErrorCode = 800
+	INVALID_INVITE_CODE_ERROR           ErrorCode = 1000
+	MAX_BIND_DEVICE_ERROR               ErrorCode = 1100
+	OTHER_BIND_DEVICE_ERROR             ErrorCode = 1101
+	INVALID_CDP_VENDOR_ERROR            ErrorCode = 1200
+	BLOWUP_ESCAPE_LATE_ERROR            ErrorCode = 1300
+	BLOWUP_ESCAPE_EARLY_ERROR           ErrorCode = 1301
 )
 
 type APIError struct {

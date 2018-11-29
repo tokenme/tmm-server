@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
-	//"github.com/davecgh/go-spew/spew"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/fvbock/endless"
 	"github.com/getsentry/raven-go"
 	"github.com/gin-gonic/gin"
@@ -15,9 +15,11 @@ import (
 	"github.com/tokenme/tmm/tools/articleclassifier"
 	"github.com/tokenme/tmm/tools/gc"
 	"github.com/tokenme/tmm/tools/orderbook-server"
+	"github.com/tokenme/tmm/tools/tmmwithdraw"
 	"github.com/tokenme/tmm/tools/tokenprofile"
 	"github.com/tokenme/tmm/tools/transferwatcher"
 	"github.com/tokenme/tmm/tools/txaccelerate"
+	"github.com/tokenme/tmm/tools/videospider"
 	"github.com/tokenme/tmm/tools/wechatspider"
 	"os"
 	"os/signal"
@@ -37,6 +39,7 @@ func main() {
 		articlePublishFlag         bool
 		articleClassifierTrainFlag bool
 		articleClassifyFlag        bool
+		addVideoFlag               string
 		accelerateTxFlag           string
 		accelerateGasFlag          int64
 	)
@@ -50,6 +53,7 @@ func main() {
 	flag.BoolVar(&configFlag.EnableWeb, "web", false, "enable http web server")
 	flag.BoolVar(&configFlag.EnableGC, "gc", false, "enable gc")
 	flag.BoolVar(&configFlag.EnableTx, "tx", false, "enable tx queue handler")
+	flag.BoolVar(&configFlag.EnableTokenWithdraw, "withdraw", false, "enable token withdraw queue handler")
 	flag.BoolVar(&parseTokenFlag, "parse-token", false, "enable parse token")
 	flag.BoolVar(&articleCrawlerFlag, "crawle-articles", false, "enable crawle_articles")
 	flag.BoolVar(&articlePublishFlag, "publish-articles", false, "enable publish_articles")
@@ -58,6 +62,7 @@ func main() {
 	flag.Int64Var(&accelerateGasFlag, "gas", 0, "set gas price")
 	flag.BoolVar(&articleClassifierTrainFlag, "train-article-classifier", false, "enable article classifer training")
 	flag.BoolVar(&articleClassifyFlag, "classify-articles", false, "enable articles classify")
+	flag.StringVar(&addVideoFlag, "add-video", "", "add video")
 	flag.Parse()
 
 	configor.New(&configor.Config{Verbose: configFlag.Debug, ErrorOnUnmatchedKeys: true, Environment: "production"}).Load(&config, configPath)
@@ -82,6 +87,10 @@ func main() {
 
 	if configFlag.EnableOrderBook {
 		config.EnableOrderBook = configFlag.EnableOrderBook
+	}
+
+	if configFlag.EnableTokenWithdraw {
+		config.EnableTokenWithdraw = configFlag.EnableTokenWithdraw
 	}
 
 	if configFlag.Debug {
@@ -117,6 +126,20 @@ func main() {
 	}
 	if parseTokenFlag {
 		tokenprofile.Update(service, config)
+		return
+	}
+
+	if addVideoFlag != "" {
+		spider := videospider.NewClient(service, config)
+		video, err := spider.Get(addVideoFlag)
+		if err != nil {
+			log.Error(err.Error())
+		}
+		err = spider.Save(video)
+		if err != nil {
+			log.Error(err.Error())
+		}
+		spew.Dump(video)
 		return
 	}
 
@@ -182,6 +205,10 @@ func main() {
 			//return
 		}
 	}()
+	tokenWithdraw := tmmwithdraw.NewService(service, config)
+	if config.EnableTokenWithdraw {
+		go tokenWithdraw.Start()
+	}
 	//queueManager := sqs.NewManager(config.SQS)
 	//queues := make(map[string]sqs.Queue)
 	//queues = map[string]sqs.Queue{
@@ -237,6 +264,9 @@ func main() {
 	gcHandler.Stop()
 	if config.EnableOrderBook {
 		orderbookServer.Stop()
+	}
+	if config.EnableTokenWithdraw {
+		go tokenWithdraw.Stop()
 	}
 	transferWatcher.Stop()
 }

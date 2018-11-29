@@ -2,12 +2,13 @@ package router
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/tokenme/tmm/handler"
 	"github.com/tokenme/tmm/handler/task"
 )
 
 func taskRouter(r *gin.Engine) {
 	taskGroup := r.Group("/task")
-	taskGroup.Use(AuthMiddleware.MiddlewareFunc())
+	taskGroup.Use(AuthMiddleware.MiddlewareFunc(), handler.ApiSignFunc())
 	{
 		taskGroup.GET("/shares", task.SharesHandler)
 		taskGroup.GET("/apps", task.AppsHandler)

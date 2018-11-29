@@ -1,13 +1,9 @@
 package slack
 
 import (
-	//"github.com/davecgh/go-spew/spew"
 	"github.com/gin-gonic/gin"
 	"github.com/nlopes/slack"
-	//. "github.com/tokenme/tmm/handler"
-	//"github.com/shopspring/decimal"
-	//"github.com/tokenme/tmm/common"
-	//"net/http"
+	"strconv"
 )
 
 type WebhookMessage struct {
@@ -17,6 +13,7 @@ type WebhookMessage struct {
 
 func HookHandler(c *gin.Context) {
 	cmd := c.PostForm("command")
+	txt := c.PostForm("text")
 	switch cmd {
 	case "/tspoints":
 		TsPointsHandler(c)
@@ -26,5 +23,20 @@ func HookHandler(c *gin.Context) {
 		PointsTokenHandler(c)
 	case "/prices":
 		PricesHandler(c)
+	case "/points.dist":
+		PointsDistHandler(c)
+	case "/withdraw.dist":
+		WithdrawDistHandler(c)
+	case "/invites.dist":
+		InvitesDistHandler(c)
+	case "/top.points.users":
+		num, _ := strconv.ParseInt(txt, 10, 64)
+		TopPointsUsersHandler(c, num)
+	case "/top.withdraw.users":
+		num, _ := strconv.ParseInt(txt, 10, 64)
+		TopWithdrawUsersHandler(c, num)
+	case "/top.invites.users":
+		num, _ := strconv.ParseInt(txt, 10, 64)
+		TopInvitesUsersHandler(c, num)
 	}
 }

@@ -82,7 +82,14 @@ func (this *Crawler) GetGzhArticles(name string) (int, error) {
 	db := this.service.Db
 	var ids []string
 	for _, a := range articles {
+		if a.Markdown == "" {
+			log.Warn("Empty Article: %d", a.FileId)
+			continue
+		}
 		ids = append(ids, fmt.Sprintf("%d", a.FileId))
+	}
+	if len(ids) == 0 {
+		return 0, nil
 	}
 	rows, _, err := db.Query(`SELECT fileid FROM tmm.articles WHERE fileid IN (%s)`, strings.Join(ids, ","))
 	if err != nil {
@@ -104,7 +111,7 @@ func (this *Crawler) GetGzhArticles(name string) (int, error) {
 			log.Error(err.Error())
 			continue
 		}
-		publishTime := time.Unix(1539857334, 0)
+		publishTime := time.Unix(a.DateTime, 0)
 		sortId := utils.RangeRandUint64(1, 1000000)
 		val = append(val, fmt.Sprintf("(%d, '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', %d)", newA.FileId, db.Escape(newA.Author), db.Escape(newA.Title), db.Escape(newA.Url), db.Escape(newA.SourceUrl), db.Escape(newA.Thumbnail), publishTime.Format("2006-01-02 15:04:05"), db.Escape(newA.Digest), db.Escape(newA.Markdown), sortId))
 	}
@@ -112,6 +119,7 @@ func (this *Crawler) GetGzhArticles(name string) (int, error) {
 	if count > 0 {
 		_, _, err := db.Query(`INSERT IGNORE INTO tmm.articles (fileid, author, title, link, source_url, cover, published_at, digest, content, sortid) VALUES %s`, strings.Join(val, ","))
 		if err != nil {
+			log.Error(err.Error())
 			return 0, err
 		}
 		_, _, err = db.Query(`UPDATE tmm.wx_gzh SET updated_at=NOW() WHERE name='%s'`, db.Escape(name))

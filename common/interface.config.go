@@ -61,6 +61,7 @@ type Config struct {
 	EnableGC               bool              `default:"false"`
 	EnableTx               bool              `default:"false"`
 	EnableOrderBook        bool              `default:"false"`
+	EnableTokenWithdraw    bool              `default:"false"`
 }
 
 type MySQLConfig struct {

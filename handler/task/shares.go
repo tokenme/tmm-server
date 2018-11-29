@@ -1,15 +1,20 @@
 package task
 
 import (
+	"errors"
 	"fmt"
 	//"github.com/davecgh/go-spew/spew"
 	"github.com/gin-gonic/gin"
-	//"github.com/mkideal/log"
+	"github.com/mkideal/log"
+	"github.com/panjf2000/ants"
 	"github.com/shopspring/decimal"
 	"github.com/tokenme/tmm/common"
 	. "github.com/tokenme/tmm/handler"
+	"github.com/tokenme/tmm/tools/videospider"
 	"net/http"
+	"sort"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -25,6 +30,7 @@ type SharesRequest struct {
 	Mac      string          `json:"mac" form:"mac"`
 	Platform common.Platform `json:"platform" form:"platform" binding:"required"`
 	MineOnly bool            `json:"mine_only" form:"mine_only"`
+	IsVideo  bool            `json:"is_video" form:"is_video"`
 	Build    uint            `json:"build" form:"build"`
 	Cid      uint            `json:"cid" form:"cid"`
 }
@@ -59,16 +65,19 @@ func SharesHandler(c *gin.Context) {
 
 	var taskIds []uint64
 	limitState := fmt.Sprintf("LIMIT %d, %d", (req.Page-1)*req.PageSize, req.PageSize)
-	onlineStatusConstrain := "st.points_left>0 AND st.online_status = 1"
+	onlineStatusConstrain := "st.points_left>0 AND st.online_status=1"
 	var inCidConstrain string
 	orderBy := "st.bonus DESC, st.id DESC"
 	if req.MineOnly {
-		onlineStatusConstrain = fmt.Sprintf("AND st.creator = %d", user.Id)
+		onlineStatusConstrain = fmt.Sprintf("st.creator = %d", user.Id)
 		orderBy = "st.id DESC"
+	}
+	if req.IsVideo {
+		onlineStatusConstrain = "st.is_video=1 AND st.points_left>0 AND st.online_status=1"
 	}
 	if req.Cid > 0 {
 		inCidConstrain = fmt.Sprintf("INNER JOIN tmm.share_task_categories AS stc ON (stc.task_id=st.id AND stc.cid=%d)", req.Cid)
-	} else if !req.MineOnly {
+	} else if !req.MineOnly && !req.IsVideo {
 		taskIds = SuggestEngine.Match(user.Id, req.Page, req.PageSize)
 	}
 	if len(taskIds) > 0 {
@@ -101,6 +110,8 @@ func SharesHandler(c *gin.Context) {
     st.inserted_at,
     st.updated_at,
     st.creator,
+    st.video_link,
+    st.is_video,
     st.online_status
 FROM tmm.share_tasks AS st
 %s
@@ -110,13 +121,31 @@ ORDER BY %s %s`
 	if CheckErr(err, c) {
 		return
 	}
-	var tasks []common.ShareTask
+	var tasks []*common.ShareTask
+	var wg sync.WaitGroup
+	videopider := videospider.NewClient(Service, Config)
+	videoFetchPool, _ := ants.NewPoolWithFunc(10, func(req interface{}) error {
+		defer wg.Done()
+		task := req.(*common.ShareTask)
+		video, err := videopider.Get(task.Link)
+		if err != nil {
+			log.Error(err.Error())
+			return err
+		}
+		if len(video.Files) == 0 {
+			return errors.New("invalid video")
+		}
+		sorter := videospider.NewVideoSorter(video.Files)
+		sort.Sort(sort.Reverse(sorter))
+		task.VideoLink = sorter[0].Link
+		return nil
+	})
 	for _, row := range rows {
 		bonus, _ := decimal.NewFromString(row.Str(6))
 		points, _ := decimal.NewFromString(row.Str(7))
 		pointsLeft, _ := decimal.NewFromString(row.Str(8))
 		creator := row.Uint64(12)
-		task := common.ShareTask{
+		task := &common.ShareTask{
 			Id:            row.Uint64(0),
 			Title:         row.Str(1),
 			Summary:       row.Str(2),
@@ -128,6 +157,8 @@ ORDER BY %s %s`
 			PointsLeft:    pointsLeft,
 			InsertedAt:    row.ForceLocaltime(10).Format(time.RFC3339),
 			UpdatedAt:     row.ForceLocaltime(11).Format(time.RFC3339),
+			VideoLink:     row.Str(13),
+			IsVideo:       uint8(row.Uint(14)),
 			ShowBonusHint: showBonusHint,
 		}
 		if strings.HasPrefix(task.Link, "https://tmm.tokenmama.io/article/show") {
@@ -136,10 +167,15 @@ ORDER BY %s %s`
 		if creator == user.Id {
 			task.Viewers = row.Uint(9)
 			task.Creator = creator
-			task.OnlineStatus = int8(row.Int(13))
+			task.OnlineStatus = int8(row.Int(15))
 		}
 		task.ShareLink, _ = task.GetShareLink(deviceId, Config)
+		if task.IsVideo == 1 && strings.Contains(task.VideoLink, "krcom.cn") {
+			wg.Add(1)
+			videoFetchPool.Serve(task)
+		}
 		tasks = append(tasks, task)
 	}
+	wg.Wait()
 	c.JSON(http.StatusOK, tasks)
 }

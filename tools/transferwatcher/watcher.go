@@ -79,24 +79,31 @@ func (this *Watcher) handleTransfer(ev *eth.TokenTransfer) {
 		log.Error(err.Error())
 	}
 	continueUpdate := true
-	if ret.AffectedRows() > 0 {
+	if ret != nil && ret.AffectedRows() > 0 {
 		continueUpdate = false
 	}
 	if continueUpdate {
-		_, ret, err = db.Query(`UPDATE tmm.orderbooks SET deposit_status=1 WHERE deposit_tx='%s'`, db.Escape(tx))
-		if err != nil {
+		_, ret, err := db.Query(`UPDATE tmm.withdraw_txs SET tx_status=1 WHERE tx='%s'`, db.Escape(tx))
+		if ret != nil && ret.AffectedRows() > 0 {
 			log.Error(err.Error())
-		}
-		if ret.AffectedRows() > 0 {
 			continueUpdate = false
 		}
 	}
 	if continueUpdate {
-		_, ret, err = db.Query(`UPDATE tmm.orderbooks SET withdraw_status=1 WHERE withdraw_tx='%s'`, db.Escape(tx))
+		_, ret, err = db.Query(`UPDATE tmm.orderbooks SET deposit_tx_status=1 WHERE deposit_tx='%s'`, db.Escape(tx))
 		if err != nil {
 			log.Error(err.Error())
 		}
-		if ret.AffectedRows() > 0 {
+		if ret != nil && ret.AffectedRows() > 0 {
+			continueUpdate = false
+		}
+	}
+	if continueUpdate {
+		_, ret, err = db.Query(`UPDATE tmm.orderbooks SET withdraw_tx_status=1 WHERE withdraw_tx='%s'`, db.Escape(tx))
+		if err != nil {
+			log.Error(err.Error())
+		}
+		if ret != nil && ret.AffectedRows() > 0 {
 			continueUpdate = false
 		}
 	}
@@ -104,6 +111,9 @@ func (this *Watcher) handleTransfer(ev *eth.TokenTransfer) {
 		_, _, err = db.Query(`UPDATE tmm.orderbook_trades SET tx_status=1 WHERE tx='%s'`, db.Escape(tx))
 		if err != nil {
 			log.Error(err.Error())
+		}
+		if ret != nil && ret.AffectedRows() > 0 {
+			continueUpdate = false
 		}
 	}
 	this.push(ev)

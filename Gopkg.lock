@@ -342,6 +342,15 @@
   version = "v1.8.0"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/golang/freetype"
+  packages = [
+    "raster",
+    "truetype"
+  ]
+  revision = "e2365dfdc4a05e4b8299a783240d4a7d5a65d4e4"
+
+[[projects]]
   name = "github.com/golang/protobuf"
   packages = ["proto"]
   revision = "aa810b61a9c79d51363740d207bb46cf8e620ed5"
@@ -423,6 +432,12 @@
   version = "v0.0.4"
 
 [[projects]]
+  name = "github.com/mattn/go-runewidth"
+  packages = ["."]
+  revision = "ce7b0b5c7b45a81508558cd1dba6bb1e4ddb51bb"
+  version = "v0.0.3"
+
+[[projects]]
   name = "github.com/me-io/go-swap"
   packages = [
     "pkg/exchanger",
@@ -482,6 +497,12 @@
   ]
   revision = "24a017dc0e9680762aeddd75c4f9cd91c55ad5b8"
   version = "0.2.0"
+
+[[projects]]
+  name = "github.com/olekukonko/tablewriter"
+  packages = ["."]
+  revision = "e6d60cf7ba1f42d86d54cdf5508611c4aafb3970"
+  version = "v0.0.1"
 
 [[projects]]
   name = "github.com/oschwald/geoip2-golang"
@@ -635,6 +656,19 @@
   version = "v4.0.1"
 
 [[projects]]
+  name = "github.com/wcharczuk/go-chart"
+  packages = [
+    ".",
+    "drawing",
+    "matrix",
+    "roboto",
+    "seq",
+    "util"
+  ]
+  revision = "7c3982fe3d8ab0c9eea9ab5d2aced51e45d447bc"
+  version = "v2.0.1"
+
+[[projects]]
   name = "github.com/xluohome/phonedata"
   packages = ["."]
   revision = "7ce4d4339b610d0a65f313d81cae7faabe1ad035"
@@ -665,6 +699,17 @@
     "scrypt"
   ]
   revision = "4d3f4d9ffa16a13f451c3b2999e9c49e9750bf06"
+
+[[projects]]
+  branch = "master"
+  name = "golang.org/x/image"
+  packages = [
+    "draw",
+    "font",
+    "math/f64",
+    "math/fixed"
+  ]
+  revision = "cd38e8056d9b27bb2f265effa37fb0ea6b8a7f0f"
 
 [[projects]]
   branch = "master"
@@ -780,6 +825,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "21bc72d373ac23c96034484af324852953b1f1fb757b76a9d45e111d0e02c7c4"
+  inputs-digest = "0bab4cd73e33d133358927739f60676a83854002331051938522412c06907555"
   solver-name = "gps-cdcl"
   solver-version = 1

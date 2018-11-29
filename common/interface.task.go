@@ -14,6 +14,7 @@ type ShareTask struct {
 	Summary       string          `json:"summary"`
 	Link          string          `json:"link"`
 	ShareLink     string          `json:"share_link"`
+	VideoLink     string          `json:"video_link,omitempty"`
 	Image         string          `json:"image,omitempty"`
 	Points        decimal.Decimal `json:"points,omitempty"`
 	PointsLeft    decimal.Decimal `json:"points_left,omitempty"`
@@ -23,6 +24,7 @@ type ShareTask struct {
 	InsertedAt    string          `json:"inserted_at,omitempty"`
 	UpdatedAt     string          `json:"updated_at,omitempty"`
 	OnlineStatus  int8            `json:"online_status,omitempty"`
+	IsVideo       uint8           `json:"is_video,omitempty"`
 	InIframe      bool            `json:"-"`
 	ShowBonusHint bool            `json:"show_bonus_hint,omitempty"`
 	Cid           []int           `json:"cid,omitempty"`
