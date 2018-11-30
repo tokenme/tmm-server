@@ -145,7 +145,7 @@ ic.user_id
 FROM tmm.invite_codes AS ic
 LEFT JOIN tmm.devices AS d ON (d.user_id=ic.parent_id)
 LEFT JOIN tmm.devices AS d2 ON (d2.user_id=ic.user_id)
-WHERE d2.id='%s'
+WHERE d2.id='%s' AND ic.parent_id > 0
 ORDER BY d.lastping_at DESC LIMIT 1) AS t1
 UNION
 SELECT id, inviter_id, user_id FROM
@@ -156,7 +156,7 @@ ic.user_id
 FROM tmm.invite_codes AS ic
 LEFT JOIN tmm.devices AS d ON (d.user_id=ic.grand_id)
 LEFT JOIN tmm.devices AS d2 ON (d2.user_id=ic.user_id)
-WHERE d2.id='%s'
+WHERE d2.id='%s' AND ic.grand_id > 0
 ORDER BY d.lastping_at DESC LIMIT 1) AS t2`
 				rows, _, err = db.Query(query, db.Escape(deviceId), db.Escape(deviceId))
 				if err != nil {
