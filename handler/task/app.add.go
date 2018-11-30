@@ -17,6 +17,7 @@ type AppAddRequest struct {
 	Points      decimal.Decimal `json:"points" form:"points" binding:"required"`
 	Bonus       decimal.Decimal `json:"bonus" form:"bonus" binding:"required"`
     DownloadUrl string          `json:"download_url" from:"download_url" binding:"required"`
+    Icon        string          `json:"icon" from:"icon" binding:"required"`
 	Platform    common.Platform `json:"platform" form:"platform" binding:"required"`
 }
 
@@ -58,7 +59,7 @@ ORDER BY d.points DESC LIMIT 1`
 	if CheckWithCode(ret.AffectedRows() == 0, NOT_ENOUGH_POINTS_ERROR, "not enough points in device", c) {
 		return
 	}
-	_, ret, err = db.Query(`INSERT INTO tmm.app_tasks (creator, platform, name, bundle_id, download_url, points, points_left, bonus) VALUES (%d, '%s', '%s', '%s', '%s', %s, %s, %s)`, user.Id, db.Escape(req.Platform), db.Escape(req.Name), db.Escape(req.BundleId), db.Escape(req.DownloadUrl), req.Points.String(), req.Points.String(), req.Bonus.String())
+	_, ret, err = db.Query(`INSERT INTO tmm.app_tasks (creator, platform, name, bundle_id, download_url, icon, points, points_left, bonus) VALUES (%d, '%s', '%s', '%s', '%s', '%s', %s, %s, %s)`, user.Id, db.Escape(req.Platform), db.Escape(req.Name), db.Escape(req.BundleId), db.Escape(req.DownloadUrl), db.Escape(req.Icon), req.Points.String(), req.Points.String(), req.Bonus.String())
 	if CheckErr(err, c) {
 		return
 	}
