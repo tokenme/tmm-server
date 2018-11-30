@@ -152,4 +152,6 @@ type AppConfig struct {
 type XingeConfig struct {
 	AppId     string `required:"true"`
 	SecretKey string `required:"true"`
+	AccessId  string `required:"true"`
+	AccessKey string `required:"true"`
 }

@@ -123,14 +123,15 @@ func (this *Classifier) ClassifyDocs() {
 	for {
 		endId := startId
 		log.Println("Reading docs: ", startId)
-		rows, _, err := db.Query(`SELECT st.id, st.link FROM tmm.share_tasks AS st WHERE NOT EXISTS (SELECT 1 FROM tmm.share_task_categories AS stc WHERE stc.task_id=st.id LIMIT 1) AND st.creator=0 AND st.id>%d ORDER BY st.id ASC LIMIT %d`, startId, limit)
+		rows, _, err := db.Query(`SELECT st.id, st.link, st.title, st.summary FROM tmm.share_tasks AS st WHERE NOT EXISTS (SELECT 1 FROM tmm.share_task_categories AS stc WHERE stc.task_id=st.id LIMIT 1) AND st.creator=0 AND st.id>%d ORDER BY st.id ASC LIMIT %d`, startId, limit)
 		if err != nil {
 			log.Println(err.Error())
 			break
 		}
 		var (
-			tasks = make(map[uint64]*Task)
-			idArr []string
+			tasks      = make(map[uint64]*Task)
+			extraTasks []*Task
+			idArr      []string
 		)
 		for _, row := range rows {
 			endId = row.Uint64(0)
@@ -139,6 +140,14 @@ func (this *Classifier) ClassifyDocs() {
 			id, err := strconv.ParseUint(idStr, 10, 64)
 			if err != nil || id == 0 {
 				log.Println(err.Error())
+				task := &Task{Id: endId}
+				content := fmt.Sprintf("%s %s", row.Str(2), row.Str(3))
+				cids, _ := this.Classify(content)
+				if len(cids) > 0 {
+					task.Cid = cids[0]
+					log.Println("Doc: ", link, ", Cid:", task.Cid)
+				}
+				extraTasks = append(extraTasks, task)
 				continue
 			}
 			tasks[id] = &Task{
@@ -164,6 +173,12 @@ func (this *Classifier) ClassifyDocs() {
 		}
 		var val []string
 		for _, task := range tasks {
+			if task.Cid == 0 {
+				continue
+			}
+			val = append(val, fmt.Sprintf("(%d, %d, 1)", task.Id, task.Cid))
+		}
+		for _, task := range extraTasks {
 			if task.Cid == 0 {
 				continue
 			}
@@ -218,13 +233,14 @@ func (this *Classifier) getDocs() []*Doc {
 	log.Println("Loading Docs...")
 	db := this.service.Db
 	var (
-		startId uint64
-		limit   uint64 = 1000
-		docs           = make(map[uint64]*Doc)
+		startId   uint64
+		limit     uint64 = 1000
+		docs             = make(map[uint64]*Doc)
+		extraDocs []*Doc
 	)
 	for {
 		endId := startId
-		rows, _, err := db.Query(`SELECT st.id, stc.cid, st.link FROM tmm.share_tasks AS st INNER JOIN tmm.share_task_categories AS stc ON (stc.task_id=st.id) WHERE st.creator=0 AND stc.is_auto=0 AND st.id>%d ORDER BY st.id ASC LIMIT %d`, startId, limit)
+		rows, _, err := db.Query(`SELECT st.id, stc.cid, st.link, st.title, st.summary FROM tmm.share_tasks AS st INNER JOIN tmm.share_task_categories AS stc ON (stc.task_id=st.id) WHERE st.creator=0 AND stc.is_auto=0 AND st.id>%d ORDER BY st.id ASC LIMIT %d`, startId, limit)
 		if err != nil {
 			log.Println(err.Error())
 			break
@@ -238,6 +254,23 @@ func (this *Classifier) getDocs() []*Doc {
 			id, err := strconv.ParseUint(idStr, 10, 64)
 			if err != nil || id == 0 {
 				log.Println(err.Error())
+				doc := &Doc{Cid: uint16(cid)}
+				txt := fmt.Sprintf("%s %s", row.Str(3), row.Str(4))
+				segments := this.Gse.Segment([]byte(txt))
+				var words []string
+				for _, seg := range segments {
+					w := strings.ToLower(strings.TrimSpace(seg.Token().Text()))
+					if len(w) <= 1 || strings.Contains("。？！，、；：“”‘'（）《》〈〉【】『』「」﹃﹄〔〕…—～﹏￥\n", w) {
+						continue
+					}
+					words = append(words, w)
+				}
+				if len(words) == 0 {
+					continue
+				}
+				this.weighter.AddDoc(words)
+				doc.Words = words
+				extraDocs = append(extraDocs, doc)
 				continue
 			}
 			docs[id] = &Doc{
@@ -288,6 +321,22 @@ func (this *Classifier) getDocs() []*Doc {
 	}
 	var documents []*Doc
 	for _, doc := range docs {
+		if len(doc.Words) == 0 {
+			continue
+		}
+		scores := this.weighter.Score(doc.Words)
+		var topWords []string
+		for idx, item := range scores {
+			if idx >= MaxDocWords {
+				break
+			}
+			topWords = append(topWords, item.Key)
+		}
+		doc.Words = topWords
+		documents = append(documents, doc)
+	}
+
+	for _, doc := range extraDocs {
 		if len(doc.Words) == 0 {
 			continue
 		}

@@ -33,6 +33,7 @@ type UserLog struct {
 type Task struct {
 	TaskId    uint64
 	ArticleId uint64
+	Gravity   float64
 	Words     map[string]float64
 }
 
@@ -174,7 +175,7 @@ func (this *Engine) Match(userId uint64, page uint, limit uint) []uint64 {
 			}
 		}
 		score = 0.5*abScore/(math.Sqrt(bScore)*math.Sqrt(aScore)) + 0.5
-		taskScores[task.TaskId] = score
+		taskScores[task.TaskId] = score - task.Gravity
 	}
 	sorter := NewScoreSorter(taskScores)
 	sort.Sort(sort.Reverse(sorter))
@@ -344,7 +345,8 @@ func (this *Engine) getTasks() {
     st.id,
     st.link,
     st.title,
-    st.summary
+    st.summary,
+    LOG(TIME_TO_SEC(TIMEDIFF(NOW(), inserted_at)) / (3600 * 24)) AS gravity
 FROM tmm.share_tasks AS st
 WHERE st.points_left>0 AND st.online_status = 1
 ORDER BY st.bonus DESC, st.id DESC LIMIT 5000`)
@@ -361,7 +363,8 @@ ORDER BY st.bonus DESC, st.id DESC LIMIT 5000`)
 		taskId := row.Uint64(0)
 		link := row.Str(1)
 		text := row.Str(2) + row.Str(3)
-		task := &Task{TaskId: taskId}
+		gravity := row.ForceFloat(4)
+		task := &Task{TaskId: taskId, Gravity: gravity}
 		topWords, err := this.topWordsFromString(text)
 		if err != nil {
 			log.Println(err.Error())

@@ -10,6 +10,7 @@ import (
 	"github.com/tokenme/tmm/common"
 	. "github.com/tokenme/tmm/handler"
 	tokenUtils "github.com/tokenme/tmm/utils/token"
+	"github.com/ua-parser/uap-go/uaparser"
 	"net/http"
 	"strings"
 	"time"
@@ -17,6 +18,7 @@ import (
 
 type ShareData struct {
 	Task       common.ShareTask
+	IsIOS      bool
 	InviteLink string
 }
 
@@ -190,6 +192,15 @@ ORDER BY d.lastping_at DESC LIMIT 1) AS t2`
 			}
 		}
 	}()
-
-	c.HTML(http.StatusOK, "share.tmpl", ShareData{Task: task, InviteLink: fmt.Sprintf("https://tmm.tokenmama.io/invite/%s", inviteCode.Encode())})
+	parser, err := uaparser.New(Config.UAParserPath)
+	var isIOS bool
+	if err != nil {
+		log.Error(err.Error())
+	} else {
+		client := parser.Parse(c.Request.UserAgent())
+		if strings.Contains(strings.ToLower(client.Os.Family), "ios") {
+			isIOS = true
+		}
+	}
+	c.HTML(http.StatusOK, "share.tmpl", ShareData{Task: task, IsIOS: isIOS, InviteLink: fmt.Sprintf("https://tmm.tokenmama.io/invite/%s", inviteCode.Encode())})
 }

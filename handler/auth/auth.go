@@ -60,7 +60,7 @@ var AuthenticatorFunc = func(loginInfo jwt.Login, c *gin.Context) (string, int, 
 			log.Error(err.Error())
 			return loginInfo.Mobile, INVALID_CAPTCHA_ERROR, false
 		}
-		if biometric.Ts < time.Now().Add(-10*time.Minute).Unix() || biometric.Ts > time.Now().Add(10*time.Minute).Unix() {
+		if biometric.Ts < time.Now().Add(-10 * time.Minute).Unix() || biometric.Ts > time.Now().Add(10 * time.Minute).Unix() {
 			return loginInfo.Mobile, INVALID_CAPTCHA_ERROR, false
 		}
 		loginPasswd = biometric.Passwd
