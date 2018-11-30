@@ -18,22 +18,6 @@ func AddShareHandler(c *gin.Context) {
 	}
 	var fieldList []string
 	var valueList []string
-	if req.Link != "" {
-		Video := videospider.NewClient(Service, Config)
-		if video, err := Video.Get(req.Link); err == nil {
-			if CheckErr(Video.Save(video), c) {
-				return
-			}
-			c.JSON(http.StatusOK, admin.Response{
-				Code:    0,
-				Message: admin.API_OK,
-				Data:    video,
-			})
-			return
-		}
-		fieldList = append(fieldList, `link`)
-		valueList = append(valueList, fmt.Sprintf(`'%s'`, req.Link))
-	}
 	if req.Title != "" {
 		fieldList = append(fieldList, `title`)
 		valueList = append(valueList, fmt.Sprintf(`'%s'`, req.Title))
@@ -57,6 +41,24 @@ func AddShareHandler(c *gin.Context) {
 	if req.MaxViewers != 0 {
 		fieldList = append(fieldList, `max_viewers`)
 		valueList = append(valueList, fmt.Sprintf(`%d`, req.MaxViewers))
+	}
+	if req.Link != "" {
+		Video := videospider.NewClient(Service, Config)
+		if video, err := Video.Get(req.Link); err == nil {
+			if Video.Save(video) == nil {
+				c.JSON(http.StatusOK, admin.Response{
+					Code:    0,
+					Message: admin.API_OK,
+					Data:    video,
+				})
+				return
+			}
+		}
+		if Check(len(fieldList) == 0,`Error Link`,c){
+			return
+		}
+		fieldList = append(fieldList, `link`)
+		valueList = append(valueList, fmt.Sprintf(`'%s'`, req.Link))
 	}
 
 	var query = `

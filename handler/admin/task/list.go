@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"github.com/tokenme/tmm/common"
 	"github.com/tokenme/tmm/handler/admin"
+	"strings"
 )
 
 func GetTaskListHandler(c *gin.Context) {
@@ -17,6 +18,7 @@ func GetTaskListHandler(c *gin.Context) {
 	limit, _ := strconv.Atoi(c.DefaultQuery(`limit`, "5"))
 	cid, _ := strconv.Atoi(c.DefaultQuery(`cid`, "0"))
 	nocid, _ := strconv.Atoi(c.DefaultQuery(`nocid`, "0"))
+	online, _ := strconv.Atoi(c.DefaultQuery(`online_status`, `0`))
 	var offset, count int
 	if page >= 1 {
 		offset = (page - 1) * limit
@@ -41,29 +43,46 @@ func GetTaskListHandler(c *gin.Context) {
 	s.updated_at FROM tmm.share_tasks AS s
 	%s ORDER BY s.id DESC LIMIT %d OFFSET %d `
 	sumquery = `SELECT count(*) FROM tmm.share_tasks as s %s `
+	var where []string
+	var sumwhere []string
 	if nocid != 1 {
 		if cid != 0 {
-			param := fmt.Sprintf(` INNER JOIN tmm.share_task_categories AS stc ON ( stc.task_id = s.id )  where stc.cid = %d `, cid)
-			query = fmt.Sprintf(query, param, limit, offset)
-			sumquery = fmt.Sprintf(sumquery, param)
+			taskType := fmt.Sprintf(` INNER JOIN tmm.share_task_categories AS stc ON ( stc.task_id = s.id )  
+			where stc.cid = %d `, cid)
+			where = append(where, taskType)
+			sumwhere = append(sumwhere, taskType)
 		} else {
-			query = fmt.Sprintf(query, "", limit, offset)
-			sumquery = fmt.Sprintf(sumquery, "")
+			param := ` WHERE 1 = 1 `
+			where = append(where, param)
+			sumwhere = append(sumwhere, param)
 		}
 	} else {
-		isAuto := `WHERE NOT EXISTS (
+		isAuto := ` WHERE NOT EXISTS (
 		SELECT 1 FROM tmm.share_task_categories AS stc
 		WHERE stc.is_auto = 1 AND stc.task_id = s.id
-		LIMIT 1
-		) AND s.online_status = 1`
-		query = fmt.Sprintf(query, isAuto, limit, offset)
-		sumquery = fmt.Sprintf(sumquery, isAuto)
+		LIMIT 1 ) `
+		where = append(where, isAuto)
+		sumwhere = append(sumwhere, isAuto)
 	}
-	rows, res, err := db.Query(query)
+	if online != 0 {
+		isOnline := fmt.Sprintf(` And s.online_status = %d `, online)
+		where = append(where, isOnline)
+		sumwhere = append(sumwhere, isOnline)
+	}
+	rows, res, err := db.Query(query, strings.Join(where, ` `), limit, offset)
 	if CheckErr(err, c) {
 		return
 	}
-	if Check(len(rows) == 0, `Not Find`, c) {
+	if len(rows) == 0 {
+		c.JSON(http.StatusOK,admin.Response{
+			Code:    0,
+			Message: "Not Find Data",
+			Data: gin.H{
+				"curr_page": page,
+				"data":      nil,
+				"amount":    count,
+			},
+		})
 		return
 	}
 	var sharelist []*common.ShareTask
@@ -105,7 +124,7 @@ func GetTaskListHandler(c *gin.Context) {
 		share.Cid = cidList
 		sharelist = append(sharelist, share)
 	}
-	rows, _, err = db.Query(sumquery)
+	rows, _, err = db.Query(sumquery, strings.Join(sumwhere, ` `))
 	if CheckErr(err, c) {
 		return
 	}
