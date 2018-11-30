@@ -74,7 +74,8 @@ func AppsHandler(c *gin.Context) {
     a.creator,
     IFNULL(asi.id, 0),
     a.online_status,
-    a.download_url
+    a.download_url,
+    a.icon
 FROM tmm.app_tasks AS a
 LEFT JOIN tmm.app_scheme_ids AS asi ON (asi.bundle_id = a.bundle_id)
 WHERE a.platform='%s' %s
@@ -102,13 +103,14 @@ ORDER BY %s LIMIT %d, %d`
 			UpdatedAt:      row.ForceLocaltime(10).Format(time.RFC3339),
 			SchemeId:       row.Uint64(12),
             DownloadUrl:    row.Str(14),
+            Icon:           row.Str(15),
 		}
 		if creator == user.Id {
 			task.Downloads = row.Uint(8)
 			task.Creator = creator
 			task.OnlineStatus = int8(row.Int(13))
 		}
-		if task.StoreId == 0 {
+		if task.Icon == "" && task.StoreId == 0 {
 			lookup, err := common.App{BundleId: task.BundleId}.LookUp(Service)
 			if err == nil {
 				task.StoreId = lookup.TrackId
