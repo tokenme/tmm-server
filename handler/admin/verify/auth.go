@@ -14,10 +14,10 @@ func VerifyAdminFunc() gin.HandlerFunc {
 			return
 		}
 		user := userContext.(common.User)
-		if user.IsAdmin() {
+		if !user.IsAdmin() {
 			c.Abort()
 			c.JSON(http.StatusOK, gin.H{
-				`code`: `401`,
+				`code`: 401,
 				`msg`:  `The User Must Be Admin`,
 			})
 			return
@@ -26,4 +26,3 @@ func VerifyAdminFunc() gin.HandlerFunc {
 		return
 	}
 }
-

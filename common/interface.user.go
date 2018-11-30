@@ -25,7 +25,7 @@ type User struct {
 	CanPay          uint             `json:"can_pay,omitempty"`
 	ExchangeEnabled bool             `json:"exchange_enabled,omitempty"`
 	Level           CreditLevel      `json:"level,omitempty"`
-	Role            uint8            `json:"-"`
+	Role            uint8            `json:"role,omitempty"`
 	WxBinded        bool             `json:"wx_binded,omitempty"`
 	Wechat          *Wechat          `json:"-"`
 }
