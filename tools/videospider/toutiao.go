@@ -15,7 +15,7 @@ func NewToutiao(client *Client) *Toutiao {
 		Request{
 			client:   client,
 			name:     "Toutiao",
-			patterns: []string{`toutiao\.com\/item\/(\d+)`, `toutiao\.com\/[ia](\d+)`, `365yg.com\/([\w|\d]+)`, `toutiaoimg.cn/group/\d+/\?iid=(\d+)`},
+			patterns: []string{`toutiao\.com\/item\/(\d+)`, `toutiao\.com\/[ia](\d+)`, `365yg.com\/([\w|\d]+)`, `toutiaoimg.cn/.+/\?iid=(\d+)`},
 		},
 	}
 }
