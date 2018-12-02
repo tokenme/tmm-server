@@ -26,12 +26,14 @@ type User struct {
 	ExchangeEnabled bool             `json:"exchange_enabled,omitempty"`
 	Level           CreditLevel      `json:"level,omitempty"`
 	Role            uint8            `json:"role,omitempty"`
+	OpenId          string           `json:"openid,omitempty"`
 	WxBinded        bool             `json:"wx_binded,omitempty"`
 	Wechat          *Wechat          `json:"-"`
 }
 
 type Wechat struct {
 	UnionId     string    `json:"union_id,omitempty"`
+	OpenId      string    `json:"open_id,omitempty"`
 	Nick        string    `json:"nick,omitempty"`
 	Gender      uint      `json:"gender,omitempty"`
 	Avatar      string    `json:"avatar,omitempty"`

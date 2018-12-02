@@ -36,6 +36,7 @@ func InfoGetHandler(c *gin.Context) {
                 ul.name,
                 ul.enname,
                 wx.union_id,
+                wx.open_id,
                 wx.nick,
                 wx.avatar,
                 wx.gender,
@@ -86,11 +87,12 @@ func InfoGetHandler(c *gin.Context) {
 		if wxUnionId != "" {
 			wechat := &common.Wechat{
 				UnionId:     wxUnionId,
-				Nick:        row.Str(17),
-				Avatar:      row.Str(18),
-				Gender:      row.Uint(19),
-				AccessToken: row.Str(20),
-				Expires:     row.ForceLocaltime(21),
+				OpenId:      row.Str(17),
+				Nick:        row.Str(18),
+				Avatar:      row.Str(19),
+				Gender:      row.Uint(20),
+				AccessToken: row.Str(21),
+				Expires:     row.ForceLocaltime(22),
 			}
 			user.Wechat = wechat
 			user.WxBinded = true

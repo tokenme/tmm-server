@@ -60,7 +60,7 @@ var AuthenticatorFunc = func(loginInfo jwt.Login, c *gin.Context) (string, int, 
 			log.Error(err.Error())
 			return loginInfo.Mobile, INVALID_CAPTCHA_ERROR, false
 		}
-		if biometric.Ts < time.Now().Add(-10 * time.Minute).Unix() || biometric.Ts > time.Now().Add(10 * time.Minute).Unix() {
+		if biometric.Ts < time.Now().Add(-10*time.Minute).Unix() || biometric.Ts > time.Now().Add(10*time.Minute).Unix() {
 			return loginInfo.Mobile, INVALID_CAPTCHA_ERROR, false
 		}
 		loginPasswd = biometric.Passwd
@@ -130,6 +130,7 @@ var AuthenticatorFunc = func(loginInfo jwt.Login, c *gin.Context) (string, int, 
                 ul.name,
                 ul.enname,
                 wx.union_id,
+                wx.open_id,
                 wx.nick,
                 wx.avatar,
                 wx.gender,
@@ -183,12 +184,14 @@ var AuthenticatorFunc = func(loginInfo jwt.Login, c *gin.Context) (string, int, 
 	if wxUnionId != "" {
 		wechat := &common.Wechat{
 			UnionId:     wxUnionId,
-			Nick:        row.Str(18),
-			Avatar:      row.Str(19),
-			Gender:      row.Uint(20),
-			AccessToken: row.Str(21),
-			Expires:     row.ForceLocaltime(22),
+			OpenId:      row.Str(18),
+			Nick:        row.Str(19),
+			Avatar:      row.Str(20),
+			Gender:      row.Uint(21),
+			AccessToken: row.Str(22),
+			Expires:     row.ForceLocaltime(23),
 		}
+		user.OpenId = wechat.OpenId
 		user.Wechat = wechat
 		user.WxBinded = true
 	}
