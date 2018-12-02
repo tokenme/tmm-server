@@ -102,7 +102,7 @@ func (this *Engine) Match(userId uint64, page uint, limit uint) []uint64 {
 		}
 	}
 	buf, err := redis.Bytes(redisConn.Do("GET", infoKey))
-	if err != nil && buf != nil {
+	if err == nil && buf != nil {
 		err := json.Unmarshal(buf, &taskIds)
 		if err != nil {
 			log.Println(err.Error())
@@ -201,7 +201,10 @@ func (this *Engine) Match(userId uint64, page uint, limit uint) []uint64 {
 			retIds = append(retIds, taskId)
 		}
 		if cur >= totalIds || len(retIds) >= int(limit) {
-			redisConn.Do("SETEX", curKey, 1*60, cur)
+			_, err := redisConn.Do("SETEX", curKey, 5*60, cur)
+			if err != nil {
+				log.Println(err.Error())
+			}
 			break
 		}
 	}
