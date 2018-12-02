@@ -248,7 +248,7 @@ func (this *Engine) getLogs() {
 				UserId: userId,
 				Ts:     ts,
 			}
-			topWords, err := this.topWordsFromString(row.Str(4) + row.Str(5))
+			topWords, err := this.topWordsFromString(fmt.Sprintf("%s %s", row.Str(4), row.Str(5)))
 			if err != nil {
 				log.Println(err.Error())
 			} else {
@@ -272,15 +272,24 @@ func (this *Engine) getLogs() {
 			idArr = append(idArr, fmt.Sprintf("%d", id))
 		}
 		if len(idArr) > 0 {
-			rows, _, err := db.Query(`SELECT id, content FROM tmm.articles WHERE id IN (%s)`, strings.Join(idArr, ","))
+			rows, _, err := db.Query(`SELECT id, title, digest, author, content FROM tmm.articles WHERE id IN (%s)`, strings.Join(idArr, ","))
 			if err != nil {
 				log.Println(err.Error())
 				continue
 			}
 			for _, row := range rows {
 				articleId := row.Uint64(0)
-				content := row.Str(1)
-				topWords, err := this.topWords(content)
+				var content string
+				if row.Str(4) != "" {
+					reader := bytes.NewBuffer([]byte(row.Str(4)))
+					page, err := goquery.NewDocumentFromReader(reader)
+					if err == nil {
+						content = page.Text()
+					}
+				}
+
+				txt := fmt.Sprintf("%s %s %s %s", row.Str(1), row.Str(2), row.Str(3), content)
+				topWords, err := this.topWords(txt)
 				if err != nil {
 					log.Println(err.Error())
 					continue
@@ -362,7 +371,7 @@ ORDER BY st.bonus DESC, st.id DESC LIMIT 5000`)
 	for _, row := range rows {
 		taskId := row.Uint64(0)
 		link := row.Str(1)
-		text := row.Str(2) + row.Str(3)
+		text := fmt.Sprintf("%s %s", row.Str(2), row.Str(3))
 		gravity := row.ForceFloat(4)
 		task := &Task{TaskId: taskId, Gravity: gravity}
 		topWords, err := this.topWordsFromString(text)
@@ -385,14 +394,23 @@ ORDER BY st.bonus DESC, st.id DESC LIMIT 5000`)
 		idArr = append(idArr, fmt.Sprintf("%d", id))
 	}
 	if len(idArr) > 0 {
-		rows, _, err := db.Query(`SELECT id, content FROM tmm.articles WHERE id IN (%s)`, strings.Join(idArr, ","))
+		rows, _, err := db.Query(`SELECT id, title, digest, author, content FROM tmm.articles WHERE id IN (%s)`, strings.Join(idArr, ","))
 		if err != nil {
 			return
 		}
 		for _, row := range rows {
 			articleId := row.Uint64(0)
-			content := row.Str(1)
-			topWords, err := this.topWords(content)
+			var content string
+			if row.Str(4) != "" {
+				reader := bytes.NewBuffer([]byte(row.Str(4)))
+				page, err := goquery.NewDocumentFromReader(reader)
+				if err == nil {
+					content = page.Text()
+				}
+			}
+
+			txt := fmt.Sprintf("%s %s %s %s", row.Str(1), row.Str(2), row.Str(3), content)
+			topWords, err := this.topWords(txt)
 			if err != nil {
 				continue
 			}

@@ -71,13 +71,18 @@ func (this *Classifier) getCategories() ([][]byte, error) {
 	return categories, nil
 }
 
-func (this *Classifier) Classify(html string) ([]uint16, error) {
-	reader := bytes.NewBuffer([]byte(html))
-	page, err := goquery.NewDocumentFromReader(reader)
-	if err != nil {
-		return nil, err
+func (this *Classifier) Classify(title string, digest string, author string, html string) ([]uint16, error) {
+	var content string
+	if html != "" {
+		reader := bytes.NewBuffer([]byte(html))
+		page, err := goquery.NewDocumentFromReader(reader)
+		if err == nil {
+			content = page.Text()
+		}
 	}
-	segments := this.Gse.Segment([]byte(page.Text()))
+
+	txt := fmt.Sprintf("%s %s %s %s", title, digest, author, content)
+	segments := this.Gse.Segment([]byte(txt))
 	var words []string
 	for _, seg := range segments {
 		w := strings.ToLower(strings.TrimSpace(seg.Token().Text()))
@@ -123,7 +128,7 @@ func (this *Classifier) ClassifyDocs() {
 	for {
 		endId := startId
 		log.Println("Reading docs: ", startId)
-		rows, _, err := db.Query(`SELECT st.id, st.link, st.title, st.summary FROM tmm.share_tasks AS st WHERE NOT EXISTS (SELECT 1 FROM tmm.share_task_categories AS stc WHERE stc.task_id=st.id LIMIT 1) AND st.creator=0 AND st.id>%d ORDER BY st.id ASC LIMIT %d`, startId, limit)
+		rows, _, err := db.Query(`SELECT st.id, st.link, st.title, st.summary FROM tmm.share_tasks AS st WHERE NOT EXISTS (SELECT 1 FROM tmm.share_task_categories AS stc WHERE stc.task_id=st.id LIMIT 1) AND st.creator=0 AND st.id>%d AND st.online_status=1 ORDER BY st.id ASC LIMIT %d`, startId, limit)
 		if err != nil {
 			log.Println(err.Error())
 			break
@@ -139,10 +144,8 @@ func (this *Classifier) ClassifyDocs() {
 			idStr := strings.Replace(link, "https://tmm.tokenmama.io/article/show/", "", -1)
 			id, err := strconv.ParseUint(idStr, 10, 64)
 			if err != nil || id == 0 {
-				log.Println(err.Error())
 				task := &Task{Id: endId}
-				content := fmt.Sprintf("%s %s", row.Str(2), row.Str(3))
-				cids, _ := this.Classify(content)
+				cids, _ := this.Classify(row.Str(2), row.Str(3), "", "")
 				if len(cids) > 0 {
 					task.Cid = cids[0]
 					log.Println("Doc: ", link, ", Cid:", task.Cid)
@@ -156,14 +159,13 @@ func (this *Classifier) ClassifyDocs() {
 			idArr = append(idArr, idStr)
 		}
 		if len(idArr) > 0 {
-			rows, _, err := db.Query(`SELECT id, content FROM tmm.articles WHERE id IN (%s)`, strings.Join(idArr, ","))
+			rows, _, err := db.Query(`SELECT id, title, digest, author, content FROM tmm.articles WHERE id IN (%s)`, strings.Join(idArr, ","))
 			if err != nil {
 				continue
 			}
 			for _, row := range rows {
 				if task, found := tasks[row.Uint64(0)]; found {
-					content := row.Str(1)
-					cids, _ := this.Classify(content)
+					cids, _ := this.Classify(row.Str(1), row.Str(2), row.Str(3), row.Str(4))
 					if len(cids) > 0 {
 						task.Cid = cids[0]
 						log.Println("Doc: ", fmt.Sprintf("https://tmm.tokenmama.io/article/show/%d", row.Uint64(0)), ", Cid:", task.Cid)
@@ -182,7 +184,7 @@ func (this *Classifier) ClassifyDocs() {
 			if task.Cid == 0 {
 				continue
 			}
-			val = append(val, fmt.Sprintf("(%d, %d, 1)", task.Id, task.Cid))
+			val = append(val, fmt.Sprintf("(%d, %d, 0)", task.Id, task.Cid))
 		}
 		if len(val) > 0 {
 			log.Println("Saving ", len(val), " Classified Docs...")
@@ -205,7 +207,12 @@ func (this *Classifier) Train() error {
 		return err
 	}
 	this.trainer.DefineCategories(categories)
+	var (
+		trainDocs uint
+		testDocs  uint
+	)
 	docs := this.getDocs()
+	log.Printf("Total Docs:%d", len(docs))
 	for _, doc := range docs {
 		var tokens [][]byte
 		for _, w := range doc.Words {
@@ -214,8 +221,10 @@ func (this *Classifier) Train() error {
 		cat := utils.Uint16ToByte(doc.Cid)
 		rand := utils.RangeRandUint64(1, 9)
 		if rand > 3 {
+			trainDocs += 1
 			this.trainer.AddTrainingDoc(cat, tokens)
 		} else {
+			testDocs += 1
 			this.trainer.AddTestDoc(cat, tokens)
 		}
 	}
@@ -224,7 +233,7 @@ func (this *Classifier) Train() error {
 	if err != nil {
 		return err
 	}
-	log.Printf("Allowance: %v, Maxscore: %v\n", allowance, maxscore)
+	log.Printf("Allowance: %v, Maxscore: %v, Train:%d, Test:%d\n", allowance, maxscore, trainDocs, testDocs)
 	this.trainer.Create(allowance, maxscore)
 	return this.trainer.Save(this.config.ArticleClassifierModel)
 }
@@ -240,7 +249,7 @@ func (this *Classifier) getDocs() []*Doc {
 	)
 	for {
 		endId := startId
-		rows, _, err := db.Query(`SELECT st.id, stc.cid, st.link, st.title, st.summary FROM tmm.share_tasks AS st INNER JOIN tmm.share_task_categories AS stc ON (stc.task_id=st.id) WHERE st.creator=0 AND stc.is_auto=0 AND st.id>%d ORDER BY st.id ASC LIMIT %d`, startId, limit)
+		rows, _, err := db.Query(`SELECT st.id, stc.cid, st.link, st.title, st.summary FROM tmm.share_tasks AS st INNER JOIN tmm.share_task_categories AS stc ON (stc.task_id=st.id) WHERE st.creator=0 AND stc.is_auto=1 AND st.id>%d AND st.online_status=1 ORDER BY st.id ASC LIMIT %d`, startId, limit)
 		if err != nil {
 			log.Println(err.Error())
 			break
@@ -253,7 +262,6 @@ func (this *Classifier) getDocs() []*Doc {
 			idStr := strings.Replace(link, "https://tmm.tokenmama.io/article/show/", "", -1)
 			id, err := strconv.ParseUint(idStr, 10, 64)
 			if err != nil || id == 0 {
-				log.Println(err.Error())
 				doc := &Doc{Cid: uint16(cid)}
 				txt := fmt.Sprintf("%s %s", row.Str(3), row.Str(4))
 				segments := this.Gse.Segment([]byte(txt))
@@ -280,20 +288,21 @@ func (this *Classifier) getDocs() []*Doc {
 			idArr = append(idArr, idStr)
 		}
 		if len(idArr) > 0 {
-			rows, _, err := db.Query(`SELECT id, content FROM tmm.articles WHERE id IN (%s)`, strings.Join(idArr, ","))
+			rows, _, err := db.Query(`SELECT id, title, digest, author, content FROM tmm.articles WHERE id IN (%s)`, strings.Join(idArr, ","))
 			if err != nil {
 				continue
 			}
 			for _, row := range rows {
 				if doc, found := docs[row.Uint64(0)]; found {
 					//log.Printf("Article: %d, Cat: %d\n", doc.Id, doc.Cid)
-					content := []byte(row.Str(1))
-					reader := bytes.NewBuffer(content)
+					var content string
+					reader := bytes.NewBuffer([]byte(row.Str(4)))
 					page, err := goquery.NewDocumentFromReader(reader)
-					if err != nil {
-						continue
+					if err == nil {
+						content = page.Text()
 					}
-					segments := this.Gse.Segment([]byte(page.Text()))
+					txt := fmt.Sprintf("%s %s %s %s", row.Str(1), row.Str(2), row.Str(3), content)
+					segments := this.Gse.Segment([]byte(txt))
 					var words []string
 					for _, seg := range segments {
 						w := strings.ToLower(strings.TrimSpace(seg.Token().Text()))
