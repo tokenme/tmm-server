@@ -8,6 +8,7 @@ import (
 	. "github.com/tokenme/tmm/handler"
 	tokenUtils "github.com/tokenme/tmm/utils/token"
 	"net/http"
+	"strings"
 )
 
 func InfoGetHandler(c *gin.Context) {
@@ -63,7 +64,7 @@ func InfoGetHandler(c *gin.Context) {
 		user = common.User{
 			Id:              row.Uint64(0),
 			CountryCode:     row.Uint(1),
-			Mobile:          row.Str(2),
+			Mobile:          strings.TrimSpace(row.Str(2)),
 			Nick:            row.Str(3),
 			Avatar:          row.Str(4),
 			Name:            row.Str(5),

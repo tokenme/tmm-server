@@ -20,6 +20,7 @@ import (
 	tokenUtils "github.com/tokenme/tmm/utils/token"
 	"image/png"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -159,7 +160,7 @@ var AuthenticatorFunc = func(loginInfo jwt.Login, c *gin.Context) (string, int, 
 	user := common.User{
 		Id:              row.Uint64(0),
 		CountryCode:     row.Uint(1),
-		Mobile:          row.Str(2),
+		Mobile:          strings.TrimSpace(row.Str(2)),
 		Nick:            row.Str(3),
 		Avatar:          row.Str(4),
 		Name:            row.Str(5),

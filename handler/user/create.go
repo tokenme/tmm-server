@@ -61,7 +61,7 @@ func createByMobile(c *gin.Context, req CreateRequest) {
 	}
 	salt := utils.Sha1(token.String())
 	passwd := utils.Sha1(fmt.Sprintf("%s%s%s", salt, req.Password, salt))
-	mobile := strings.Replace(req.Mobile, " ", "", 0)
+	mobile := strings.Replace(req.Mobile, " ", "", -1)
 
 	ret, err := twilio.AuthVerification(Config.TwilioToken, mobile, req.CountryCode, req.VerifyCode)
 	if CheckErr(err, c) {
