@@ -29,7 +29,7 @@ func DycdpListHandler(c *gin.Context) {
 	}
 	phone, err := phonedata.Find(user.Mobile)
 	if CheckErr(err, c) {
-		log.Error(err.Error())
+		log.Error("%s %s", err.Error(), user.Mobile)
 		return
 	}
 	if CheckWithCode(phone.CardType != "中国移动" && phone.CardType != "中国联通" && phone.CardType != "中国电信", INVALID_CDP_VENDOR_ERROR, "the cdp vendor not supported", c) {

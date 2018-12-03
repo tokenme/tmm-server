@@ -89,13 +89,17 @@ func (this *Client) GetHtml(link string, ro *grequests.RequestOptions) (string, 
 	return resp.String(), nil
 }
 
-func (this *Client) GetBytes(link string) ([]byte, error) {
-	var ro *grequests.RequestOptions
+func (this *Client) GetBytes(link string, ro *grequests.RequestOptions) ([]byte, error) {
 	proxyUrl, _ := this.proxy.Get()
 	if proxyUrl != nil {
-		ro = &grequests.RequestOptions{
-			Proxies: map[string]*url.URL{"https": proxyUrl},
+		if ro == nil {
+			ro = &grequests.RequestOptions{
+				Proxies: map[string]*url.URL{"https": proxyUrl},
+			}
+		} else {
+			ro.Proxies = map[string]*url.URL{"https": proxyUrl}
 		}
+
 	}
 	resp, err := this.httpClient.Get(link, ro)
 	if err != nil {
@@ -104,8 +108,8 @@ func (this *Client) GetBytes(link string) ([]byte, error) {
 	return resp.Bytes(), nil
 }
 
-func (this *Client) GetReader(link string) (*bytes.Reader, error) {
-	buf, err := this.GetBytes(link)
+func (this *Client) GetReader(link string, ro *grequests.RequestOptions) (*bytes.Reader, error) {
+	buf, err := this.GetBytes(link, ro)
 	if err != nil {
 		return nil, err
 	}

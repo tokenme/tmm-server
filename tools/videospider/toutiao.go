@@ -3,6 +3,7 @@ package videospider
 import (
 	"encoding/base64"
 	"fmt"
+	"github.com/levigross/grequests"
 	//"github.com/mkideal/log"
 )
 
@@ -21,7 +22,11 @@ func NewToutiao(client *Client) *Toutiao {
 }
 
 func (this *Toutiao) Get(link string) (info Video, err error) {
-	doc, err := this.BuildDoc(link)
+	ro := &grequests.RequestOptions{
+		UserAgent:    "Mozilla/5.0 (Linux; U; Android 4.3; en-us; SM-N900T Build/JSS15J) AppleWebKit/534.30 (KHTML, like Gecko) Version/4.0 Mobile Safari/534.30",
+		UseCookieJar: false,
+	}
+	doc, err := this.BuildDoc(link, ro)
 	if err != nil {
 		return info, err
 	}
@@ -35,7 +40,7 @@ func (this *Toutiao) Get(link string) (info Video, err error) {
 	createTimeStr := R1(`time: \'(\d+\/\d+\/\d+)\'`, html)
 	info.CreateTime = StringToMilliseconds("2006/01/02", createTimeStr)
 	keyUrl := fmt.Sprintf("http://i.snssdk.com/video/urls/1/toutiao/mp4/%s", vid)
-	vInfo, err := this.BuildJson(keyUrl)
+	vInfo, err := this.BuildJson(keyUrl, ro)
 	if err != nil {
 		return info, err
 	}

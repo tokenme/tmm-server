@@ -10,10 +10,10 @@ import (
 type ShareTask struct {
 	Id            uint64          `json:"id"`
 	Creator       uint64          `json:"creator,omitempty"`
-	Title         string          `json:"title"`
-	Summary       string          `json:"summary"`
-	Link          string          `json:"link"`
-	ShareLink     string          `json:"share_link"`
+	Title         string          `json:"title,omitempty"`
+	Summary       string          `json:"summary,omitempty"`
+	Link          string          `json:"link,omitempty"`
+	ShareLink     string          `json:"share_link,omitempty"`
 	VideoLink     string          `json:"video_link,omitempty"`
 	Image         string          `json:"image,omitempty"`
 	Points        decimal.Decimal `json:"points,omitempty"`
@@ -27,11 +27,12 @@ type ShareTask struct {
 	IsVideo       uint8           `json:"is_video,omitempty"`
 	InIframe      bool            `json:"-"`
 	ShowBonusHint bool            `json:"show_bonus_hint,omitempty"`
+	Creative      *Creative       `json:"creative,omitempty"`
 	Cid           []int           `json:"cid,omitempty"`
 }
 
 func (this ShareTask) ShouldUseIframe() bool {
-	return !strings.HasPrefix(this.Link, "https://mp.weixin.qq.com") && !strings.HasPrefix(this.Link, "https://www.taobao.com")
+	return strings.HasPrefix(this.Link, "https://static.tianxi100.com") || strings.HasPrefix(this.Link, "https://tmm.tokenmama.io")
 }
 
 func (this ShareTask) GetShareLink(deviceId string, config Config) (string, error) {

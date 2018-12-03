@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	simplejson "github.com/bitly/go-simplejson"
+	"github.com/levigross/grequests"
 	//"github.com/mkideal/log"
 	"net/url"
 	"regexp"
@@ -32,7 +33,11 @@ func (this *Krcom) Get(link string) (info Video, err error) {
 	channelId := submatch[1]
 	videoId := fmt.Sprintf("%s:%s", submatch[2], submatch[3])
 	keyUrl := fmt.Sprintf("https://krcom.cn/h5/videodata?channel_id=%s&video_id=%s", channelId, videoId)
-	vInfo, err := this.BuildJson(keyUrl)
+	ro := &grequests.RequestOptions{
+		UserAgent:    "Mozilla/5.0 (Linux; U; Android 4.3; en-us; SM-N900T Build/JSS15J) AppleWebKit/534.30 (KHTML, like Gecko) Version/4.0 Mobile Safari/534.30",
+		UseCookieJar: false,
+	}
+	vInfo, err := this.BuildJson(keyUrl, ro)
 	if err != nil {
 		return info, err
 	}

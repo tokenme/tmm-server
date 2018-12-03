@@ -63,16 +63,16 @@ func (this *Request) GetContent(url string, ro *grequests.RequestOptions) (strin
 	return this.client.GetHtml(url, ro)
 }
 
-func (this *Request) BuildDoc(url string) (*goquery.Document, error) {
-	reader, err := this.client.GetReader(url)
+func (this *Request) BuildDoc(url string, ro *grequests.RequestOptions) (*goquery.Document, error) {
+	reader, err := this.client.GetReader(url, ro)
 	if err != nil {
 		return nil, err
 	}
 	return goquery.NewDocumentFromReader(reader)
 }
 
-func (this *Request) BuildJson(url string) (*simplejson.Json, error) {
-	bjson, err := this.client.GetBytes(url)
+func (this *Request) BuildJson(url string, ro *grequests.RequestOptions) (*simplejson.Json, error) {
+	bjson, err := this.client.GetBytes(url, ro)
 	if err != nil {
 		return nil, err
 	}

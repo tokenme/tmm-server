@@ -3,12 +3,19 @@ package device
 import (
 	//"github.com/davecgh/go-spew/spew"
 	"github.com/gin-gonic/gin"
-	//"github.com/mkideal/log"
+	"github.com/mkideal/log"
 	"github.com/shopspring/decimal"
 	"github.com/tokenme/tmm/common"
 	. "github.com/tokenme/tmm/handler"
+	"math/rand"
 	"net/http"
+	"strconv"
 	"time"
+)
+
+const (
+	ADZONE_TOP_ID    = 3
+	ADZONE_BOTTOM_ID = 4
 )
 
 func ListHandler(c *gin.Context) {
@@ -43,7 +50,26 @@ GROUP BY d.id`
 	if CheckErr(err, c) {
 		return
 	}
+	platform := c.GetString("tmm-platform")
+	buildVersionStr := c.GetString("tmm-build")
+	buildVersion, _ := strconv.ParseUint(buildVersionStr, 10, 64)
+	adsMap := make(map[int][]*common.Adgroup)
+	if platform == "ios" && buildVersion > 42 || platform == "android" && buildVersion > 211 {
+		adsMap, err = getCreatives()
+		if err != nil {
+			log.Error(err.Error())
+		}
+	}
 	var devices []common.Device
+	if adgroups, found := adsMap[ADZONE_TOP_ID]; found {
+		adgroupIdx := rand.Intn(len(adgroups))
+		creatives := adgroups[adgroupIdx].Creatives
+		creativeIdx := rand.Intn(len(creatives))
+		d := common.Device{
+			Creative: creatives[creativeIdx],
+		}
+		devices = append(devices, d)
+	}
 	for _, row := range rows {
 		var isTablet bool
 		if row.Uint(5) == 1 {
@@ -65,11 +91,66 @@ GROUP BY d.id`
 			LastPingAt: row.ForceLocaltime(10).Format(time.RFC3339),
 			InsertedAt: row.ForceLocaltime(11).Format(time.RFC3339),
 			UpdatedAt:  row.ForceLocaltime(12).Format(time.RFC3339),
-            Mac:        row.Str(13),
-            Imei:       row.Str(14),
+			Mac:        row.Str(13),
+			Imei:       row.Str(14),
 		}
 		device.GrowthFactor, _ = device.GetGrowthFactor(Service)
 		devices = append(devices, device)
 	}
+
+	if adgroups, found := adsMap[ADZONE_BOTTOM_ID]; found {
+		adgroupIdx := rand.Intn(len(adgroups))
+		creatives := adgroups[adgroupIdx].Creatives
+		creativeIdx := rand.Intn(len(creatives))
+		d := common.Device{
+			Creative: creatives[creativeIdx],
+		}
+		devices = append(devices, d)
+	}
 	c.JSON(http.StatusOK, devices)
+}
+
+func getCreatives() (map[int][]*common.Adgroup, error) {
+	adsMap := make(map[int][]*common.Adgroup)
+	adgroupsMap := make(map[uint64]*common.Adgroup)
+	db := Service.Db
+	query := `SELECT
+        c.id,
+        c.adgroup_id,
+        c.image,
+        c.link,
+        c.width,
+        c.height,
+        z.id
+    FROM tmm.creatives AS c
+    INNER JOIN tmm.adgroups AS a ON (a.id=c.adgroup_id)
+    INNER JOIN tmm.adzones AS z ON (z.id=a.adzone_id)
+    WHERE z.id IN (%d, %d) AND a.online_status=1 AND c.online_status=1`
+	rows, _, err := db.Query(query, ADZONE_TOP_ID, ADZONE_BOTTOM_ID)
+	if err != nil {
+		return nil, err
+	} else if len(rows) > 0 {
+		for _, row := range rows {
+			adgroupId := row.Uint64(1)
+			adzoneId := row.Int(6)
+			creative := &common.Creative{
+				Id:        row.Uint64(0),
+				AdgroupId: adgroupId,
+				Image:     row.Str(2),
+				Link:      row.Str(3),
+				Width:     row.Uint(4),
+				Height:    row.Uint(5),
+			}
+			if ad, found := adgroupsMap[adgroupId]; found {
+				ad.Creatives = append(ad.Creatives)
+			} else {
+				ad := &common.Adgroup{
+					Id:        adgroupId,
+					Creatives: []*common.Creative{creative},
+				}
+				adsMap[adzoneId] = append(adsMap[adzoneId], ad)
+			}
+		}
+	}
+	return adsMap, nil
 }

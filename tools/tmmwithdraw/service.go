@@ -148,7 +148,7 @@ func (this *Service) WechatPay() error {
 
 func (this *Service) PushMsg(userId uint64, cny decimal.Decimal) {
 	db := this.service.Db
-	rows, _, err := db.Query(`SELECT d.push_token, d.language, d.platform FROM tmm.devices AS d WHERE d.user_id=%d ORDER BY lastpint_at DESC LIMIT 1`, userId)
+	rows, _, err := db.Query(`SELECT d.push_token, d.language, d.platform FROM tmm.devices AS d WHERE d.user_id=%d ORDER BY lastping_at DESC LIMIT 1`, userId)
 	if err != nil {
 		log.Error(err.Error())
 		return
