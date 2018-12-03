@@ -15,9 +15,9 @@ func deviceRouter(r *gin.Engine) {
 		deviceGroup.POST("/points", device.PointsHandler)
 	}
 	r.POST("/device/bind", AuthMiddleware.MiddlewareFunc(), handler.ApiSignFunc(), device.BindHandler)
-	r.POST("/device/push-token", AuthMiddleware.MiddlewareFunc(), handler.ApiSignFunc(), device.PushTokenHandler)
+	r.POST("/device/push-token", AuthMiddleware.MiddlewareFunc(), handler.ApiSignPassFunc(), device.PushTokenHandler)
 	r.POST("/device/unbind", AuthMiddleware.MiddlewareFunc(), handler.ApiSignFunc(), device.UnbindHandler)
-	r.GET("/device/list", AuthMiddleware.MiddlewareFunc(), handler.ApiSignFunc(), device.ListHandler)
-	r.GET("/device/get/:deviceId", AuthMiddleware.MiddlewareFunc(), handler.ApiSignFunc(), device.GetHandler)
-	r.GET("/device/apps/:deviceId", AuthMiddleware.MiddlewareFunc(), handler.ApiSignFunc(), device.AppsHandler)
+	r.GET("/device/list", AuthMiddleware.MiddlewareFunc(), handler.ApiSignPassFunc(), device.ListHandler)
+	r.GET("/device/get/:deviceId", AuthMiddleware.MiddlewareFunc(), handler.ApiSignPassFunc(), device.GetHandler)
+	r.GET("/device/apps/:deviceId", AuthMiddleware.MiddlewareFunc(), handler.ApiSignPassFunc(), device.AppsHandler)
 }

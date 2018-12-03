@@ -8,7 +8,7 @@ import (
 
 func userRouter(r *gin.Engine) {
 	userGroup := r.Group("/user")
-	userGroup.Use(AuthMiddleware.MiddlewareFunc(), handler.ApiSignFunc())
+	userGroup.Use(AuthMiddleware.MiddlewareFunc())
 	{
 		userGroup.GET("/info", user.InfoGetHandler)
 		userGroup.POST("/update", user.UpdateHandler)

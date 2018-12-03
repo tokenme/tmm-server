@@ -7,6 +7,7 @@ import (
 	"github.com/tokenme/tmm/common"
 	"net/url"
 	"sort"
+	"time"
 )
 
 var Resolvers = make(map[string]Resolver)
@@ -16,15 +17,17 @@ func Register(resolver Resolver) {
 }
 
 type Client struct {
-	service    *common.Service
-	config     common.Config
-	proxy      *Proxy
-	httpClient *grequests.Session
+	service             *common.Service
+	config              common.Config
+	proxy               *Proxy
+	httpClient          *grequests.Session
+	TLSHandshakeTimeout time.Duration
+	DialTimeout         time.Duration
 }
 
 func NewClient(service *common.Service, config common.Config) *Client {
 	ro := &grequests.RequestOptions{
-		UserAgent:    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/34.0.1847.116 Safari/537.36",
+		UserAgent:    "Mozilla/5.0 (Linux; U; Android 4.3; en-us; SM-N900T Build/JSS15J) AppleWebKit/534.30 (KHTML, like Gecko) Version/4.0 Mobile Safari/534.30",
 		UseCookieJar: false,
 	}
 	return &Client{
@@ -76,14 +79,19 @@ func (this *Client) GetHtml(link string, ro *grequests.RequestOptions) (string, 
 	if proxyUrl != nil {
 		if ro == nil {
 			ro = &grequests.RequestOptions{
-				Proxies: map[string]*url.URL{"https": proxyUrl},
+				Proxies:             map[string]*url.URL{"https": proxyUrl},
+				TLSHandshakeTimeout: this.TLSHandshakeTimeout,
+				DialTimeout:         this.DialTimeout,
 			}
 		} else {
 			ro.Proxies = map[string]*url.URL{"https": proxyUrl}
+			ro.TLSHandshakeTimeout = this.TLSHandshakeTimeout
+			ro.DialTimeout = this.DialTimeout
 		}
 	}
 	resp, err := this.httpClient.Get(link, ro)
 	if err != nil {
+		this.proxy.Update()
 		return "", err
 	}
 	return resp.String(), nil
@@ -94,15 +102,19 @@ func (this *Client) GetBytes(link string, ro *grequests.RequestOptions) ([]byte,
 	if proxyUrl != nil {
 		if ro == nil {
 			ro = &grequests.RequestOptions{
-				Proxies: map[string]*url.URL{"https": proxyUrl},
+				Proxies:             map[string]*url.URL{"https": proxyUrl},
+				TLSHandshakeTimeout: this.TLSHandshakeTimeout,
+				DialTimeout:         this.DialTimeout,
 			}
 		} else {
 			ro.Proxies = map[string]*url.URL{"https": proxyUrl}
+			ro.TLSHandshakeTimeout = this.TLSHandshakeTimeout
+			ro.DialTimeout = this.DialTimeout
 		}
-
 	}
 	resp, err := this.httpClient.Get(link, ro)
 	if err != nil {
+		this.proxy.Update()
 		return nil, err
 	}
 	return resp.Bytes(), nil

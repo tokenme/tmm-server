@@ -8,10 +8,10 @@ import (
 
 func bonusRouter(r *gin.Engine) {
 	bonusGroup := r.Group("/bonus")
-	bonusGroup.Use(AuthMiddleware.MiddlewareFunc(), handler.ApiSignFunc())
+	bonusGroup.Use(AuthMiddleware.MiddlewareFunc())
 	{
-		bonusGroup.GET("/daily/status", bonus.DailyStatusHandler)
-		bonusGroup.POST("/daily/commit", bonus.DailyCommitHandler)
-		bonusGroup.POST("/reading", bonus.ReadingHandler)
+		bonusGroup.GET("/daily/status", handler.ApiSignPassFunc(), bonus.DailyStatusHandler)
+		bonusGroup.POST("/daily/commit", handler.ApiSignFunc(), bonus.DailyCommitHandler)
+		bonusGroup.POST("/reading", handler.ApiSignFunc(), bonus.ReadingHandler)
 	}
 }

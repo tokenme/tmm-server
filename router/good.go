@@ -8,16 +8,16 @@ import (
 
 func goodRouter(r *gin.Engine) {
 	goodGroup := r.Group("/good")
-	goodGroup.Use(AuthMiddleware.MiddlewareFunc(), handler.ApiSignFunc())
+	goodGroup.Use(AuthMiddleware.MiddlewareFunc())
 	{
 		goodGroup.GET("/item/:id", good.ItemHandler)
-		goodGroup.POST("/invest", good.InvestHandler)
+		goodGroup.POST("/invest", handler.ApiSignFunc(), good.InvestHandler)
 		goodGroup.GET("/invests/item/:id/:page/:pageSize", good.ItemInvestsHandler)
 		goodGroup.GET("/invests/my/:page/:pageSize", good.MyInvestsHandler)
 		goodGroup.GET("/invest/withdraw/:id", good.InvestWithdrawHandler)
 		goodGroup.GET("/invest/summary", good.InvestSummaryHandler)
-		goodGroup.POST("/invest/redeem", good.InvestRedeemHandler)
+		goodGroup.POST("/invest/redeem", handler.ApiSignFunc(), good.InvestRedeemHandler)
 	}
-	r.GET("/good/list", handler.ApiSignFunc(), good.ListHandler)
+	r.GET("/good/list", good.ListHandler)
 	r.POST("/good/txs", good.TxsHandler)
 }

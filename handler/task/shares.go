@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	//"github.com/davecgh/go-spew/spew"
+	"github.com/garyburd/redigo/redis"
 	"github.com/gin-gonic/gin"
 	"github.com/mkideal/log"
 	"github.com/panjf2000/ants"
@@ -11,6 +12,7 @@ import (
 	"github.com/tokenme/tmm/common"
 	. "github.com/tokenme/tmm/handler"
 	"github.com/tokenme/tmm/tools/videospider"
+	"github.com/tokenme/tmm/utils"
 	"math/rand"
 	"net/http"
 	"sort"
@@ -22,6 +24,7 @@ import (
 
 const (
 	DEFAULT_PAGE_SIZE = 10
+	VIDEO_CACHE_KEY   = "SVC:%s"
 )
 
 type SharesRequest struct {
@@ -124,11 +127,21 @@ ORDER BY %s %s`
 	}
 	var tasks []*common.ShareTask
 	var wg sync.WaitGroup
-	videopider := videospider.NewClient(Service, Config)
+	vsClient := videospider.NewClient(Service, Config)
+	vsClient.TLSHandshakeTimeout = 1 * time.Second
+	vsClient.DialTimeout = 5 * time.Second
 	videoFetchPool, _ := ants.NewPoolWithFunc(10, func(req interface{}) error {
 		defer wg.Done()
 		task := req.(*common.ShareTask)
-		video, err := videopider.Get(task.Link)
+		redisConn := Service.Redis.Master.Get()
+		defer redisConn.Close()
+		cacheKey := fmt.Sprintf(VIDEO_CACHE_KEY, utils.Md5(task.Link))
+		videoLink, err := redis.String(redisConn.Do("GET", cacheKey))
+		if err == nil && videoLink != "" {
+			task.VideoLink = videoLink
+			return nil
+		}
+		video, err := vsClient.Get(task.Link)
 		if err != nil {
 			log.Warn(task.Link)
 			log.Error(err.Error())
@@ -140,6 +153,7 @@ ORDER BY %s %s`
 		sorter := videospider.NewVideoSorter(video.Files)
 		sort.Sort(sort.Reverse(sorter))
 		task.VideoLink = sorter[0].Link
+		redisConn.Do("SETEX", cacheKey, 30*60, task.VideoLink)
 		return nil
 	})
 	platform := c.GetString("tmm-platform")

@@ -8,11 +8,11 @@ import (
 
 func exchangeRouter(r *gin.Engine) {
 	exchangeGroup := r.Group("/exchange")
-	exchangeGroup.Use(AuthMiddleware.MiddlewareFunc(), handler.ApiSignFunc())
+	exchangeGroup.Use(AuthMiddleware.MiddlewareFunc())
 	{
-		exchangeGroup.POST("/tmm/change", exchange.TMMChangeHandler)
-		exchangeGroup.GET("/records", exchange.RecordsHandler)
+		exchangeGroup.POST("/tmm/change", handler.ApiSignPassFunc(), exchange.TMMChangeHandler)
+		exchangeGroup.GET("/records", handler.ApiSignFunc(), exchange.RecordsHandler)
 	}
-	r.GET("/exchange/tmm/rate", handler.ApiSignFunc(), exchange.TMMRateHandler)
-	r.GET("/exchange/points/rate", handler.ApiSignFunc(), exchange.PointsRateHandler)
+	r.GET("/exchange/tmm/rate", exchange.TMMRateHandler)
+	r.GET("/exchange/points/rate", exchange.PointsRateHandler)
 }
