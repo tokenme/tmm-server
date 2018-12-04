@@ -160,8 +160,8 @@ ORDER BY %s %s`
 	buildVersionStr := c.GetString("tmm-build")
 	buildVersion, _ := strconv.ParseUint(buildVersionStr, 10, 64)
 	adsMap := make(map[int][]*common.Adgroup)
-	if platform == "ios" && buildVersion > 42 || platform == "android" && buildVersion > 211 {
-		adsMap, err = getCreatives(req.Cid, req.Page)
+	if !req.IsVideo && (platform == "ios" && buildVersion > 42 || platform == "android" && buildVersion > 211) {
+		adsMap, err = getCreatives(req.Cid, req.Page, platform)
 		if err != nil {
 			log.Error(err.Error())
 		}
@@ -215,10 +215,16 @@ ORDER BY %s %s`
 	c.JSON(http.StatusOK, tasks)
 }
 
-func getCreatives(cid uint, page uint) (map[int][]*common.Adgroup, error) {
+func getCreatives(cid uint, page uint, platform string) (map[int][]*common.Adgroup, error) {
 	adsMap := make(map[int][]*common.Adgroup)
 	adgroupsMap := make(map[uint64]*common.Adgroup)
 	db := Service.Db
+	var constraint string
+	if platform == "ios" {
+		constraint = " AND c.platform IN (0, 1)"
+	} else {
+		constraint = " AND c.platform IN (0, 2)"
+	}
 	query := `SELECT
         c.id,
         c.adgroup_id,
@@ -230,8 +236,8 @@ func getCreatives(cid uint, page uint) (map[int][]*common.Adgroup, error) {
     FROM tmm.creatives AS c
     INNER JOIN tmm.adgroups AS a ON (a.id=c.adgroup_id)
     INNER JOIN tmm.adzones AS z ON (z.id=a.adzone_id)
-    WHERE z.cid=%d AND z.page=%d AND a.online_status=1 AND c.online_status=1`
-	rows, _, err := db.Query(query, cid, page)
+    WHERE z.cid=%d AND z.page=%d AND a.online_status=1 AND c.online_status=1%s`
+	rows, _, err := db.Query(query, cid, page, constraint)
 	if err != nil {
 		return nil, err
 	} else if len(rows) > 0 {

@@ -55,7 +55,7 @@ GROUP BY d.id`
 	buildVersion, _ := strconv.ParseUint(buildVersionStr, 10, 64)
 	adsMap := make(map[int][]*common.Adgroup)
 	if platform == "ios" && buildVersion > 42 || platform == "android" && buildVersion > 211 {
-		adsMap, err = getCreatives()
+		adsMap, err = getCreatives(platform)
 		if err != nil {
 			log.Error(err.Error())
 		}
@@ -110,9 +110,15 @@ GROUP BY d.id`
 	c.JSON(http.StatusOK, devices)
 }
 
-func getCreatives() (map[int][]*common.Adgroup, error) {
+func getCreatives(platform string) (map[int][]*common.Adgroup, error) {
 	adsMap := make(map[int][]*common.Adgroup)
 	adgroupsMap := make(map[uint64]*common.Adgroup)
+	var constraint string
+	if platform == "ios" {
+		constraint = " AND c.platform IN (0, 1)"
+	} else {
+		constraint = " AND c.platform IN (0, 2)"
+	}
 	db := Service.Db
 	query := `SELECT
         c.id,
@@ -125,8 +131,8 @@ func getCreatives() (map[int][]*common.Adgroup, error) {
     FROM tmm.creatives AS c
     INNER JOIN tmm.adgroups AS a ON (a.id=c.adgroup_id)
     INNER JOIN tmm.adzones AS z ON (z.id=a.adzone_id)
-    WHERE z.id IN (%d, %d) AND a.online_status=1 AND c.online_status=1`
-	rows, _, err := db.Query(query, ADZONE_TOP_ID, ADZONE_BOTTOM_ID)
+    WHERE z.id IN (%d, %d) AND a.online_status=1 AND c.online_status=1%s`
+	rows, _, err := db.Query(query, ADZONE_TOP_ID, ADZONE_BOTTOM_ID, constraint)
 	if err != nil {
 		return nil, err
 	} else if len(rows) > 0 {
