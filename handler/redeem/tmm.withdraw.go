@@ -62,6 +62,7 @@ func TMMWithdrawHandler(c *gin.Context) {
 		}
 		openIdRes, err := openIdReq.Run()
 		if CheckWithCode(err != nil, WECHAT_OPENID_ERROR, "need openid", c) {
+			log.Error(err.Error())
 			return
 		}
 		wxOpenId = openIdRes.Data.OpenId
@@ -86,7 +87,7 @@ func TMMWithdrawHandler(c *gin.Context) {
 		return
 	}
 
-	if CheckWithCode(req.TMM.LessThan(minTmmRequire) || req.TMM.GreaterThan(decimal.New(10000, 0)), INVALID_TOKEN_WITHDRAW_AMOUNT_ERROR, "提现UCoin超出限制。最小100 UCoin或累计超过10000 UCoin", c) {
+	if CheckWithCode(req.TMM.LessThan(minTmmRequire) || req.TMM.GreaterThan(decimal.New(10000, 0)), INVALID_TOKEN_WITHDRAW_AMOUNT_ERROR, fmt.Sprintf("提现UCoin超出限制。最小%s UCoin或累计超过10000 UCoin", minTmmRequire.String()), c) {
 		return
 	}
 

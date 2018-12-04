@@ -22,6 +22,8 @@ type Config struct {
 	TMMEscrowAddress       string            `required:"true"`
 	MinTMMExchange         uint              `required:"true"`
 	MinTMMRedeem           uint              `required:"true"`
+	MinPointsRedeem        uint              `required:"true"`
+	DailyTMMInterestsRate  float64           `required:"true"`
 	DefaultAppTaskTS       int64             `required:"true"`
 	DefaultShareTaskTS     int64             `required:"true"`
 	DefaultDeviceBalance   uint64            `required:"true"`
