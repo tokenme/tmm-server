@@ -3,17 +3,23 @@ package videospider
 import (
 	"bytes"
 	"errors"
+	"fmt"
+	//"github.com/davecgh/go-spew/spew"
 	"github.com/levigross/grequests"
+	"github.com/mkideal/log"
+	"github.com/panjf2000/ants"
 	"github.com/tokenme/tmm/common"
 	"net/url"
 	"sort"
+	"strings"
+	"sync"
 	"time"
 )
 
-var Resolvers = make(map[string]Resolver)
-
-func Register(resolver Resolver) {
-	Resolvers[resolver.Name()] = resolver
+type TaskVideo struct {
+	Id        uint64
+	Link      string
+	VideoLink string
 }
 
 type Client struct {
@@ -21,8 +27,11 @@ type Client struct {
 	config              common.Config
 	proxy               *Proxy
 	httpClient          *grequests.Session
+	resolvers           map[string]Resolver
 	TLSHandshakeTimeout time.Duration
 	DialTimeout         time.Duration
+	exitCh              chan struct{}
+	canExitCh           chan struct{}
 }
 
 func NewClient(service *common.Service, config common.Config) *Client {
@@ -30,21 +39,42 @@ func NewClient(service *common.Service, config common.Config) *Client {
 		UserAgent:    "Mozilla/5.0 (Linux; U; Android 4.3; en-us; SM-N900T Build/JSS15J) AppleWebKit/534.30 (KHTML, like Gecko) Version/4.0 Mobile Safari/534.30",
 		UseCookieJar: false,
 	}
-	return &Client{
+	c := &Client{
 		service:    service,
 		config:     config,
 		proxy:      NewProxy(service.Redis.Master, config.ProxyApiKey),
 		httpClient: grequests.NewSession(ro),
+		resolvers:  make(map[string]Resolver),
+		exitCh:     make(chan struct{}, 1),
+		canExitCh:  make(chan struct{}, 1),
 	}
+	c.RegisterAll()
+	return c
+}
+
+func (this *Client) Register(resolver Resolver) {
+	this.resolvers[resolver.Name()] = resolver
 }
 
 func (this *Client) Get(link string) (info Video, err error) {
-	if len(Resolvers) == 0 {
-		this.RegisterAll()
-	}
-	for _, resolver := range Resolvers {
+	for _, resolver := range this.resolvers {
 		if resolver.MatchUrl(link) {
-			return resolver.Get(link)
+			info, err = resolver.Get(link)
+			if err != nil {
+				return info, err
+			}
+			var files []VideoLink
+			for _, f := range info.Files {
+				if f.Link == "" {
+					continue
+				}
+				files = append(files, f)
+			}
+			info.Files = files
+			if len(files) == 0 {
+				return info, errors.New("no video file found")
+			}
+			return info, nil
 		}
 	}
 	return info, errors.New("resolver not found")
@@ -61,17 +91,116 @@ func (this *Client) Save(v Video) error {
 	return err
 }
 
+func (this *Client) StartUpdateVideosService() {
+	updateVideoCh := make(chan struct{}, 1)
+	this.UpdateVideos(updateVideoCh)
+	for {
+		select {
+		case <-updateVideoCh:
+			go this.UpdateVideos(updateVideoCh)
+		case <-this.exitCh:
+			log.Warn("ExitCh")
+			close(updateVideoCh)
+			this.canExitCh <- struct{}{}
+			return
+		}
+	}
+}
+
+func (this *Client) Stop() {
+	this.exitCh <- struct{}{}
+	log.Info("Can Exit")
+	<-this.canExitCh
+}
+
+func (this *Client) UpdateVideos(updateCh chan<- struct{}) error {
+	log.Info("Start Update Videos")
+	defer func() {
+		time.Sleep(10 * time.Second)
+		updateCh <- struct{}{}
+	}()
+	db := this.service.Db
+	var wg sync.WaitGroup
+	videoFetchPool, _ := ants.NewPoolWithFunc(10, func(req interface{}) error {
+		defer wg.Done()
+		task := req.(*TaskVideo)
+		//log.Info("Updating:%s", task.Link)
+		video, err := this.Get(task.Link)
+		if err != nil {
+			log.Error("Update:%s, Failed:%s", task.Link, err.Error())
+			return err
+		}
+		if len(video.Files) == 0 {
+			log.Error("Update:%s, Failed: no video found", task.Link)
+			return errors.New("invalid video")
+		}
+		sorter := NewVideoSorter(video.Files)
+		sort.Sort(sort.Reverse(sorter))
+		task.VideoLink = sorter[0].Link
+		//log.Info("Updated:%s, Video:%s", task.Link, task.VideoLink)
+		return nil
+	})
+	var (
+		startId uint64
+		endId   uint64
+		where   string
+	)
+	for {
+		if startId > 0 {
+			where = fmt.Sprintf(" AND id<%d", startId)
+		}
+		endId = startId
+		rows, _, err := db.Query(`SELECT id, link FROM tmm.share_tasks WHERE is_video=1 AND video_updated_at<DATE_SUB(NOW(), INTERVAL 30 MINUTE)%s ORDER BY id DESC LIMIT 1000`, where)
+		if err != nil {
+			return err
+		}
+		if len(rows) == 0 {
+			break
+		}
+		var tasks []*TaskVideo
+		for _, row := range rows {
+			task := &TaskVideo{
+				Id:   row.Uint64(0),
+				Link: row.Str(1),
+			}
+			endId = task.Id
+			wg.Add(1)
+			videoFetchPool.Serve(task)
+			tasks = append(tasks, task)
+		}
+		wg.Wait()
+		var val []string
+		for _, task := range tasks {
+			if task.VideoLink != "" {
+				val = append(val, fmt.Sprintf("(%d, '%s', NOW())", task.Id, db.Escape(task.VideoLink)))
+			}
+		}
+		if len(val) > 0 {
+			log.Warn("Saving:%d Videos", len(val))
+			_, _, err := db.Query(`INSERT INTO tmm.share_tasks (id, video_link, video_updated_at) VALUES %s ON DUPLICATE KEY UPDATE video_link=VALUES(video_link), video_updated_at=VALUES(video_updated_at)`, strings.Join(val, ","))
+			if err != nil {
+				log.Error(err.Error())
+			}
+		}
+		if endId == startId {
+			break
+		}
+		startId = endId
+	}
+	return nil
+}
+
 func (this *Client) RegisterAll() {
 	toutiao := NewToutiao(this)
-	Register(toutiao)
+	this.Register(toutiao)
 	pearVideo := NewPearVideo(this)
-	Register(pearVideo)
+	this.Register(pearVideo)
 	weibo := NewWeibo(this)
-	Register(weibo)
+	this.Register(weibo)
 	miaopai := NewMiaoPai(this)
-	Register(miaopai)
+	this.Register(miaopai)
 	krcom := NewKrcom(this)
-	Register(krcom)
+	this.Register(krcom)
 }
 
 func (this *Client) GetHtml(link string, ro *grequests.RequestOptions) (string, error) {

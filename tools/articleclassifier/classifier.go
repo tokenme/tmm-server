@@ -178,7 +178,7 @@ func (this *Classifier) ClassifyDocs() {
 			if task.Cid == 0 {
 				continue
 			}
-			val = append(val, fmt.Sprintf("(%d, %d, 1)", task.Id, task.Cid))
+			val = append(val, fmt.Sprintf("(%d, %d, 0)", task.Id, task.Cid))
 		}
 		for _, task := range extraTasks {
 			if task.Cid == 0 {

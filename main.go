@@ -40,6 +40,7 @@ func main() {
 		articleClassifierTrainFlag bool
 		articleClassifyFlag        bool
 		addVideoFlag               string
+		updateVideoFlag            bool
 		accelerateTxFlag           string
 		accelerateGasFlag          int64
 	)
@@ -62,6 +63,7 @@ func main() {
 	flag.Int64Var(&accelerateGasFlag, "gas", 0, "set gas price")
 	flag.BoolVar(&articleClassifierTrainFlag, "train-article-classifier", false, "enable article classifer training")
 	flag.BoolVar(&articleClassifyFlag, "classify-articles", false, "enable articles classify")
+	flag.BoolVar(&updateVideoFlag, "update-videos", false, "enable update videos")
 	flag.StringVar(&addVideoFlag, "add-video", "", "add video")
 	flag.Parse()
 
@@ -129,16 +131,32 @@ func main() {
 	}
 
 	if addVideoFlag != "" {
-		spider := videospider.NewClient(service, config)
-		video, err := spider.Get(addVideoFlag)
+		videoSpider := videospider.NewClient(service, config)
+		video, err := videoSpider.Get(addVideoFlag)
 		if err != nil {
 			log.Error(err.Error())
 		}
-		err = spider.Save(video)
+		err = videoSpider.Save(video)
 		if err != nil {
 			log.Error(err.Error())
 		}
 		spew.Dump(video)
+		return
+	}
+
+	if updateVideoFlag {
+		videoSpider := videospider.NewClient(service, config)
+		go videoSpider.StartUpdateVideosService()
+		exitChan := make(chan struct{}, 1)
+		go func() {
+			ch := make(chan os.Signal, 1)
+			signal.Notify(ch, syscall.SIGINT, syscall.SIGKILL, syscall.SIGQUIT, syscall.SIGSTOP, syscall.SIGTERM)
+			<-ch
+			exitChan <- struct{}{}
+			close(ch)
+		}()
+		<-exitChan
+		videoSpider.Stop()
 		return
 	}
 

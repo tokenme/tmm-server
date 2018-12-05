@@ -2,6 +2,7 @@ package videospider
 
 import (
 	"encoding/base64"
+	"errors"
 	"fmt"
 	//"github.com/mkideal/log"
 )
@@ -32,6 +33,9 @@ func (this *Toutiao) Get(link string) (info Video, err error) {
 	info.Link = SafeUrl(link)
 	info.Title = R1(`title: \'(.+)\'`, html)
 	vid := R1(`video(?:id|Id)\:.?\'(\w+)\'`, html)
+	if vid == "" {
+		return info, errors.New("not found")
+	}
 	createTimeStr := R1(`time: \'(\d+\/\d+\/\d+)\'`, html)
 	info.CreateTime = StringToMilliseconds("2006/01/02", createTimeStr)
 	keyUrl := fmt.Sprintf("http://i.snssdk.com/video/urls/1/toutiao/mp4/%s", vid)
