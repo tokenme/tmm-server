@@ -28,7 +28,7 @@ func DownloadHandler(c *gin.Context) {
 	utmz := c.Query("__utmz")
 	if utmz != "" {
 		db := Service.Db
-		_, _, err := db.Query(`INSERT INTO tmm.app_download_stats (utmz, platform, inserted_on) VALUES ('%s', %d, NOW())`, db.Escape(utmz), platform)
+		_, _, err := db.Query(`INSERT INTO tmm.app_download_stats (utmz, platform, amount, inserted_on) VALUES ('%s', %d, 1, NOW()) ON DUPLICATE KEY UPDATE amount=VALUES(amount)`, db.Escape(utmz), platform)
 		if err != nil {
 			log.Error(err.Error())
 		}

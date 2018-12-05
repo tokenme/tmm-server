@@ -27,13 +27,20 @@ func InviteSummaryHandler(c *gin.Context) {
 		invites = rows[0].Uint(0)
 		creditLevel = rows[0].Uint(1)
 	}
-	rows, _, err = db.Query(`SELECT SUM(bonus) FROM tmm.invite_bonus WHERE user_id=%d`, user.Id)
+	rows, _, err = db.Query(`SELECT SUM(bonus), task_type FROM tmm.invite_bonus WHERE user_id=%d GROUP BY task_type`, user.Id)
 	if CheckErr(err, c) {
 		return
 	}
-	var points decimal.Decimal
-	if len(rows) > 0 {
-		points, _ = decimal.NewFromString(rows[0].Str(0))
+	var (
+		points            decimal.Decimal
+		friendsContribute decimal.Decimal
+	)
+	for _, row := range rows {
+		bonus, _ := decimal.NewFromString(row.Str(0))
+		if row.Uint(1) != 0 {
+			friendsContribute.Add(bonus)
+		}
+		points = points.Add(bonus)
 	}
 
 	rows, _, err = db.Query(`SELECT invites FROM tmm.user_levels WHERE id>%d ORDER BY id ASC LIMIT 1`, creditLevel)
@@ -82,5 +89,5 @@ func InviteSummaryHandler(c *gin.Context) {
 		u.Avatar = u.GetAvatar(Config.CDNUrl)
 		users = append(users, u)
 	}
-	c.JSON(http.StatusOK, gin.H{"invites": invites, "points": points, "users": users, "next_level_invites": nextLevelInvites})
+	c.JSON(http.StatusOK, gin.H{"invites": invites, "points": points, "friends_contribute": friendsContribute, "users": users, "next_level_invites": nextLevelInvites})
 }
