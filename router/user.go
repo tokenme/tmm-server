@@ -13,6 +13,7 @@ func userRouter(r *gin.Engine) {
 		userGroup.GET("/info", user.InfoGetHandler)
 		userGroup.POST("/update", user.UpdateHandler)
 		userGroup.GET("/invite/summary", user.InviteSummaryHandler)
+		userGroup.GET("/invites", user.InviteListHandler)
 		userGroup.GET("/credit/levels", user.CreditLevelsHandler)
 	}
 	r.POST("/user/create", handler.ApiSignFunc(), user.CreateHandler)

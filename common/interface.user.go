@@ -2,6 +2,7 @@ package common
 
 import (
 	"fmt"
+	"github.com/shopspring/decimal"
 	"github.com/tokenme/tmm/utils"
 	tokenUtils "github.com/tokenme/tmm/utils/token"
 	"strings"
@@ -28,6 +29,8 @@ type User struct {
 	Role            uint8            `json:"role,omitempty"`
 	OpenId          string           `json:"openid,omitempty"`
 	WxBinded        bool             `json:"wx_binded,omitempty"`
+	DirectFriend    bool             `json:"direct_friend,omitempty"`
+	Contribute      decimal.Decimal  `json:"contribute,omitempty"`
 	Wechat          *Wechat          `json:"-"`
 }
 

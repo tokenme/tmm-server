@@ -3,6 +3,7 @@ package user
 import (
 	//"github.com/davecgh/go-spew/spew"
 	"github.com/gin-gonic/gin"
+	//"github.com/mkideal/log"
 	"github.com/shopspring/decimal"
 	"github.com/tokenme/tmm/common"
 	. "github.com/tokenme/tmm/handler"
@@ -38,7 +39,7 @@ func InviteSummaryHandler(c *gin.Context) {
 	for _, row := range rows {
 		bonus, _ := decimal.NewFromString(row.Str(0))
 		if row.Uint(1) != 0 {
-			friendsContribute.Add(bonus)
+			friendsContribute = friendsContribute.Add(bonus)
 		}
 		points = points.Add(bonus)
 	}
