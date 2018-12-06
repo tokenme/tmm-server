@@ -45,12 +45,13 @@ type Wechat struct {
 }
 
 type CreditLevel struct {
-	Id      uint   `json:"id,omitemty"`
-	Name    string `json:"name,omitempty"`
-	Enname  string `json:"enname,omitempty"`
-	Desc    string `json:"desc,omitempty"`
-	Endesc  string `json:"endesc,omitempty"`
-	Invites uint   `json:"invites,omitempty"`
+	Id            uint            `json:"id,omitemty"`
+	Name          string          `json:"name,omitempty"`
+	Enname        string          `json:"enname,omitempty"`
+	Desc          string          `json:"desc,omitempty"`
+	Endesc        string          `json:"endesc,omitempty"`
+	Invites       uint            `json:"invites,omitempty"`
+	TaskBonusRate decimal.Decimal `json:"task_bonus_rate"`
 }
 
 func (this User) IsAdmin() bool {

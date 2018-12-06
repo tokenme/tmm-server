@@ -11,12 +11,33 @@ import (
 	"net/http"
 )
 
+type InviteSummaryRequest struct {
+	WithUserList bool `json:"with_user_list" form:"with_user_list"`
+}
+
+type InviteSummaryResponse struct {
+	Invites           uint            `json:"invites"`
+	Points            decimal.Decimal `json:"points"`
+	FriendsContribute decimal.Decimal `json:"friends_contribute"`
+	Users             []common.User   `json:"users,omitempty"`
+	NextLevelInvites  uint            `json:"next_level_invites"`
+	InviteBonusRate   decimal.Decimal `json:"invite_bonus_rate"`
+	InviteBonus       decimal.Decimal `json:"invite_bonus"`
+	InviterBonus      decimal.Decimal `json:"inviter_bonus"`
+	InviteCashBonus   decimal.Decimal `json:"invite_cash_bonus"`
+	InviterCashBonus  decimal.Decimal `json:"inviter_cash_bonus"`
+}
+
 func InviteSummaryHandler(c *gin.Context) {
 	userContext, exists := c.Get("USER")
 	if CheckWithCode(!exists, UNAUTHORIZED_ERROR, "need login", c) {
 		return
 	}
 	user := userContext.(common.User)
+	var req InviteSummaryRequest
+	if CheckErr(c.Bind(&req), c) {
+		return
+	}
 	db := Service.Db
 	rows, _, err := db.Query(`SELECT COUNT(*) AS num, us.level FROM tmm.invite_codes AS ic LEFT JOIN tmm.user_settings AS us ON (us.user_id=ic.parent_id) WHERE ic.parent_id=%d`, user.Id)
 	if CheckErr(err, c) {
@@ -57,7 +78,9 @@ func InviteSummaryHandler(c *gin.Context) {
 			nextLevelInvites = 0
 		}
 	}
-	rows, _, err = db.Query(`SELECT
+	var users []common.User
+	if req.WithUserList {
+		rows, _, err = db.Query(`SELECT
                 u.country_code,
                 u.mobile,
                 u.nickname,
@@ -68,27 +91,40 @@ func InviteSummaryHandler(c *gin.Context) {
             INNER JOIN ucoin.users AS u ON (u.id=ic.user_id)
             LEFT JOIN tmm.wx AS wx ON (wx.user_id = u.id)
             WHERE ic.parent_id=%d ORDER BY ic.user_id DESC LIMIT 10`, user.Id)
-	if CheckErr(err, c) {
-		return
-	}
-	var users []common.User
-	for _, row := range rows {
-		u := common.User{
-			CountryCode: row.Uint(0),
-			Mobile:      utils.HideMobile(row.Str(1)),
-			Nick:        row.Str(2),
-			Avatar:      row.Str(3),
+		if CheckErr(err, c) {
+			return
 		}
-		wxNick := row.Str(4)
-		if wxNick != "" {
-			u.Wechat = &common.Wechat{
-				Nick:   wxNick,
-				Avatar: row.Str(5),
+
+		for _, row := range rows {
+			u := common.User{
+				CountryCode: row.Uint(0),
+				Mobile:      utils.HideMobile(row.Str(1)),
+				Nick:        row.Str(2),
+				Avatar:      row.Str(3),
 			}
+			wxNick := row.Str(4)
+			if wxNick != "" {
+				u.Wechat = &common.Wechat{
+					Nick:   wxNick,
+					Avatar: row.Str(5),
+				}
+			}
+			u.ShowName = u.GetShowName()
+			u.Avatar = u.GetAvatar(Config.CDNUrl)
+			users = append(users, u)
 		}
-		u.ShowName = u.GetShowName()
-		u.Avatar = u.GetAvatar(Config.CDNUrl)
-		users = append(users, u)
 	}
-	c.JSON(http.StatusOK, gin.H{"invites": invites, "points": points, "friends_contribute": friendsContribute, "users": users, "next_level_invites": nextLevelInvites})
+	summary := InviteSummaryResponse{
+		Invites:           invites,
+		Points:            points,
+		FriendsContribute: friendsContribute,
+		Users:             users,
+		NextLevelInvites:  nextLevelInvites,
+		InviteBonusRate:   decimal.NewFromFloat(Config.InviteBonusRate),
+		InviteBonus:       decimal.New(int64(Config.InviteBonus), 0),
+		InviterBonus:      decimal.New(int64(Config.InviterBonus), 0),
+		InviteCashBonus:   decimal.New(int64(Config.InviteCashBonus), 0),
+		InviterCashBonus:  decimal.New(int64(Config.InviterCashBonus), 0),
+	}
+	c.JSON(http.StatusOK, summary)
 }

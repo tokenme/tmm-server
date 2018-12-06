@@ -53,6 +53,8 @@ type Config struct {
 	MinGrowthTS            int               `required:"true"`
 	InviteBonus            uint              `required:"true"`
 	InviterBonus           uint              `required:"true"`
+	InviteCashBonus        uint              `required:"true"`
+	InviterCashBonus       uint              `required:"true"`
 	InviteBonusRate        float64           `required:"true"`
 	GoodCommissionPoints   int64             `required:"true"`
 	MaxBindDevice          int               `required:"true"`

@@ -10,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/mkideal/log"
 	"github.com/o1egl/govatar"
+	"github.com/shopspring/decimal"
 	"github.com/tokenme/tmm/common"
 	. "github.com/tokenme/tmm/handler"
 	"github.com/tokenme/tmm/middlewares/jwt"
@@ -130,6 +131,7 @@ var AuthenticatorFunc = func(loginInfo jwt.Login, c *gin.Context) (string, int, 
                 IFNULL(us.level, 0),
                 ul.name,
                 ul.enname,
+                ul.task_bonus_rate,
                 wx.union_id,
                 wx.open_id,
                 wx.nick,
@@ -157,6 +159,7 @@ var AuthenticatorFunc = func(loginInfo jwt.Login, c *gin.Context) (string, int, 
 		return loginInfo.Mobile, INTERNAL_ERROR, false
 	}
 	row := rows[0]
+	taskBonusRate, _ := decimal.NewFromString(row.Str(17))
 	user := common.User{
 		Id:              row.Uint64(0),
 		CountryCode:     row.Uint(1),
@@ -172,25 +175,26 @@ var AuthenticatorFunc = func(loginInfo jwt.Login, c *gin.Context) (string, int, 
 		ExchangeEnabled: row.Int(12) == 1 || row.Uint(1) != 86,
 		Role:            uint8(row.Uint(13)),
 		Level: common.CreditLevel{
-			Id:     row.Uint(14),
-			Name:   row.Str(15),
-			Enname: row.Str(16),
+			Id:            row.Uint(14),
+			Name:          row.Str(15),
+			Enname:        row.Str(16),
+			TaskBonusRate: taskBonusRate,
 		},
 	}
 	paymentPasswd := row.Str(9)
 	if paymentPasswd != "" {
 		user.CanPay = 1
 	}
-	wxUnionId := row.Str(17)
+	wxUnionId := row.Str(18)
 	if wxUnionId != "" {
 		wechat := &common.Wechat{
 			UnionId:     wxUnionId,
-			OpenId:      row.Str(18),
-			Nick:        row.Str(19),
-			Avatar:      row.Str(20),
-			Gender:      row.Uint(21),
-			AccessToken: row.Str(22),
-			Expires:     row.ForceLocaltime(23),
+			OpenId:      row.Str(19),
+			Nick:        row.Str(20),
+			Avatar:      row.Str(21),
+			Gender:      row.Uint(22),
+			AccessToken: row.Str(23),
+			Expires:     row.ForceLocaltime(24),
 		}
 		user.OpenId = wechat.OpenId
 		user.Wechat = wechat
