@@ -22,8 +22,7 @@ func InvitesDistHandler(c *gin.Context) {
     l
 FROM (
     SELECT
-        ic.parent_id,
-        COUNT(*) AS l
+        ic.parent_id, FLOOR(COUNT(*)/5)*5+1 AS l
     FROM tmm.invite_codes AS ic
     WHERE ic.parent_id>0
     GROUP BY ic.parent_id
@@ -36,7 +35,7 @@ GROUP BY l ORDER BY l`)
 	for _, row := range rows {
 		bars = append(bars, BarChartValue{
 			Value: row.ForceFloat(0),
-			Label: fmt.Sprintf("10^%d", row.Int(1)),
+			Label: fmt.Sprintf(">=%d", row.Int(1)),
 		})
 	}
 	js, err := json.Marshal(bars)

@@ -21,17 +21,15 @@ func WithdrawDistHandler(c *gin.Context) {
     COUNT(*) AS users,
     l
 FROM (
-    SELECT user_id, FLOOR(SUM(cny)/50) * 50 AS l
+    SELECT user_id, IF(SUM(cny)=0, 0, FLOOR(SUM(cny)/50) * 50 + 1) AS l
     FROM (
     SELECT
-        tx.user_id,
-        SUM(tx.cny)
+        tx.user_id, SUM(tx.cny) AS cny
     FROM tmm.withdraw_txs AS tx
     GROUP BY tx.user_id
     UNION ALL
     SELECT
-        pw.user_id,
-        SUM(pw.cny)
+        pw.user_id, SUM(pw.cny) AS cny
     FROM tmm.point_withdraws AS pw
     GROUP BY pw.user_id) AS t GROUP BY user_id
 ) AS tmp
@@ -43,7 +41,7 @@ GROUP BY l ORDER BY l`)
 	for _, row := range rows {
 		bars = append(bars, BarChartValue{
 			Value: row.ForceFloat(0),
-			Label: fmt.Sprintf("10^%d", row.Int(1)),
+			Label: fmt.Sprintf(">=%d", row.Int(1)),
 		})
 	}
 	js, err := json.Marshal(bars)
