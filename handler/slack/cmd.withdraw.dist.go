@@ -21,17 +21,17 @@ func WithdrawDistHandler(c *gin.Context) {
     COUNT(*) AS users,
     l
 FROM (
-    SELECT user_id, FLOOR(LOG10(SUM(cny))) AS l
+    SELECT user_id, FLOOR(SUM(cny)/50) * 50 AS l
     FROM (
     SELECT
         tx.user_id,
-        tx.cny
+        SUM(tx.cny)
     FROM tmm.withdraw_txs AS tx
     GROUP BY tx.user_id
     UNION ALL
     SELECT
         pw.user_id,
-        pw.cny
+        SUM(pw.cny)
     FROM tmm.point_withdraws AS pw
     GROUP BY pw.user_id) AS t GROUP BY user_id
 ) AS tmp

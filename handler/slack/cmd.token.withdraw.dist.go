@@ -23,7 +23,7 @@ func TokenWithdrawDistHandler(c *gin.Context) {
 FROM (
     SELECT
         tx.user_id,
-        FLOOR(LOG10(SUM(tx.cny))) AS l
+        FLOOR(SUM(cny)/50) * 50 AS l
     FROM tmm.withdraw_txs AS tx
     GROUP BY tx.user_id
 ) AS tmp
