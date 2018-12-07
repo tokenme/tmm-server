@@ -51,8 +51,9 @@ ORDER BY
 			CountryCode: row.Uint(1),
 			Mobile:      row.Str(2),
 			Nick:        row.Str(3),
+			Avatar:      row.Str(4),
 		}
-		wxNick := row.Str(4)
+		wxNick := row.Str(5)
 		if wxNick != "" {
 			wechat := &common.Wechat{
 				Nick: wxNick,
@@ -60,7 +61,7 @@ ORDER BY
 			u.Wechat = wechat
 		}
 		u.ShowName = u.GetShowName()
-		cash, _ := decimal.NewFromString(row.Str(5))
+		cash, _ := decimal.NewFromString(row.Str(6))
 		data = append(data, []string{strconv.FormatUint(u.Id, 10), u.ShowName, cash.StringFixed(9)})
 	}
 

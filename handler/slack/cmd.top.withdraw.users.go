@@ -65,8 +65,9 @@ LEFT JOIN tmm.wx AS wx ON ( wx.user_id = u.id ) `, num)
 			CountryCode: row.Uint(1),
 			Mobile:      row.Str(2),
 			Nick:        row.Str(3),
+			Avatar:      row.Str(4),
 		}
-		wxNick := row.Str(4)
+		wxNick := row.Str(5)
 		if wxNick != "" {
 			wechat := &common.Wechat{
 				Nick: wxNick,
@@ -74,7 +75,7 @@ LEFT JOIN tmm.wx AS wx ON ( wx.user_id = u.id ) `, num)
 			u.Wechat = wechat
 		}
 		u.ShowName = u.GetShowName()
-		cash, _ := decimal.NewFromString(row.Str(5))
+		cash, _ := decimal.NewFromString(row.Str(6))
 		data = append(data, []string{strconv.FormatUint(u.Id, 10), u.ShowName, cash.StringFixed(9)})
 	}
 

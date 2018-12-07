@@ -48,8 +48,9 @@ ORDER BY points DESC LIMIT %d`, num)
 			CountryCode: row.Uint(1),
 			Mobile:      row.Str(2),
 			Nick:        row.Str(3),
+			Avatar:      row.Str(4),
 		}
-		wxNick := row.Str(4)
+		wxNick := row.Str(5)
 		if wxNick != "" {
 			wechat := &common.Wechat{
 				Nick: wxNick,
@@ -57,7 +58,7 @@ ORDER BY points DESC LIMIT %d`, num)
 			u.Wechat = wechat
 		}
 		u.ShowName = u.GetShowName()
-		points, _ := decimal.NewFromString(row.Str(5))
+		points, _ := decimal.NewFromString(row.Str(6))
 		data = append(data, []string{strconv.FormatUint(u.Id, 10), u.ShowName, points.StringFixed(9)})
 	}
 
