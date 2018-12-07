@@ -6,67 +6,54 @@ import (
 	"github.com/shopspring/decimal"
 	"net/http"
 	"github.com/tokenme/tmm/handler/admin"
-	"encoding/json"
-	"time"
 )
 
-const UcInfoKey = `Info-Ucoin`
-
 func UcInfoHandler(c *gin.Context) {
-	redisConn := Service.Redis.Master.Get()
-	info := UcInfo{}
-	Context, err := redisConn.Do(`Get`, UcInfoKey)
-	if err == nil {
-		json.Unmarshal(Context.([]byte), &info)
-		c.JSON(http.StatusOK, admin.Response{
-			Code:    0,
-			Data:    info,
-			Message: admin.API_OK,
-		})
-		return
-	}
 	db := Service.Db
-	query := `SELECT 
- SUM(IF(direction=1, tmm, 0)) AS supply,
- SUM(IF(direction=-1, tmm, 0)) AS burn,
- SUM(IF(DATE_ADD(inserted_at,INTERVAL 1 DAY) > NOW(),tmm,0)) AS d,
- COUNT(DISTINCT(user_id))
- FROM tmm.exchange_records
- WHERE status in (2,1)`
 
-	row, _, err := db.Query(query)
-	if CheckErr(err, c) {
-		return
-	}
-	if Check(len(row) == 0, `Not Find`, c) {
-		return
-	}
-	totalSupply, err := decimal.NewFromString(row[0].Str(0))
-	if CheckErr(err, c) {
-		return
-	}
-	totalBurn, err := decimal.NewFromString(row[0].Str(1))
-	if CheckErr(err, c) {
-		return
+	query := ``
 	}
 
-	daySupply, err := decimal.NewFromString(row[0].Str(2))
+func Top10Handler(c *gin.Context) {
+	db := Service.Db
+
+	query := `SELECT
+    u.id AS id,
+    u.country_code AS country_code,
+    u.mobile AS mobile,
+    u.nickname AS nick,
+    wx.nick AS wx_nick,
+    SUM(d.points) AS points
+FROM tmm.devices AS d
+INNER JOIN ucoin.users AS u ON (u.id = d.user_id)
+LEFT JOIN tmm.wx AS wx ON ( wx.user_id = u.id )
+GROUP BY u.id
+ORDER BY points DESC LIMIT 10`
+
+	rows, _, err := db.Query(query)
 	if CheckErr(err, c) {
 		return
 	}
-	user, err := decimal.NewFromString(row[0].Str(3))
-	if CheckErr(err, c) {
-		return
+	var userList []User
+	for _, row := range rows {
+		point, err := decimal.NewFromString(row.Str(5))
+		if CheckErr(err, c) {
+			return
+		}
+		user := User{
+			Id:          row.Int(0),
+			CountryCode: row.Int(1),
+			Mobile:      row.Str(2),
+			Nick:        row.Str(3),
+			WxNick:      row.Str(4),
+			Point:       point,
+		}
+		userList = append(userList, user)
 	}
-	info.TotalSupply = totalSupply
-	info.Totalburn = totalBurn
-	info.CurrentSupply = info.Totalburn.Sub(info.Totalburn)
-	info.DaySupply = daySupply
-	info.AvgPersonSupply = info.TotalSupply.Div(user)
-	redisConn.Do(`SETEX`,UcInfoKey,60*60*24,time.Now().Format("2006-01-02 15:04:05"))
+
 	c.JSON(http.StatusOK, admin.Response{
 		Code:    0,
-		Data:    info,
 		Message: admin.API_OK,
+		Data:    userList,
 	})
 }
