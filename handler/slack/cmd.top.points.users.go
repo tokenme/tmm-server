@@ -53,12 +53,13 @@ ORDER BY points DESC LIMIT %d`, num)
 		wxNick := row.Str(5)
 		if wxNick != "" {
 			wechat := &common.Wechat{
-				Nick: wxNick,
+				Nick:   wxNick,
+				Avatar: row.Str(6),
 			}
 			u.Wechat = wechat
 		}
 		u.ShowName = u.GetShowName()
-		points, _ := decimal.NewFromString(row.Str(6))
+		points, _ := decimal.NewFromString(row.Str(7))
 		data = append(data, []string{strconv.FormatUint(u.Id, 10), u.ShowName, points.StringFixed(9)})
 	}
 

@@ -56,12 +56,13 @@ ORDER BY
 		wxNick := row.Str(5)
 		if wxNick != "" {
 			wechat := &common.Wechat{
-				Nick: wxNick,
+				Nick:   wxNick,
+				Avatar: row.Str(6),
 			}
 			u.Wechat = wechat
 		}
 		u.ShowName = u.GetShowName()
-		cash, _ := decimal.NewFromString(row.Str(6))
+		cash, _ := decimal.NewFromString(row.Str(7))
 		data = append(data, []string{strconv.FormatUint(u.Id, 10), u.ShowName, cash.StringFixed(9)})
 	}
 
