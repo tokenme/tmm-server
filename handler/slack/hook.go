@@ -27,6 +27,9 @@ func HookHandler(c *gin.Context) {
 		PointsDistHandler(c)
 	case "/withdraw.dist":
 		WithdrawDistHandler(c)
+	case "/daily.withdraw":
+		num, _ := strconv.ParseInt(txt, 10, 64)
+		DailyWithdrawHandler(c, num)
 	case "/token.withdraw.dist":
 		TokenWithdrawDistHandler(c)
 	case "/point.withdraw.dist":
