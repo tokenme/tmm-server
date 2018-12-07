@@ -32,7 +32,7 @@ func TopTokenWithdrawUsersHandler(c *gin.Context, num int64) {
     u.avatar AS avatar,
     wx.nick AS wx_nick,
     wx.avatar AS wx_avatar,
-        SUM(tx.cny) AS total_cash
+    SUM(tx.cny) AS total_cash
 FROM
     tmm.withdraw_txs AS tx
     INNER JOIN ucoin.users AS u ON (u.id = tx.user_id )
@@ -51,16 +51,18 @@ ORDER BY
 			CountryCode: row.Uint(1),
 			Mobile:      row.Str(2),
 			Nick:        row.Str(3),
+			Avatar:      row.Str(4),
 		}
-		wxNick := row.Str(4)
+		wxNick := row.Str(5)
 		if wxNick != "" {
 			wechat := &common.Wechat{
-				Nick: wxNick,
+				Nick:   wxNick,
+				Avatar: row.Str(6),
 			}
 			u.Wechat = wechat
 		}
 		u.ShowName = u.GetShowName()
-		cash, _ := decimal.NewFromString(row.Str(5))
+		cash, _ := decimal.NewFromString(row.Str(7))
 		data = append(data, []string{strconv.FormatUint(u.Id, 10), u.ShowName, cash.StringFixed(9)})
 	}
 

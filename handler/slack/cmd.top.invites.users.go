@@ -48,16 +48,18 @@ ORDER BY invites DESC LIMIT %d`, num)
 			CountryCode: row.Uint(1),
 			Mobile:      row.Str(2),
 			Nick:        row.Str(3),
+			Avatar:      row.Str(4),
 		}
-		wxNick := row.Str(4)
+		wxNick := row.Str(5)
 		if wxNick != "" {
 			wechat := &common.Wechat{
-				Nick: wxNick,
+				Nick:   wxNick,
+				Avatar: row.Str(6),
 			}
 			u.Wechat = wechat
 		}
 		u.ShowName = u.GetShowName()
-		invites, _ := decimal.NewFromString(row.Str(5))
+		invites, _ := decimal.NewFromString(row.Str(7))
 		data = append(data, []string{strconv.FormatUint(u.Id, 10), u.ShowName, invites.StringFixed(9)})
 	}
 
