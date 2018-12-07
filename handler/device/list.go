@@ -2,6 +2,7 @@ package device
 
 import (
 	//"github.com/davecgh/go-spew/spew"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/mkideal/log"
 	"github.com/shopspring/decimal"
@@ -147,8 +148,14 @@ func getCreatives(platform string) (map[int][]*common.Adgroup, error) {
 				Width:     row.Uint(4),
 				Height:    row.Uint(5),
 			}
+			creativeCode, err := creative.Code([]byte(Config.LinkSalt))
+			if err != nil {
+				continue
+			}
+			creative.Image = fmt.Sprintf("%s/%s", Config.AdImpUrl, creativeCode)
+			creative.Link = fmt.Sprintf("%s/%s", Config.AdClkUrl, creativeCode)
 			if ad, found := adgroupsMap[adgroupId]; found {
-				ad.Creatives = append(ad.Creatives)
+				ad.Creatives = append(ad.Creatives, creative)
 			} else {
 				ad := &common.Adgroup{
 					Id:        adgroupId,

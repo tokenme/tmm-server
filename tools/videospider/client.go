@@ -87,7 +87,7 @@ func (this *Client) Save(v Video) error {
 	sorter := NewVideoSorter(v.Files)
 	sort.Sort(sort.Reverse(sorter))
 	db := this.service.Db
-	_, _, err := db.Query(`INSERT INTO tmm.share_tasks (creator, title, summary, link, image, video_link, is_video, points, points_left, bonus, max_viewers) VALUES (0, '%s', '%s', '%s', '%s', '%s', 1, 5000, 5000, 10, 10)`, db.Escape(v.Title), db.Escape(v.Desc), db.Escape(v.Link), db.Escape(v.Cover), db.Escape(sorter[0].Link))
+	_, _, err := db.Query(`INSERT INTO tmm.share_tasks (creator, title, summary, link, image, video_link, is_video, points, points_left, bonus, max_viewers) VALUES (0, '%s', '%s', '%s', '%s', '%s', 1, 5000, 5000, 5, 20)`, db.Escape(v.Title), db.Escape(v.Desc), db.Escape(v.Link), db.Escape(v.Cover), db.Escape(sorter[0].Link))
 	return err
 }
 

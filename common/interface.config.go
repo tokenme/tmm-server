@@ -10,6 +10,8 @@ type Config struct {
 	Geth                   string            `default:"geth.xibao100.com"`
 	GethWSS                string            `required:"true"`
 	ShareUrl               string            `required:"true"`
+	AdImpUrl               string            `required:"true"`
+	AdClkUrl               string            `required:"true"`
 	Template               string            `required:"true"`
 	LogPath                string            `required:"true"`
 	TokenProfilePath       string            `required:"true"`

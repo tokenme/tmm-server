@@ -45,7 +45,7 @@ func CreateHandler(c *gin.Context) {
 }
 
 func createByMobile(c *gin.Context, req CreateRequest) {
-	if Check(req.Mobile == "" || req.CountryCode == 0 || req.VerifyCode == "" || req.Password == "" || req.RePassword == "", "missing params", c) {
+	if Check(req.Mobile == "" || req.CountryCode == 0 || req.VerifyCode == "" || req.Password == "" || req.RePassword == "" || !(req.Captcha != "" || req.AfsSession != "" && req.AfsToken == "" || req.AfsToken != "" && req.AfsSig != "" && req.AfsSession != ""), "missing params", c) {
 		return
 	}
 	if Check(req.Password != req.RePassword, "repassword!=password", c) {
