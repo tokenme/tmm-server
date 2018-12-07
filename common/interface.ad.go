@@ -15,6 +15,7 @@ type Adgroup struct {
 type Creative struct {
 	Id        uint64 `json:"id"`
 	AdgroupId uint64 `json:"adgroup_id,omitempty"`
+	Title     string `json:"title,omitempty"`
 	Image     string `json:"image,omitempty"`
 	Link      string `json:"link,omitempty"`
 	Width     uint   `json:"width,omitempty"`
