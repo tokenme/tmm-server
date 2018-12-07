@@ -17,6 +17,7 @@ import (
 	"github.com/xluohome/phonedata"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -40,7 +41,8 @@ func DycdpOrderAddHandler(c *gin.Context) {
 	if CheckWithCode(user.CountryCode != 86, INVALID_CDP_VENDOR_ERROR, "the cdp vendor not supported", c) {
 		return
 	}
-	phone, err := phonedata.Find(user.Mobile)
+	userMobile := strings.TrimSpace(user.Mobile)
+	phone, err := phonedata.Find(userMobile)
 	if CheckErr(err, c) {
 		return
 	}
@@ -90,7 +92,7 @@ func DycdpOrderAddHandler(c *gin.Context) {
 	outerOrderId := utils.Sha1(token.String())
 
 	orderRequest := dycdp.CreateCreateCdpOrderRequest()
-	orderRequest.PhoneNumber = user.Mobile
+	orderRequest.PhoneNumber = userMobile
 	orderRequest.OfferId = requests.NewInteger64(int64(req.OfferId))
 	orderRequest.OutOrderId = outerOrderId
 	orderResponse, err := cdpClient.CreateCdpOrder(orderRequest)

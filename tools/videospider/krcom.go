@@ -32,7 +32,7 @@ func (this *Krcom) Get(link string) (info Video, err error) {
 	channelId := submatch[1]
 	videoId := fmt.Sprintf("%s:%s", submatch[2], submatch[3])
 	keyUrl := fmt.Sprintf("https://krcom.cn/h5/videodata?channel_id=%s&video_id=%s", channelId, videoId)
-	vInfo, err := this.BuildJson(keyUrl)
+	vInfo, err := this.BuildJson(keyUrl, nil)
 	if err != nil {
 		return info, err
 	}

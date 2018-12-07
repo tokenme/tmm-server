@@ -8,7 +8,7 @@ import (
 
 func appRouter(r *gin.Engine) {
 	appGroup := r.Group("/app")
-	appGroup.Use(AuthMiddleware.MiddlewareFunc(), handler.ApiSignFunc())
+	appGroup.Use(AuthMiddleware.MiddlewareFunc(), handler.ApiSignPassFunc())
 	{
 		appGroup.GET("/sdks/:platform/:page/:pageSize", app.SdksHandler)
 	}

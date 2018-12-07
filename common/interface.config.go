@@ -10,6 +10,8 @@ type Config struct {
 	Geth                   string            `default:"geth.xibao100.com"`
 	GethWSS                string            `required:"true"`
 	ShareUrl               string            `required:"true"`
+	AdImpUrl               string            `required:"true"`
+	AdClkUrl               string            `required:"true"`
 	Template               string            `required:"true"`
 	LogPath                string            `required:"true"`
 	TokenProfilePath       string            `required:"true"`
@@ -22,6 +24,8 @@ type Config struct {
 	TMMEscrowAddress       string            `required:"true"`
 	MinTMMExchange         uint              `required:"true"`
 	MinTMMRedeem           uint              `required:"true"`
+	MinPointsRedeem        uint              `required:"true"`
+	DailyTMMInterestsRate  float64           `required:"true"`
 	DefaultAppTaskTS       int64             `required:"true"`
 	DefaultShareTaskTS     int64             `required:"true"`
 	DefaultDeviceBalance   uint64            `required:"true"`
@@ -51,6 +55,8 @@ type Config struct {
 	MinGrowthTS            int               `required:"true"`
 	InviteBonus            uint              `required:"true"`
 	InviterBonus           uint              `required:"true"`
+	InviteCashBonus        uint              `required:"true"`
+	InviterCashBonus       uint              `required:"true"`
 	InviteBonusRate        float64           `required:"true"`
 	GoodCommissionPoints   int64             `required:"true"`
 	MaxBindDevice          int               `required:"true"`
@@ -152,4 +158,6 @@ type AppConfig struct {
 type XingeConfig struct {
 	AppId     string `required:"true"`
 	SecretKey string `required:"true"`
+	AccessId  string `required:"true"`
+	AccessKey string `required:"true"`
 }

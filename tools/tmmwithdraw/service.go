@@ -2,7 +2,11 @@ package tmmwithdraw
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"github.com/FrontMage/xinge"
+	"github.com/FrontMage/xinge/auth"
+	xgreq "github.com/FrontMage/xinge/req"
 	"github.com/mkideal/log"
 	"github.com/nu7hatch/gouuid"
 	"github.com/shopspring/decimal"
@@ -10,6 +14,9 @@ import (
 	"github.com/tokenme/tmm/common"
 	"github.com/tokenme/tmm/tools/wechatpay"
 	commonutils "github.com/tokenme/tmm/utils"
+	"io/ioutil"
+	"net/http"
+	"strings"
 	"time"
 )
 
@@ -88,7 +95,7 @@ func (this *Service) CheckTx(ctx context.Context) error {
 
 func (this *Service) WechatPay() error {
 	db := this.service.Db
-	rows, _, err := db.Query(`SELECT wt.tx, wt.cny, wt.client_ip, oi.open_id FROM tmm.withdraw_txs AS wt INNER JOIN tmm.wx AS wx ON (wx.user_id=wt.user_id) INNER JOIN tmm.wx_openids AS oi ON (oi.union_id=wx.union_id AND oi.app_id='%s') WHERE wt.tx_status=1 AND wt.withdraw_status=2 ORDER BY wt.inserted_at ASC LIMIT 1000`, db.Escape(this.config.Wechat.AppId))
+	rows, _, err := db.Query(`SELECT wt.tx, wt.cny, wt.client_ip, oi.open_id, wt.user_id FROM tmm.withdraw_txs AS wt INNER JOIN tmm.wx AS wx ON (wx.user_id=wt.user_id) INNER JOIN tmm.wx_openids AS oi ON (oi.union_id=wx.union_id AND oi.app_id='%s') WHERE wt.tx_status=1 AND wt.withdraw_status=2 ORDER BY wt.inserted_at ASC LIMIT 1000`, db.Escape(this.config.Wechat.AppId))
 	if err != nil {
 		log.Error(err.Error())
 		return err
@@ -98,6 +105,7 @@ func (this *Service) WechatPay() error {
 		cny, err := decimal.NewFromString(row.Str(1))
 		clientIp := row.Str(2)
 		openId := row.Str(3)
+		userId := row.Uint64(4)
 		if err != nil {
 			log.Error(err.Error())
 			continue
@@ -131,8 +139,84 @@ func (this *Service) WechatPay() error {
 		if err != nil {
 			log.Error(err.Error())
 		}
+		this.PushMsg(userId, cny)
 	}
 	time.Sleep(10 * time.Second)
 	this.checkWechatPayCh <- struct{}{}
 	return nil
+}
+
+func (this *Service) PushMsg(userId uint64, cny decimal.Decimal) {
+	db := this.service.Db
+	rows, _, err := db.Query(`SELECT d.push_token, d.language, d.platform FROM tmm.devices AS d WHERE d.user_id=%d ORDER BY lastping_at DESC LIMIT 1`, userId)
+	if err != nil {
+		log.Error(err.Error())
+		return
+	}
+	if len(rows) == 0 {
+		return
+	}
+	row := rows[0]
+	language := "en"
+	if strings.Contains(row.Str(1), "zh") {
+		language = "zh"
+	}
+	deviceToken := row.Str(0)
+	platform := row.Str(2)
+	var (
+		title   string
+		content string
+	)
+	switch language {
+	case "en":
+		title = "UCoin withdraw notify"
+		content = fmt.Sprintf("You just received ¥%s from UCoin.", cny.String())
+	case "zh":
+		title = "UCoin 提现提醒"
+		content = fmt.Sprintf("您刚刚提现成功 ¥%s", cny.String())
+	}
+	var auther auth.Auther
+	var pushReq *http.Request
+	switch platform {
+	case "ios":
+		pushReq, _ = xgreq.NewPushReq(
+			&xinge.Request{},
+			xgreq.Platform(xinge.PlatformiOS),
+			xgreq.EnvProd(),
+			xgreq.AudienceType(xinge.AdToken),
+			xgreq.MessageType(xinge.MsgTypeNotify),
+			xgreq.TokenList([]string{deviceToken}),
+			xgreq.PushID("0"),
+			xgreq.Message(xinge.Message{
+				Title:   title,
+				Content: content,
+			}),
+		)
+		auther = auth.Auther{AppID: this.config.IOSXinge.AppId, SecretKey: this.config.IOSXinge.SecretKey}
+	case "android":
+		pushReq, _ = xgreq.NewPushReq(
+			&xinge.Request{},
+			xgreq.Platform(xinge.PlatformAndroid),
+			xgreq.EnvProd(),
+			xgreq.AudienceType(xinge.AdToken),
+			xgreq.MessageType(xinge.MsgTypeNotify),
+			xgreq.TokenList([]string{deviceToken}),
+			xgreq.PushID("0"),
+			xgreq.Message(xinge.Message{
+				Title:   title,
+				Content: content,
+			}),
+		)
+		auther = auth.Auther{AppID: this.config.AndroidXinge.AppId, SecretKey: this.config.AndroidXinge.SecretKey}
+	}
+	auther.Auth(pushReq)
+	rsp, err := http.DefaultClient.Do(pushReq)
+	if err != nil {
+		log.Error(err.Error())
+	}
+	defer rsp.Body.Close()
+	body, _ := ioutil.ReadAll(rsp.Body)
+	var r xinge.CommonRsp
+	json.Unmarshal(body, r)
+	log.Info("%+v", r)
 }

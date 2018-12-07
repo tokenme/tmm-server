@@ -10,6 +10,7 @@ import (
 	"github.com/tokenme/tmm/common"
 	. "github.com/tokenme/tmm/handler"
 	tokenUtils "github.com/tokenme/tmm/utils/token"
+	"github.com/ua-parser/uap-go/uaparser"
 	"net/http"
 	"strings"
 	"time"
@@ -17,6 +18,7 @@ import (
 
 type ShareData struct {
 	Task       common.ShareTask
+	IsIOS      bool
 	InviteLink string
 }
 
@@ -143,7 +145,7 @@ ic.user_id
 FROM tmm.invite_codes AS ic
 LEFT JOIN tmm.devices AS d ON (d.user_id=ic.parent_id)
 LEFT JOIN tmm.devices AS d2 ON (d2.user_id=ic.user_id)
-WHERE d2.id='%s'
+WHERE d2.id='%s' AND ic.parent_id > 0
 ORDER BY d.lastping_at DESC LIMIT 1) AS t1
 UNION
 SELECT id, inviter_id, user_id FROM
@@ -154,7 +156,7 @@ ic.user_id
 FROM tmm.invite_codes AS ic
 LEFT JOIN tmm.devices AS d ON (d.user_id=ic.grand_id)
 LEFT JOIN tmm.devices AS d2 ON (d2.user_id=ic.user_id)
-WHERE d2.id='%s'
+WHERE d2.id='%s' AND ic.grand_id > 0
 ORDER BY d.lastping_at DESC LIMIT 1) AS t2`
 				rows, _, err = db.Query(query, db.Escape(deviceId), db.Escape(deviceId))
 				if err != nil {
@@ -190,6 +192,15 @@ ORDER BY d.lastping_at DESC LIMIT 1) AS t2`
 			}
 		}
 	}()
-
-	c.HTML(http.StatusOK, "share.tmpl", ShareData{Task: task, InviteLink: fmt.Sprintf("https://tmm.tokenmama.io/invite/%s", inviteCode.Encode())})
+	parser, err := uaparser.New(Config.UAParserPath)
+	var isIOS bool
+	if err != nil {
+		log.Error(err.Error())
+	} else {
+		client := parser.Parse(c.Request.UserAgent())
+		if strings.Contains(strings.ToLower(client.Os.Family), "ios") {
+			isIOS = true
+		}
+	}
+	c.HTML(http.StatusOK, "share.tmpl", ShareData{Task: task, IsIOS: isIOS, InviteLink: fmt.Sprintf("https://tmm.tokenmama.io/invite/%s", inviteCode.Encode())})
 }

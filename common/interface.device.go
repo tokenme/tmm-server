@@ -19,8 +19,8 @@ type Device struct {
 	Model        string          `json:"model,omitempty"`
 	Platform     Platform        `json:"platform,omitempty"`
 	Idfa         string          `json:"idfa,omitempty"`
-    Mac          string          `json:"mac,omitempty"`
-    Imei         string          `json:"imei,omitempty"`
+	Mac          string          `json:"mac,omitempty"`
+	Imei         string          `json:"imei,omitempty"`
 	IsTablet     bool            `json:"is_tablet,omitempty"`
 	TotalTs      uint64          `json:"total_ts,omitempty"`
 	TotalApps    uint            `json:"total_apps,omitempty"`
@@ -31,6 +31,7 @@ type Device struct {
 	LastPingAt   string          `json:"lastping_at,omitempty"`
 	InsertedAt   string          `json:"inserted_at,omitempty"`
 	UpdatedAt    string          `json:"updated_at,omitempty"`
+	Creative     *Creative       `json:"creative,omitempty"`
 }
 
 func (this Device) GetGrowthFactor(service *Service) (decimal.Decimal, error) {
@@ -45,7 +46,7 @@ func (this Device) GetGrowthFactor(service *Service) (decimal.Decimal, error) {
 }
 
 type DeviceRequest struct {
-    Id              string   `json:"id,omitempty"`
+	Id              string   `json:"id,omitempty"`
 	IsEmulator      bool     `json:"isEmulator,omitempty"`
 	IsJailBrojen    bool     `json:"isJailBrojen,omitempty"`
 	IsTablet        bool     `json:"isTablet,omitempty"`
@@ -61,8 +62,8 @@ type DeviceRequest struct {
 	Ip              string   `json:"ip,omitempty"`
 	Language        string   `json:"language,omitempty"`
 	Idfa            string   `json:"idfa,omitempty"`
-    Imei            string   `json:"imei,omitempty"`
-    Mac             string   `json:"mac,omitempty"`
+	Imei            string   `json:"imei,omitempty"`
+	Mac             string   `json:"mac,omitempty"`
 	OpenIDFA        string   `json:"openIDFA,omitempty"`
 	DeviceType      string   `json:"deviceType,omitempty"`
 	OsVersion       string   `json:"osVersion,omitempty"`
@@ -71,30 +72,30 @@ type DeviceRequest struct {
 
 func (this DeviceRequest) DeviceId() string {
 	if len(this.Idfa) > 0 {
-        this.Platform = IOS
+		this.Platform = IOS
 		return utils.Sha1(this.Idfa)
-    } else if len(this.Imei) > 0 {
-        this.Platform = ANDROID
-        str := this.Imei
-        /*
-        if len(this.Mac) > 0 && this.Mac != "02:00:00:00:00:00" {
-            str = str + strings.Replace(this.Mac, ":", "", -1)
-        }
-        */
-        return utils.Sha1(str)
-    }
+	} else if len(this.Imei) > 0 {
+		this.Platform = ANDROID
+		str := this.Imei
+		/*
+		   if len(this.Mac) > 0 && this.Mac != "02:00:00:00:00:00" {
+		       str = str + strings.Replace(this.Mac, ":", "", -1)
+		   }
+		*/
+		return utils.Sha1(str)
+	}
 	return ""
 }
 
 func (this DeviceRequest) AppId() string {
-    /*
-	if this.Platform == IOS {
+	/*
+		if this.Platform == IOS {
+			return utils.Sha1(fmt.Sprintf("%s-%s", this.Platform, this.AppBundleId))
+		}
+	*/
+	if len(this.AppBundleId) > 0 {
 		return utils.Sha1(fmt.Sprintf("%s-%s", this.Platform, this.AppBundleId))
 	}
-    */
-    if len(this.AppBundleId) > 0 {
-		return utils.Sha1(fmt.Sprintf("%s-%s", this.Platform, this.AppBundleId))
-    }
 	return ""
 }
 

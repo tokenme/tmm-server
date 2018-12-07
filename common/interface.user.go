@@ -2,6 +2,7 @@ package common
 
 import (
 	"fmt"
+	"github.com/shopspring/decimal"
 	"github.com/tokenme/tmm/utils"
 	tokenUtils "github.com/tokenme/tmm/utils/token"
 	"strings"
@@ -26,12 +27,16 @@ type User struct {
 	ExchangeEnabled bool             `json:"exchange_enabled,omitempty"`
 	Level           CreditLevel      `json:"level,omitempty"`
 	Role            uint8            `json:"role,omitempty"`
+	OpenId          string           `json:"openid,omitempty"`
 	WxBinded        bool             `json:"wx_binded,omitempty"`
+	DirectFriend    bool             `json:"direct_friend,omitempty"`
+	Contribute      decimal.Decimal  `json:"contribute,omitempty"`
 	Wechat          *Wechat          `json:"-"`
 }
 
 type Wechat struct {
 	UnionId     string    `json:"union_id,omitempty"`
+	OpenId      string    `json:"open_id,omitempty"`
 	Nick        string    `json:"nick,omitempty"`
 	Gender      uint      `json:"gender,omitempty"`
 	Avatar      string    `json:"avatar,omitempty"`
@@ -40,12 +45,13 @@ type Wechat struct {
 }
 
 type CreditLevel struct {
-	Id      uint   `json:"id,omitemty"`
-	Name    string `json:"name,omitempty"`
-	Enname  string `json:"enname,omitempty"`
-	Desc    string `json:"desc,omitempty"`
-	Endesc  string `json:"endesc,omitempty"`
-	Invites uint   `json:"invites,omitempty"`
+	Id            uint            `json:"id,omitemty"`
+	Name          string          `json:"name,omitempty"`
+	Enname        string          `json:"enname,omitempty"`
+	Desc          string          `json:"desc,omitempty"`
+	Endesc        string          `json:"endesc,omitempty"`
+	Invites       uint            `json:"invites,omitempty"`
+	TaskBonusRate decimal.Decimal `json:"task_bonus_rate"`
 }
 
 func (this User) IsAdmin() bool {

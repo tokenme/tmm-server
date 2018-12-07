@@ -102,7 +102,7 @@ d.id,
 d.user_id
 FROM tmm.devices AS d
 LEFT JOIN tmm.invite_codes AS ic ON (ic.parent_id=d.user_id)
-WHERE ic.user_id = %d
+WHERE ic.user_id = %d AND d.user_id > 0
 ORDER BY d.lastping_at DESC LIMIT 1) AS t1
 UNION
 SELECT id, user_id FROM
@@ -111,7 +111,7 @@ d.id,
 d.user_id
 FROM tmm.devices AS d
 LEFT JOIN tmm.invite_codes AS ic ON (ic.grand_id=d.user_id)
-WHERE ic.user_id = %d
+WHERE ic.user_id = %d AND d.user_id > 0
 ORDER BY d.lastping_at DESC LIMIT 1) AS t2`
 		rows, _, err = db.Query(query, user.Id, user.Id)
 		if CheckErr(err, c) {
@@ -175,7 +175,7 @@ d.id,
 d.user_id
 FROM tmm.devices AS d
 LEFT JOIN tmm.invite_codes AS ic ON (ic.parent_id=d.user_id)
-WHERE ic.user_id = %d
+WHERE ic.user_id = %d AND d.user_id > 0
 ORDER BY d.points DESC LIMIT 1) AS t1
 UNION
 SELECT id, user_id FROM
@@ -184,7 +184,7 @@ d.id,
 d.user_id
 FROM tmm.devices AS d
 LEFT JOIN tmm.invite_codes AS ic ON (ic.grand_id=d.user_id)
-WHERE ic.user_id = %d
+WHERE ic.user_id = %d AND d.user_id > 0
 ORDER BY d.points DESC LIMIT 1) AS t2`
 		rows, _, err = db.Query(query, user.Id, user.Id)
 		if CheckErr(err, c) {
@@ -203,7 +203,7 @@ ORDER BY d.points DESC LIMIT 1) AS t2`
 			return
 		}
 		if ret.AffectedRows() > 0 {
-			_, _, err = db.Query(`DELETE FROM tmm.invite_bonus WHERE user_id IN (%s) AND ib.task_type=2 AND ib.task_id=%d`, strings.Join(inviterIds, ","), req.TaskId)
+			_, _, err = db.Query(`DELETE FROM tmm.invite_bonus WHERE user_id IN (%s) AND task_type=2 AND task_id=%d`, strings.Join(inviterIds, ","), req.TaskId)
 			if CheckErr(err, c) {
 				return
 			}

@@ -26,6 +26,7 @@ import (
 	"path"
 	"runtime"
 	"syscall"
+	"time"
 )
 
 func main() {
@@ -39,7 +40,9 @@ func main() {
 		articlePublishFlag         bool
 		articleClassifierTrainFlag bool
 		articleClassifyFlag        bool
+		addArticlesFlag            bool
 		addVideoFlag               string
+		updateVideoFlag            bool
 		accelerateTxFlag           string
 		accelerateGasFlag          int64
 	)
@@ -62,7 +65,9 @@ func main() {
 	flag.Int64Var(&accelerateGasFlag, "gas", 0, "set gas price")
 	flag.BoolVar(&articleClassifierTrainFlag, "train-article-classifier", false, "enable article classifer training")
 	flag.BoolVar(&articleClassifyFlag, "classify-articles", false, "enable articles classify")
+	flag.BoolVar(&updateVideoFlag, "update-videos", false, "enable update videos")
 	flag.StringVar(&addVideoFlag, "add-video", "", "add video")
+	flag.BoolVar(&addArticlesFlag, "add-articles", false, "enable add articles")
 	flag.Parse()
 
 	configor.New(&configor.Config{Verbose: configFlag.Debug, ErrorOnUnmatchedKeys: true, Environment: "production"}).Load(&config, configPath)
@@ -116,7 +121,6 @@ func main() {
 	service := common.NewService(config)
 	defer service.Close()
 	service.Db.Reconnect()
-
 	if accelerateTxFlag != "" && accelerateGasFlag > 0 {
 		err := txaccelerate.Accelerate(service, config, accelerateTxFlag, accelerateGasFlag)
 		if err != nil {
@@ -130,16 +134,32 @@ func main() {
 	}
 
 	if addVideoFlag != "" {
-		spider := videospider.NewClient(service, config)
-		video, err := spider.Get(addVideoFlag)
+		videoSpider := videospider.NewClient(service, config)
+		video, err := videoSpider.Get(addVideoFlag)
 		if err != nil {
 			log.Error(err.Error())
 		}
-		err = spider.Save(video)
+		err = videoSpider.Save(video)
 		if err != nil {
 			log.Error(err.Error())
 		}
 		spew.Dump(video)
+		return
+	}
+
+	if updateVideoFlag {
+		videoSpider := videospider.NewClient(service, config)
+		go videoSpider.StartUpdateVideosService()
+		exitChan := make(chan struct{}, 1)
+		go func() {
+			ch := make(chan os.Signal, 1)
+			signal.Notify(ch, syscall.SIGINT, syscall.SIGKILL, syscall.SIGQUIT, syscall.SIGSTOP, syscall.SIGTERM)
+			<-ch
+			exitChan <- struct{}{}
+			close(ch)
+		}()
+		<-exitChan
+		videoSpider.Stop()
 		return
 	}
 
@@ -178,6 +198,27 @@ func main() {
 		return
 	}
 
+	if addArticlesFlag {
+		addArticlesCh := make(chan struct{}, 1)
+		exitChan := make(chan struct{}, 1)
+		go func() {
+			ch := make(chan os.Signal, 1)
+			signal.Notify(ch, syscall.SIGINT, syscall.SIGKILL, syscall.SIGQUIT, syscall.SIGSTOP, syscall.SIGTERM)
+			<-ch
+			exitChan <- struct{}{}
+			close(ch)
+		}()
+		addArticles(addArticlesCh, service, config)
+		for {
+			select {
+			case <-addArticlesCh:
+				go addArticles(addArticlesCh, service, config)
+			case <-exitChan:
+				close(addArticlesCh)
+				return
+			}
+		}
+	}
 	handler.InitHandler(service, config)
 	handler.Start()
 
@@ -269,4 +310,22 @@ func main() {
 		go tokenWithdraw.Stop()
 	}
 	transferWatcher.Stop()
+}
+
+func addArticles(addArticlesCh chan<- struct{}, service *common.Service, config common.Config) {
+	crawler := wechatspider.NewCrawler(service, config)
+	crawler.Run()
+	err := crawler.Publish()
+	if err != nil {
+		log.Error(err.Error())
+	}
+	classifier := articleclassifier.NewClassifier(service, config)
+	err = classifier.LoadModel()
+	if err != nil {
+		log.Error(err.Error())
+		return
+	}
+	classifier.ClassifyDocs()
+	time.Sleep(12 * time.Hour)
+	addArticlesCh <- struct{}{}
 }

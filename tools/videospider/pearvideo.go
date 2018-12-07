@@ -19,7 +19,7 @@ func NewPearVideo(client *Client) *PearVideo {
 }
 
 func (this *PearVideo) Get(link string) (info Video, err error) {
-	doc, err := this.BuildDoc(link)
+	doc, err := this.BuildDoc(link, nil)
 	if err != nil {
 		return info, err
 	}

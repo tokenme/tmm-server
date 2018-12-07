@@ -2,6 +2,7 @@ package videospider
 
 import (
 	"encoding/base64"
+	"errors"
 	"fmt"
 	//"github.com/mkideal/log"
 )
@@ -15,13 +16,13 @@ func NewToutiao(client *Client) *Toutiao {
 		Request{
 			client:   client,
 			name:     "Toutiao",
-			patterns: []string{`toutiao\.com\/item\/(\d+)`, `toutiao\.com\/[ia](\d+)`},
+			patterns: []string{`toutiao\.com\/item\/(\d+)`, `toutiao\.com\/[ia](\d+)`, `365yg.com\/([\w|\d]+)`, `toutiaoimg.cn/.+/\?iid=(\d+)`},
 		},
 	}
 }
 
 func (this *Toutiao) Get(link string) (info Video, err error) {
-	doc, err := this.BuildDoc(link)
+	doc, err := this.BuildDoc(link, nil)
 	if err != nil {
 		return info, err
 	}
@@ -32,10 +33,13 @@ func (this *Toutiao) Get(link string) (info Video, err error) {
 	info.Link = SafeUrl(link)
 	info.Title = R1(`title: \'(.+)\'`, html)
 	vid := R1(`video(?:id|Id)\:.?\'(\w+)\'`, html)
+	if vid == "" {
+		return info, errors.New("not found")
+	}
 	createTimeStr := R1(`time: \'(\d+\/\d+\/\d+)\'`, html)
 	info.CreateTime = StringToMilliseconds("2006/01/02", createTimeStr)
 	keyUrl := fmt.Sprintf("http://i.snssdk.com/video/urls/1/toutiao/mp4/%s", vid)
-	vInfo, err := this.BuildJson(keyUrl)
+	vInfo, err := this.BuildJson(keyUrl, nil)
 	if err != nil {
 		return info, err
 	}

@@ -25,14 +25,19 @@ func TopInvitesUsersHandler(c *gin.Context, num int64) {
 	}
 	db := Service.Db
 	rows, _, err := db.Query(`SELECT
-        id,
-        country_code,
-        mobile,
-        nick,
-        wx_nick,
-        invites
-    FROM tmm.top_invites_users
-    ORDER BY invites DESC LIMIT %d`, num)
+    u.id AS id,
+    u.country_code AS country_code,
+    u.mobile AS mobile,
+    u.nickname AS nick,
+    u.avatar AS avatar,
+    wx.nick AS wx_nick,
+    wx.avatar AS wx_avatar,
+    COUNT( 0 ) AS invites
+FROM tmm.invite_codes AS ic
+INNER JOIN ucoin.users AS u ON (u.id = ic.parent_id)
+LEFT JOIN tmm.wx AS wx ON ( wx.user_id = u.id )
+GROUP BY u.id
+ORDER BY invites DESC LIMIT %d`, num)
 	if CheckErr(err, c) {
 		return
 	}

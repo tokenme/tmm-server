@@ -8,16 +8,16 @@ import (
 
 func taskRouter(r *gin.Engine) {
 	taskGroup := r.Group("/task")
-	taskGroup.Use(AuthMiddleware.MiddlewareFunc(), handler.ApiSignFunc())
+	taskGroup.Use(AuthMiddleware.MiddlewareFunc())
 	{
-		taskGroup.GET("/shares", task.SharesHandler)
+		taskGroup.GET("/shares", handler.ApiSignPassFunc(), task.SharesHandler)
 		taskGroup.GET("/apps", task.AppsHandler)
-		taskGroup.POST("/app/install", task.AppInstallHandler)
+		taskGroup.POST("/app/install", handler.ApiSignFunc(), task.AppInstallHandler)
 		taskGroup.GET("/apps/check", task.AppsCheckHandler)
 		taskGroup.GET("/records", task.RecordsHandler)
-		taskGroup.POST("/share/add", task.ShareAddHandler)
-		taskGroup.POST("/share/update", task.ShareUpdateHandler)
-		taskGroup.POST("/app/add", task.AppAddHandler)
+		taskGroup.POST("/share/add", handler.ApiSignFunc(), task.ShareAddHandler)
+		taskGroup.POST("/share/update", handler.ApiSignFunc(), task.ShareUpdateHandler)
+		taskGroup.POST("/app/add", handler.ApiSignFunc(), task.AppAddHandler)
 	}
 	r.GET("/share/:encryptedTaskId/:encryptedDeviceId", task.ShareHandler)
 }

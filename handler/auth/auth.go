@@ -10,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/mkideal/log"
 	"github.com/o1egl/govatar"
+	"github.com/shopspring/decimal"
 	"github.com/tokenme/tmm/common"
 	. "github.com/tokenme/tmm/handler"
 	"github.com/tokenme/tmm/middlewares/jwt"
@@ -20,6 +21,7 @@ import (
 	tokenUtils "github.com/tokenme/tmm/utils/token"
 	"image/png"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -60,7 +62,7 @@ var AuthenticatorFunc = func(loginInfo jwt.Login, c *gin.Context) (string, int, 
 			log.Error(err.Error())
 			return loginInfo.Mobile, INVALID_CAPTCHA_ERROR, false
 		}
-		if biometric.Ts < time.Now().Add(-10 * time.Minute).Unix() || biometric.Ts > time.Now().Add(10 * time.Minute).Unix() {
+		if biometric.Ts < time.Now().Add(-10*time.Minute).Unix() || biometric.Ts > time.Now().Add(10*time.Minute).Unix() {
 			return loginInfo.Mobile, INVALID_CAPTCHA_ERROR, false
 		}
 		loginPasswd = biometric.Passwd
@@ -129,7 +131,9 @@ var AuthenticatorFunc = func(loginInfo jwt.Login, c *gin.Context) (string, int, 
                 IFNULL(us.level, 0),
                 ul.name,
                 ul.enname,
+                ul.task_bonus_rate,
                 wx.union_id,
+                wx.open_id,
                 wx.nick,
                 wx.avatar,
                 wx.gender,
@@ -155,10 +159,11 @@ var AuthenticatorFunc = func(loginInfo jwt.Login, c *gin.Context) (string, int, 
 		return loginInfo.Mobile, INTERNAL_ERROR, false
 	}
 	row := rows[0]
+	taskBonusRate, _ := decimal.NewFromString(row.Str(17))
 	user := common.User{
 		Id:              row.Uint64(0),
 		CountryCode:     row.Uint(1),
-		Mobile:          row.Str(2),
+		Mobile:          strings.TrimSpace(row.Str(2)),
 		Nick:            row.Str(3),
 		Avatar:          row.Str(4),
 		Name:            row.Str(5),
@@ -170,25 +175,28 @@ var AuthenticatorFunc = func(loginInfo jwt.Login, c *gin.Context) (string, int, 
 		ExchangeEnabled: row.Int(12) == 1 || row.Uint(1) != 86,
 		Role:            uint8(row.Uint(13)),
 		Level: common.CreditLevel{
-			Id:     row.Uint(14),
-			Name:   row.Str(15),
-			Enname: row.Str(16),
+			Id:            row.Uint(14),
+			Name:          row.Str(15),
+			Enname:        row.Str(16),
+			TaskBonusRate: taskBonusRate,
 		},
 	}
 	paymentPasswd := row.Str(9)
 	if paymentPasswd != "" {
 		user.CanPay = 1
 	}
-	wxUnionId := row.Str(17)
+	wxUnionId := row.Str(18)
 	if wxUnionId != "" {
 		wechat := &common.Wechat{
 			UnionId:     wxUnionId,
-			Nick:        row.Str(18),
-			Avatar:      row.Str(19),
-			Gender:      row.Uint(20),
-			AccessToken: row.Str(21),
-			Expires:     row.ForceLocaltime(22),
+			OpenId:      row.Str(19),
+			Nick:        row.Str(20),
+			Avatar:      row.Str(21),
+			Gender:      row.Uint(22),
+			AccessToken: row.Str(23),
+			Expires:     row.ForceLocaltime(24),
 		}
+		user.OpenId = wechat.OpenId
 		user.Wechat = wechat
 		user.WxBinded = true
 	}

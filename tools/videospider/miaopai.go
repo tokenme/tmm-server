@@ -22,7 +22,7 @@ func NewMiaoPai(client *Client) *MiaoPai {
 func (this *MiaoPai) Get(link string) (info Video, err error) {
 	vid := R1(this.patterns[0], link)
 	keyUrl := fmt.Sprintf("https://n.miaopai.com/api/aj_media/info.json?smid=%s&appid=530", vid)
-	vInfo, err := this.BuildJson(keyUrl)
+	vInfo, err := this.BuildJson(keyUrl, nil)
 	if err != nil {
 		return info, err
 	}

@@ -8,12 +8,15 @@ import (
 
 func redeemRouter(r *gin.Engine) {
 	redeemGroup := r.Group("/redeem")
-	redeemGroup.Use(AuthMiddleware.MiddlewareFunc(), handler.ApiSignFunc())
+	redeemGroup.Use(AuthMiddleware.MiddlewareFunc())
 	{
 		redeemGroup.GET("/dycdp/list", redeem.DycdpListHandler)
-		redeemGroup.POST("/dycdp/order/add", redeem.DycdpOrderAddHandler)
-		redeemGroup.POST("/tmm/withdraw", redeem.TMMWithdrawHandler)
+		redeemGroup.POST("/dycdp/order/add", handler.ApiSignFunc(), redeem.DycdpOrderAddHandler)
+		redeemGroup.POST("/tmm/withdraw", handler.ApiSignFunc(), redeem.TMMWithdrawHandler)
 		redeemGroup.GET("/tmm/withdraw/list", redeem.TMMWithdrawListHandler)
+		redeemGroup.POST("/points/withdraw", handler.ApiSignFunc(), redeem.PointsWithdrawHandler)
+		redeemGroup.GET("/points/withdraw/list", redeem.PointsWithdrawListHandler)
 	}
-	r.GET("/redeem/tmm/rate", handler.ApiSignFunc(), redeem.TMMRateHandler)
+	r.GET("/redeem/tmm/rate", redeem.TMMRateHandler)
+	r.GET("/redeem/point/price", redeem.PointPriceHandler)
 }

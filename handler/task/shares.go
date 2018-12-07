@@ -1,25 +1,23 @@
 package task
 
 import (
-	"errors"
 	"fmt"
 	//"github.com/davecgh/go-spew/spew"
 	"github.com/gin-gonic/gin"
 	"github.com/mkideal/log"
-	"github.com/panjf2000/ants"
 	"github.com/shopspring/decimal"
 	"github.com/tokenme/tmm/common"
 	. "github.com/tokenme/tmm/handler"
-	"github.com/tokenme/tmm/tools/videospider"
+	"math/rand"
 	"net/http"
-	"sort"
+	"strconv"
 	"strings"
-	"sync"
 	"time"
 )
 
 const (
 	DEFAULT_PAGE_SIZE = 10
+	VIDEO_CACHE_KEY   = "SVC:%s"
 )
 
 type SharesRequest struct {
@@ -94,7 +92,6 @@ func SharesHandler(c *gin.Context) {
 	if req.Idfa != "" && req.Build == Config.App.SubmitBuild {
 		showBonusHint = true
 	}
-
 	db := Service.Db
 	query := `SELECT
     st.id,
@@ -121,26 +118,28 @@ ORDER BY %s %s`
 	if CheckErr(err, c) {
 		return
 	}
-	var tasks []*common.ShareTask
-	var wg sync.WaitGroup
-	videopider := videospider.NewClient(Service, Config)
-	videoFetchPool, _ := ants.NewPoolWithFunc(10, func(req interface{}) error {
-		defer wg.Done()
-		task := req.(*common.ShareTask)
-		video, err := videopider.Get(task.Link)
+
+	platform := c.GetString("tmm-platform")
+	buildVersionStr := c.GetString("tmm-build")
+	buildVersion, _ := strconv.ParseUint(buildVersionStr, 10, 64)
+	adsMap := make(map[int][]*common.Adgroup)
+	if !req.IsVideo && (platform == "ios" && buildVersion > 42 || platform == "android" && buildVersion > 211) {
+		adsMap, err = getCreatives(req.Cid, req.Page, platform)
 		if err != nil {
 			log.Error(err.Error())
-			return err
 		}
-		if len(video.Files) == 0 {
-			return errors.New("invalid video")
+	}
+	var tasks []*common.ShareTask
+	for idx, row := range rows {
+		if adgroups, found := adsMap[idx]; found {
+			adgroupIdx := rand.Intn(len(adgroups))
+			creatives := adgroups[adgroupIdx].Creatives
+			creativeIdx := rand.Intn(len(creatives))
+			task := &common.ShareTask{
+				Creative: creatives[creativeIdx],
+			}
+			tasks = append(tasks, task)
 		}
-		sorter := videospider.NewVideoSorter(video.Files)
-		sort.Sort(sort.Reverse(sorter))
-		task.VideoLink = sorter[0].Link
-		return nil
-	})
-	for _, row := range rows {
 		bonus, _ := decimal.NewFromString(row.Str(6))
 		points, _ := decimal.NewFromString(row.Str(7))
 		pointsLeft, _ := decimal.NewFromString(row.Str(8))
@@ -170,12 +169,64 @@ ORDER BY %s %s`
 			task.OnlineStatus = int8(row.Int(15))
 		}
 		task.ShareLink, _ = task.GetShareLink(deviceId, Config)
-		if task.IsVideo == 1 && strings.Contains(task.VideoLink, "krcom.cn") {
-			wg.Add(1)
-			videoFetchPool.Serve(task)
-		}
 		tasks = append(tasks, task)
 	}
-	wg.Wait()
 	c.JSON(http.StatusOK, tasks)
+}
+
+func getCreatives(cid uint, page uint, platform string) (map[int][]*common.Adgroup, error) {
+	adsMap := make(map[int][]*common.Adgroup)
+	adgroupsMap := make(map[uint64]*common.Adgroup)
+	db := Service.Db
+	var constraint string
+	if platform == "ios" {
+		constraint = " AND c.platform IN (0, 1)"
+	} else {
+		constraint = " AND c.platform IN (0, 2)"
+	}
+	query := `SELECT
+        c.id,
+        c.adgroup_id,
+        c.image,
+        c.link,
+        c.width,
+        c.height,
+        z.idx
+    FROM tmm.creatives AS c
+    INNER JOIN tmm.adgroups AS a ON (a.id=c.adgroup_id)
+    INNER JOIN tmm.adzones AS z ON (z.id=a.adzone_id)
+    WHERE z.cid=%d AND z.page=%d AND a.online_status=1 AND c.online_status=1%s`
+	rows, _, err := db.Query(query, cid, page, constraint)
+	if err != nil {
+		return nil, err
+	} else if len(rows) > 0 {
+		for _, row := range rows {
+			adgroupId := row.Uint64(1)
+			adzoneIdx := row.Int(6)
+			creative := &common.Creative{
+				Id:        row.Uint64(0),
+				AdgroupId: adgroupId,
+				Image:     row.Str(2),
+				Link:      row.Str(3),
+				Width:     row.Uint(4),
+				Height:    row.Uint(5),
+			}
+			creativeCode, err := creative.Code([]byte(Config.LinkSalt))
+			if err != nil {
+				continue
+			}
+			creative.Image = fmt.Sprintf("%s/%s", Config.AdImpUrl, creativeCode)
+			creative.Link = fmt.Sprintf("%s/%s", Config.AdClkUrl, creativeCode)
+			if ad, found := adgroupsMap[adgroupId]; found {
+				ad.Creatives = append(ad.Creatives, creative)
+			} else {
+				ad := &common.Adgroup{
+					Id:        adgroupId,
+					Creatives: []*common.Creative{creative},
+				}
+				adsMap[adzoneIdx] = append(adsMap[adzoneIdx], ad)
+			}
+		}
+	}
+	return adsMap, nil
 }

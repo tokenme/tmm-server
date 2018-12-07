@@ -4,10 +4,12 @@ import (
 	//"github.com/davecgh/go-spew/spew"
 	"github.com/getsentry/raven-go"
 	"github.com/gin-gonic/gin"
+	"github.com/shopspring/decimal"
 	"github.com/tokenme/tmm/common"
 	. "github.com/tokenme/tmm/handler"
 	tokenUtils "github.com/tokenme/tmm/utils/token"
 	"net/http"
+	"strings"
 )
 
 func InfoGetHandler(c *gin.Context) {
@@ -35,7 +37,9 @@ func InfoGetHandler(c *gin.Context) {
                 IFNULL(us.level, 0),
                 ul.name,
                 ul.enname,
+                ul.task_bonus_rate,
                 wx.union_id,
+                wx.open_id,
                 wx.nick,
                 wx.avatar,
                 wx.gender,
@@ -59,10 +63,11 @@ func InfoGetHandler(c *gin.Context) {
 			return
 		}
 		row := rows[0]
+		taskBonusRate, _ := decimal.NewFromString(row.Str(16))
 		user = common.User{
 			Id:              row.Uint64(0),
 			CountryCode:     row.Uint(1),
-			Mobile:          row.Str(2),
+			Mobile:          strings.TrimSpace(row.Str(2)),
 			Nick:            row.Str(3),
 			Avatar:          row.Str(4),
 			Name:            row.Str(5),
@@ -73,24 +78,26 @@ func InfoGetHandler(c *gin.Context) {
 			InviterCode:     tokenUtils.Token(row.Uint64(11)),
 			ExchangeEnabled: row.Int(12) == 1 || row.Uint(1) != 86,
 			Level: common.CreditLevel{
-				Id:     row.Uint(13),
-				Name:   row.Str(14),
-				Enname: row.Str(15),
+				Id:            row.Uint(13),
+				Name:          row.Str(14),
+				Enname:        row.Str(15),
+				TaskBonusRate: taskBonusRate,
 			},
 		}
 		paymentPasswd := row.Str(9)
 		if paymentPasswd != "" {
 			user.CanPay = 1
 		}
-		wxUnionId := row.Str(16)
+		wxUnionId := row.Str(17)
 		if wxUnionId != "" {
 			wechat := &common.Wechat{
 				UnionId:     wxUnionId,
-				Nick:        row.Str(17),
-				Avatar:      row.Str(18),
-				Gender:      row.Uint(19),
-				AccessToken: row.Str(20),
-				Expires:     row.ForceLocaltime(21),
+				OpenId:      row.Str(18),
+				Nick:        row.Str(19),
+				Avatar:      row.Str(20),
+				Gender:      row.Uint(21),
+				AccessToken: row.Str(22),
+				Expires:     row.ForceLocaltime(23),
 			}
 			user.Wechat = wechat
 			user.WxBinded = true
