@@ -18,10 +18,14 @@ import (
 	. "github.com/tokenme/tmm/handler"
 	"github.com/tokenme/tmm/tools/wechatpay"
 	//"github.com/tokenme/tmm/tools/ethgasstation-api"
+	"errors"
+	"github.com/tokenme/tmm/coins/eth"
+	"github.com/tokenme/tmm/coins/eth/utils"
 	"github.com/tokenme/tmm/tools/forex"
 	"github.com/tokenme/tmm/tools/ykt"
 	commonutils "github.com/tokenme/tmm/utils"
 	"io/ioutil"
+	"math/big"
 	"net/http"
 	"strconv"
 	"strings"
@@ -135,10 +139,14 @@ func PointsWithdrawHandler(c *gin.Context) {
 		log.Error(payRes.ErrCodeDesc)
 		return
 	}
-	var consumedTs decimal.Decimal
-	pointsPerTs, err := common.GetPointsPerTs(Service)
+	var (
+		consumedTs decimal.Decimal
+		tmm        decimal.Decimal
+	)
+	exchangeRate, pointsPerTs, err := common.GetExchangeRate(Config, Service)
 	if err != nil {
 		consumedTs = req.Points.Div(pointsPerTs)
+		tmm = req.Points.Mul(exchangeRate.Rate)
 	}
 	_, _, err = db.Query(`UPDATE tmm.devices SET points=points-%s, consumed_ts=consumed_ts+%d WHERE id='%s' AND user_id=%d AND points>= %s`, req.Points.String(), consumedTs.IntPart(), db.Escape(req.DeviceId), user.Id, req.Points.String())
 	if err != nil {
@@ -153,6 +161,9 @@ func PointsWithdrawHandler(c *gin.Context) {
 	if err != nil {
 		log.Error(err.Error())
 	}
+
+	burnPool(c, tmm)
+
 	pushMsg(user.Id, cny)
 	slackParams := slack.PostMessageParameters{Parse: "full", UnfurlMedia: true, Markdown: true}
 	attachment := slack.Attachment{
@@ -202,6 +213,59 @@ func PointsWithdrawHandler(c *gin.Context) {
 		Currency: req.Currency,
 	}
 	c.JSON(http.StatusOK, receipt)
+}
+
+func burnPool(c *gin.Context, tmm decimal.Decimal) error {
+
+	poolPrivKey, err := commonutils.AddressDecrypt(Config.TMMPoolWallet.Data, Config.TMMPoolWallet.Salt, Config.TMMPoolWallet.Key)
+	if err != nil {
+		return err
+	}
+	poolPubKey, err := eth.AddressFromHexPrivateKey(poolPrivKey)
+	if err != nil {
+		return err
+	}
+
+	token, err := utils.NewToken(Config.TMMTokenAddress, Service.Geth)
+	if err != nil {
+		return err
+	}
+	tokenDecimal, err := utils.TokenDecimal(token)
+	if err != nil {
+		return err
+	}
+
+	tmmInt := tmm.Mul(decimal.New(1, int32(tokenDecimal)))
+	amount, ok := new(big.Int).SetString(tmmInt.Floor().String(), 10)
+	if !ok {
+		return errors.New("token big.Int conversion failed")
+	}
+	transactor := eth.TransactorAccount(poolPrivKey)
+	GlobalLock.Lock()
+	defer GlobalLock.Unlock()
+	nonce, err := eth.Nonce(c, Service.Geth, Service.Redis.Master, poolPubKey, Config.Geth)
+	if err != nil {
+		return err
+	}
+	var gasPrice *big.Int
+	transactorOpts := eth.TransactorOptions{
+		Nonce:    nonce,
+		GasPrice: gasPrice,
+		GasLimit: 210000,
+	}
+	eth.TransactorUpdate(transactor, transactorOpts, c)
+	tx, err := utils.Burn(token, transactor, amount)
+	if err != nil {
+		log.Error(err.Error())
+		return err
+	}
+	err = eth.NonceIncr(c, Service.Geth, Service.Redis.Master, poolPubKey, Config.Geth)
+	if err != nil {
+		log.Error(err.Error())
+		return err
+	}
+	log.Info("Burn %s in pool, tx: %s, because of points withdraw", tmm.String(), tx.Hash().Hex())
+	return nil
 }
 
 func pushMsg(userId uint64, cny decimal.Decimal) {

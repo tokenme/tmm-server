@@ -78,6 +78,7 @@ func TMMChangeHandler(c *gin.Context) {
 		return
 	}
 
+	var receipt common.Transaction
 	poolPrivKey, err := commonutils.AddressDecrypt(Config.TMMPoolWallet.Data, Config.TMMPoolWallet.Salt, Config.TMMPoolWallet.Key)
 	if CheckErr(err, c) {
 		return
@@ -87,10 +88,17 @@ func TMMChangeHandler(c *gin.Context) {
 		return
 	}
 
-	var (
-		fromAddress string
-		toAddress   string
-	)
+	agentPrivKey, err := commonutils.AddressDecrypt(Config.TMMAgentWallet.Data, Config.TMMAgentWallet.Salt, Config.TMMAgentWallet.Key)
+	if CheckErr(err, c) {
+		return
+	}
+	agentPubKey, err := eth.AddressFromHexPrivateKey(agentPrivKey)
+	if CheckErr(err, c) {
+		return
+	}
+
+	var gasPrice *big.Int
+
 	db := Service.Db
 	if req.Direction == common.TMMExchangeIn {
 		query := `SELECT
@@ -112,8 +120,33 @@ WHERE d.id='%s' AND d.user_id=%d`
 			return
 		}
 
-		fromAddress = poolPubKey
-		toAddress = user.Wallet
+		transactor := eth.TransactorAccount(agentPrivKey)
+		GlobalLock.Lock()
+		defer GlobalLock.Unlock()
+		nonce, err := eth.Nonce(c, Service.Geth, Service.Redis.Master, agentPubKey, Config.Geth)
+		if CheckErr(err, c) {
+			return
+		}
+		transactorOpts := eth.TransactorOptions{
+			Nonce:    nonce,
+			GasPrice: gasPrice,
+			GasLimit: 210000,
+		}
+		eth.TransactorUpdate(transactor, transactorOpts, c)
+		tx, err := utils.TransferProxy(token, transactor, poolPubKey, user.Wallet, amount)
+		if CheckErr(err, c) {
+			return
+		}
+		err = eth.NonceIncr(c, Service.Geth, Service.Redis.Master, agentPubKey, Config.Geth)
+		if err != nil {
+			log.Error(err.Error())
+		}
+		receipt = common.Transaction{
+			Receipt:    tx.Hash().Hex(),
+			Value:      tmm,
+			Status:     2,
+			InsertedAt: time.Now().Format(time.RFC3339),
+		}
 	} else {
 		tokenBalance, err := utils.TokenBalanceOf(token, user.Wallet)
 		if CheckErr(err, c) {
@@ -122,53 +155,37 @@ WHERE d.id='%s' AND d.user_id=%d`
 		if CheckWithCode(amount.Cmp(tokenBalance) == 1, NOT_ENOUGH_TOKEN_ERROR, "not enough token", c) {
 			return
 		}
-		fromAddress = user.Wallet
-		toAddress = poolPubKey
-	}
+		transactor := eth.TransactorAccount(agentPrivKey)
+		GlobalLock.Lock()
+		defer GlobalLock.Unlock()
+		nonce, err := eth.Nonce(c, Service.Geth, Service.Redis.Master, agentPubKey, Config.Geth)
+		if CheckErr(err, c) {
+			return
+		}
 
-	agentPrivKey, err := commonutils.AddressDecrypt(Config.TMMAgentWallet.Data, Config.TMMAgentWallet.Salt, Config.TMMAgentWallet.Key)
-	if CheckErr(err, c) {
-		return
-	}
-	agentPubKey, err := eth.AddressFromHexPrivateKey(agentPrivKey)
-	if CheckErr(err, c) {
-		return
-	}
-
-	transactor := eth.TransactorAccount(agentPrivKey)
-	GlobalLock.Lock()
-	defer GlobalLock.Unlock()
-	nonce, err := eth.Nonce(c, Service.Geth, Service.Redis.Master, agentPubKey, Config.Geth)
-	if CheckErr(err, c) {
-		return
-	}
-	var gasPrice *big.Int
-	/*gas, err := ethgasstation.Gas()
+		transactorOpts := eth.TransactorOptions{
+			Nonce:    nonce,
+			GasPrice: gasPrice,
+			GasLimit: 210000,
+		}
+		eth.TransactorUpdate(transactor, transactorOpts, c)
+		tx, err := utils.BurnFrom(token, transactor, user.Wallet, amount)
+		if CheckErr(err, c) {
+			return
+		}
+		err = eth.NonceIncr(c, Service.Geth, Service.Redis.Master, agentPubKey, Config.Geth)
 		if err != nil {
-			gasPrice = nil
-		} else {
-	       gasPrice = new(big.Int).Mul(big.NewInt(gas.SafeLow.Div(decimal.New(10, 0)).IntPart()), big.NewInt(params.GWei))
-		}*/
-	transactorOpts := eth.TransactorOptions{
-		Nonce:    nonce,
-		GasPrice: gasPrice,
-		GasLimit: 210000,
+			log.Error(err.Error())
+		}
+		receipt = common.Transaction{
+			Receipt:    tx.Hash().Hex(),
+			Value:      tmm,
+			Status:     2,
+			InsertedAt: time.Now().Format(time.RFC3339),
+		}
+		log.Info("Burn %s in user wallet:%s, tx: %s, because of token withdraw", tmm.String(), user.Wallet, tx.Hash().Hex())
 	}
-	eth.TransactorUpdate(transactor, transactorOpts, c)
-	tx, err := utils.TransferProxy(token, transactor, fromAddress, toAddress, amount)
-	if CheckErr(err, c) {
-		return
-	}
-	err = eth.NonceIncr(c, Service.Geth, Service.Redis.Master, agentPubKey, Config.Geth)
-	if err != nil {
-		log.Error(err.Error())
-	}
-	receipt := common.Transaction{
-		Receipt:    tx.Hash().Hex(),
-		Value:      tmm,
-		Status:     2,
-		InsertedAt: time.Now().Format(time.RFC3339),
-	}
+
 	_, _, err = db.Query(`INSERT INTO tmm.exchange_records (tx, status, user_id, device_id, tmm, points, direction) VALUES ('%s', %d, %d, '%s', '%s', '%s', %d)`, db.Escape(receipt.Receipt), receipt.Status, user.Id, db.Escape(req.DeviceId), receipt.Value.String(), req.Points.String(), req.Direction)
 	if CheckErr(err, c) {
 		return
