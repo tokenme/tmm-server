@@ -144,7 +144,7 @@ func PointsWithdrawHandler(c *gin.Context) {
 		tmm        decimal.Decimal
 	)
 	exchangeRate, pointsPerTs, err := common.GetExchangeRate(Config, Service)
-	if err != nil {
+	if err == nil {
 		consumedTs = req.Points.Div(pointsPerTs)
 		tmm = req.Points.Mul(exchangeRate.Rate)
 	}
@@ -226,6 +226,15 @@ func burnPool(c *gin.Context, tmm decimal.Decimal) error {
 		return err
 	}
 
+	agentPrivKey, err := commonutils.AddressDecrypt(Config.TMMAgentWallet.Data, Config.TMMAgentWallet.Salt, Config.TMMAgentWallet.Key)
+	if err != nil {
+		return err
+	}
+	agentPubKey, err := eth.AddressFromHexPrivateKey(agentPrivKey)
+	if err != nil {
+		return err
+	}
+
 	token, err := utils.NewToken(Config.TMMTokenAddress, Service.Geth)
 	if err != nil {
 		return err
@@ -240,10 +249,10 @@ func burnPool(c *gin.Context, tmm decimal.Decimal) error {
 	if !ok {
 		return errors.New("token big.Int conversion failed")
 	}
-	transactor := eth.TransactorAccount(poolPrivKey)
+	transactor := eth.TransactorAccount(agentPrivKey)
 	GlobalLock.Lock()
 	defer GlobalLock.Unlock()
-	nonce, err := eth.Nonce(c, Service.Geth, Service.Redis.Master, poolPubKey, Config.Geth)
+	nonce, err := eth.Nonce(c, Service.Geth, Service.Redis.Master, agentPubKey, Config.Geth)
 	if err != nil {
 		return err
 	}
@@ -254,12 +263,12 @@ func burnPool(c *gin.Context, tmm decimal.Decimal) error {
 		GasLimit: 210000,
 	}
 	eth.TransactorUpdate(transactor, transactorOpts, c)
-	tx, err := utils.Burn(token, transactor, amount)
+	tx, err := utils.BurnFrom(token, transactor, poolPubKey, amount)
 	if err != nil {
 		log.Error(err.Error())
 		return err
 	}
-	err = eth.NonceIncr(c, Service.Geth, Service.Redis.Master, poolPubKey, Config.Geth)
+	err = eth.NonceIncr(c, Service.Geth, Service.Redis.Master, agentPubKey, Config.Geth)
 	if err != nil {
 		log.Error(err.Error())
 		return err
