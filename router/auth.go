@@ -2,7 +2,7 @@ package router
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/tokenme/tmm/handler"
+	//"github.com/tokenme/tmm/handler"
 	"github.com/tokenme/tmm/handler/auth"
 	"github.com/tokenme/tmm/middlewares/jwt"
 	"time"
@@ -78,12 +78,12 @@ func AuthCheckerFunc() gin.HandlerFunc {
 }
 
 func authRouter(r *gin.Engine) {
-	r.POST("/auth/login", handler.ApiSignFunc(), AuthMiddleware.LoginHandler)
+	r.POST("/auth/login", AuthMiddleware.LoginHandler)
 	authGroup := r.Group("/auth")
-	authGroup.Use(AuthMiddleware.MiddlewareFunc(), handler.ApiSignFunc())
+	authGroup.Use(AuthMiddleware.MiddlewareFunc())
 	{
 		authGroup.GET("/refresh_token", AuthMiddleware.RefreshHandler)
 	}
-	r.POST("/auth/send", handler.ApiSignFunc(), auth.SendHandler)
-	r.POST("/auth/verify", handler.ApiSignFunc(), auth.VerifyHandler)
+	r.POST("/auth/send", auth.SendHandler)
+	r.POST("/auth/verify", auth.VerifyHandler)
 }
