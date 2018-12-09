@@ -5,149 +5,101 @@ import (
 )
 
 const (
-	KeyAlive = 60 * 60 * 1
+	KeyAlive = 60 * 60
 )
 
-//活跃
-type Alive struct {
-	Day  float64 `json:"day"`
-	Week float64 `json:"week"`
+//提现
+type DrawCashInfo struct {
+	Top10       []*User         `json:"top_10,omitempty"`
+	Money       decimal.Decimal `json:"money"`
+	CurrentTime string          `json:"current_time"`
 }
 
-//页面打开率
-type PageInfo struct {
-	Wallet      float64 `json:"wallet"`
-	PointMake   float64 `json:"point_make"`
-	Mall        float64 `json:"mall"`
-	Help        float64 `json:"help"`
-	Interests   float64 `json:"interests"`
-	FeedBack    float64 `json:"feed_back"`
-	ChannelOpen map[string]float64
-}
-
-//分享拉新
-type InviteInfo struct {
-	TotalInvite          int             `json:"total_invite"`
-	InviteProportionRate float64         `json:"invite_proportion_rate"`
-	InviteSucRate        float64         `json:"invite_suc_rate"`
-	TotalCost            decimal.Decimal `json:"total_cost"`
-	ClickWebRate         float64         `json:"click_web_rate"`
+type TotalDrawCash struct {
+	TotalCount int             `json:"total_count"`
+	TotalUser  int             `json:"total_user"`
+	TotalMoney decimal.Decimal `json:"total_money"`
 }
 
 //投资
 type InvestsInfo struct {
-	TotalPoint           decimal.Decimal `json:"total_point"`
-	TotalGoods           int             `json:"total_goods"`
-	AvgGoodsInvestsPoint decimal.Decimal `json:"avg_goods_invests_point"`
-	Goodshare            GoodShare       `json:"goodshare"`
+	Top10        []*Good         `json:"top_10,omitempty"`
+	InvestsPoint decimal.Decimal `json:"invests_point"`
+	CurrentTime  string          `json:"current_time"`
 }
 
-//商品分享次数和总流量
-type GoodShare struct {
-	ShareTimes int `json:"share_times"`
-	TotalClick int `json:"total_click"`
+type TotalInvests struct {
+	TotalPoint      decimal.Decimal `json:"total_point"`
+	TotalGoodsCount int             `json:"total_goods_count"`
 }
 
-//提现
-type TixianInfo struct {
-	TotalTimes          int             `json:"total_times"`
-	TotalUser           int             `json:"total_user"`
-	TotalMoney          decimal.Decimal `json:"total_money"`
-	AvgUserTimes        float64         `json:"avg_user_times"`
-	AvgUserMoney        decimal.Decimal `json:"avg_user_money"`
-	LessTen             int             `json:"less_ten"`
-	LessHundred         int             `json:"less_hundred"`
-	LessThousand        int             `json:"less_thousand"`
-	LessTenThousand     int             `json:"less_ten_thousand"`
-	MoreThanTenThousand int             `json:"more_than_ten_thousand"`
-}
-
+//积分
 type PointInfo struct {
-	TotalPoint          decimal.Decimal `json:"total_point"`
-	TotalRecovery       decimal.Decimal `json:"total_recovery"`
-	CurrentPoint        decimal.Decimal `json:"current_point"`
-	AvgDayPoint         decimal.Decimal `json:"avg_day_point"`
-	AvgUserPoint        decimal.Decimal `json:"avg_user_point"`
-	LessHundred         int             `json:"less_hundred"`
-	LessThousand        int             `json:"less_thousand"`
-	LessTenThousand     int             `json:"less_ten_thousand"`
-	MoreThanTenThousand int             `json:"more_than_ten_thousand"`
+	CurrentTime string          `json:"current_time"`
+	Point       decimal.Decimal `json:"point"`
+	Top10       []*User         `json:"top_10,omitempty"`
+}
+
+//邀请
+type InviteInfo struct {
+	InviteCount int     `json:"invite_count"`
+	Top10       []*User `json:"top_10,omitempty"`
+	CurrentTime string  `json:"current_time"`
+}
+
+type TotalInvite struct {
+	TotalInviteCount int             `json:"total_invite_count"`
+	TotalCost        decimal.Decimal `json:"total_cost"`
+}
+
+//交换
+type ExchangeInfo struct {
+	ExchangeCount int     `json:"exchange_count"`
+	Top10         []*User `json:"top_10,omitempty"`
+	CurrentTime   string  `json:"current_time,omitempty"`
 }
 
 //任务
 type TaskInfo struct {
-	TotalTask    int             `json:"total_task"`
-	TotalPoint   decimal.Decimal `json:"total_point"`
-	ReadTask     TaskDate        `json:"read_task"`
-	ShareTask    TaskDate        `json:"share_task"`
-	AvgUserRead  float64         `json:"avg_read_task"`
-	AvgUserShare float64         `json:"avg_share_task"`
-	SignTask     float64         `json:"sign_task"`
+	TaskCount   int             `json:"task_count"`
+	Top10       []*User         `json:"top_10,omitempty"`
+	CurrentTime string          `json:"current_time,omitempty"`
+	TotalPoint  decimal.Decimal `json:"total_point,omitempty"`
 }
 
-type TaskDate struct {
-	TotalTask int
-	Point     decimal.Decimal
+type TotalTask struct {
+	TotaltaskCount int             `json:"totaltask_count"`
+	TotalCost      decimal.Decimal `json:"total_cost"`
 }
 
-//Ucoin
-type UcInfo struct {
-	TotalSupply     decimal.Decimal `json:"total_supply"`
-	TotalRecovery   decimal.Decimal `json:"totalrecovery"`
-	CurrentSupply   decimal.Decimal `json:"current_supply"`
-	DaySupply       decimal.Decimal `json:"day_supply"`
-	AvgPersonSupply decimal.Decimal `json:"avg_person_supply"`
+//其他类
+type User struct {
+	Id                 int             `json:"id,omitempty"`
+	CountryCode        int             `json:"country_code,omitempty"`
+	Mobile             string          `json:"mobile,omitempty"`
+	Nick               string          `json:"nick,omitempty"`
+	WxNick             string          `json:"wx_nick,omitempty"`
+	Point              decimal.Decimal `json:"point,omitempty"`
+	DrawCash           decimal.Decimal `json:"draw_cash,omitempty"`
+	InvestsCount       int             `json:"invests_count,omitempty"`
+	Tmm                decimal.Decimal `json:"tmm,omitempty"`
+	ExchangeCount      int             `json:"exchange_count,omitempty"`
+	CompletedTaskCount int             `json:"completed_task_count,omitempty"`
 }
 
-type ExChangeInfo struct {
-	PointToTmm Data `json:"point_to_tmm"`
-	TmmToPoint Data `json:"tmm_to_point"`
-	Daytimes   int  `json:"daytimes"`
-	AvgUser    Data `json:"avg_user"`
+type InfoRequest struct {
+	StartTime string `form:"start_time",json:"start_time"`
+	EndTime   string `form:"end_time",json:"end_time" `
+	Top10     bool   `form:"top_10",json:"top_10"`
 }
 
-type data struct {
-	Total decimal.Decimal `json:"total"`
-	Times float64         `json:"times"`
+type Good struct {
+	Id    int             `json:"id"`
+	Title string          `json:"title"`
+	Point decimal.Decimal `json:"point"`
 }
-
-type DevicesInfo struct {
-	TotalDevices        int                 `json:"total_devices"`
-	TotalIosDevices     int                 `json:"total_ios_devices"`
-	TotalAndroidDevices int                 `json:"total_android_devices"`
-	UserDownloadChannel UserDownloadChannel `json:"user_download_channel"`
-	NewUser             NewUser             `json:"new_user"`
-}
-
-//用户下载渠道
-type UserDownloadChannel struct {
-	InviteDownload int `json:"invite_download"`
-	NormalDownload int `json:"normal_download"`
-}
-
-//新增用户
-type NewUser struct {
-	Month int `json:"month"`
-	Week  int `json:"week"`
-	Day   int `json:"day"`
-}
-
 type Data struct {
 	Title     string   `json:"title"`
 	IndexName []string `json:"index_name"`
 	Value     []int    `json:"value"`
-}
-
-type User struct {
-	Id          int             `json:"id,omitempty"`
-	CountryCode int             `json:"country_code,omitempty"`
-	Mobile      string          `json:"mobile,omitempty"`
-	Nick        string          `json:"nick,omitempty"`
-	WxNick      string          `json:"wx_nick"`
-	Point       decimal.Decimal `json:"point"`
-}
-
-type InfoRequest struct {
-	StartTime string `json:"start_time",form:"start_time"`
-	EndTime   string `json:"end_time",form:"end_time" `
 }

@@ -9,4 +9,5 @@ func AdminRouter(r *gin.Engine) {
 	AricleRouter(r)
 	TaskRouter(r)
 	UserRouter(r)
+	InfoRouter(r)
 }
