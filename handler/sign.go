@@ -54,10 +54,10 @@ func ApiCheckError(c *gin.Context) *APIError {
 	}
 	appKey := c.Request.Header.Get("tmm-appkey")
 	ts, _ := strconv.ParseInt(c.Request.Header.Get("tmm-ts"), 10, 64)
-	if ts < time.Now().Add(-30*time.Second).Unix() || ts > time.Now().Add(30*time.Second).Unix() {
+	if ts < time.Now().Add(-1*time.Minute).Unix() || ts > time.Now().Add(1*time.Minute).Unix() {
 		return &APIError{
 			Code: 400,
-			Msg:  "expired request"}
+			Msg:  "Invalid timestamp, you may need to correct your system clock."}
 	}
 	sign := c.Request.Header.Get("tmm-sign")
 	secret := GetAppSecret(appKey)

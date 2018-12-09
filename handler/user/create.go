@@ -45,7 +45,9 @@ func CreateHandler(c *gin.Context) {
 }
 
 func createByMobile(c *gin.Context, req CreateRequest) {
-	if Check(req.Mobile == "" || req.CountryCode == 0 || req.VerifyCode == "" || req.Password == "" || req.RePassword == "" || !(req.Captcha != "" || req.AfsSession != "" && req.AfsToken == "" || req.AfsToken != "" && req.AfsSig != "" && req.AfsSession != ""), "missing params", c) {
+	mobile := strings.Replace(req.Mobile, " ", "", -1)
+	mobile = strings.Replace(mobile, "-", "", -1)
+	if Check(mobile == "" || req.CountryCode == 0 || req.VerifyCode == "" || req.Password == "" || req.RePassword == "" || !(req.Captcha != "" || req.AfsSession != "" && req.AfsToken == "" || req.AfsToken != "" && req.AfsSig != "" && req.AfsSession != ""), "missing params", c) {
 		return
 	}
 	if Check(req.Password != req.RePassword, "repassword!=password", c) {
@@ -61,7 +63,6 @@ func createByMobile(c *gin.Context, req CreateRequest) {
 	}
 	salt := utils.Sha1(token.String())
 	passwd := utils.Sha1(fmt.Sprintf("%s%s%s", salt, req.Password, salt))
-	mobile := strings.Replace(req.Mobile, " ", "", -1)
 
 	ret, err := twilio.AuthVerification(Config.TwilioToken, mobile, req.CountryCode, req.VerifyCode)
 	if CheckErr(err, c) {

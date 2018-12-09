@@ -98,7 +98,12 @@ func RecordsHandler(c *gin.Context) {
 			receipt, err := utils.TransactionReceipt(Service.Geth, c, record.Tx)
 			if err == nil {
 				record.Status = common.ExchangeTxStatus(receipt.Status)
-				if record.Status == common.ExchangeTxFailed {
+				if record.Status == common.ExchangeTxFailed && record.Direction == common.TMMExchangeIn {
+					_, _, err = db.Query(`UPDATE tmm.devices AS d, tmm.exchange_records AS er SET d.points=d.points + er.points, d.total_ts = CEIL(d.total_ts + %s), er.status=0 WHERE d.id=er.device_id AND er.tx='%s'`, pointsPerTs.String(), db.Escape(record.Tx))
+					if err != nil {
+						log.Error(err.Error())
+					}
+				} else if record.Status == common.ExchangeTxFailed && record.Direction == common.TMMExchangeOut {
 					_, _, err = db.Query(`UPDATE tmm.devices AS d, tmm.exchange_records AS er SET d.points=IF(d.points > er.points, d.points - er.points, 0), d.consumed_ts = CEIL(d.consumed_ts + %s), er.status=0 WHERE d.id=er.device_id AND er.tx='%s'`, pointsPerTs.String(), db.Escape(record.Tx))
 					if err != nil {
 						log.Error(err.Error())

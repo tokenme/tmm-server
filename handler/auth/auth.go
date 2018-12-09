@@ -33,68 +33,70 @@ type Biometric struct {
 var AuthenticatorFunc = func(loginInfo jwt.Login, c *gin.Context) (string, int, bool) {
 	db := Service.Db
 	var where string
-	if loginInfo.CountryCode > 0 && loginInfo.Mobile != "" && loginInfo.Password != "" && (loginInfo.Captcha != "" || loginInfo.AfsSession != "" && loginInfo.AfsToken == "" || loginInfo.AfsToken != "" && loginInfo.AfsSig != "" && loginInfo.AfsSession != "") {
-		where = fmt.Sprintf("u.country_code=%d AND u.mobile='%s'", loginInfo.CountryCode, db.Escape(loginInfo.Mobile))
+	mobile := strings.Replace(loginInfo.Mobile, " ", "", -1)
+	mobile = strings.Replace(mobile, "-", "", -1)
+	if loginInfo.CountryCode > 0 && mobile != "" && loginInfo.Password != "" && (loginInfo.Captcha != "" || loginInfo.AfsSession != "" && loginInfo.AfsToken == "" || loginInfo.AfsToken != "" && loginInfo.AfsSig != "" && loginInfo.AfsSession != "") {
+		where = fmt.Sprintf("u.country_code=%d AND u.mobile='%s'", loginInfo.CountryCode, db.Escape(mobile))
 	} else {
 		log.Error("missing params")
-		return loginInfo.Mobile, BADREQUEST_ERROR, false
+		return mobile, BADREQUEST_ERROR, false
 	}
 	var loginPasswd string
 	if loginInfo.Biometric {
 		secret := GetAppSecret(loginInfo.Captcha)
 		if secret == "" {
 			log.Error("invalid captcha")
-			return loginInfo.Mobile, INVALID_CAPTCHA_ERROR, false
+			return mobile, INVALID_CAPTCHA_ERROR, false
 		}
 		decrepted, err := utils.DesDecrypt(loginInfo.Password, []byte(secret))
 		if err != nil {
 			log.Error(err.Error())
-			return loginInfo.Mobile, INVALID_CAPTCHA_ERROR, false
+			return mobile, INVALID_CAPTCHA_ERROR, false
 		}
 		decodedStr, err := base64.StdEncoding.DecodeString(string(decrepted))
 		if err != nil {
 			log.Error(err.Error())
-			return loginInfo.Mobile, INVALID_CAPTCHA_ERROR, false
+			return mobile, INVALID_CAPTCHA_ERROR, false
 		}
 		var biometric Biometric
 		err = json.Unmarshal([]byte(decodedStr), &biometric)
 		if err != nil {
 			log.Error(err.Error())
-			return loginInfo.Mobile, INVALID_CAPTCHA_ERROR, false
+			return mobile, INVALID_CAPTCHA_ERROR, false
 		}
 		if biometric.Ts < time.Now().Add(-10*time.Minute).Unix() || biometric.Ts > time.Now().Add(10*time.Minute).Unix() {
-			return loginInfo.Mobile, INVALID_CAPTCHA_ERROR, false
+			return mobile, INVALID_CAPTCHA_ERROR, false
 		}
 		loginPasswd = biometric.Passwd
 	} else if loginInfo.Captcha != "" {
 		captchaRes := recaptcha.Verify(Config.ReCaptcha.Secret, Config.ReCaptcha.Hostname, loginInfo.Captcha)
 		if !captchaRes.Success {
 			log.Error("invalid captcha")
-			return loginInfo.Mobile, INVALID_CAPTCHA_ERROR, false
+			return mobile, INVALID_CAPTCHA_ERROR, false
 		}
 		loginPasswd = loginInfo.Password
 	} else if loginInfo.AfsSession != "" && loginInfo.AfsToken == "" {
 		afsClient, err := afs.NewClientWithAccessKey(Config.Aliyun.RegionId, Config.Aliyun.AK, Config.Aliyun.AS)
 		if err != nil {
 			log.Error(err.Error())
-			return loginInfo.Mobile, INVALID_CAPTCHA_ERROR, false
+			return mobile, INVALID_CAPTCHA_ERROR, false
 		}
 		afsRequest := afs.CreateCreateAfsAppCheckRequest()
 		afsRequest.Session = loginInfo.AfsSession
 		afsResponse, err := afsClient.CreateAfsAppCheck(afsRequest)
 		if err != nil {
 			log.Error(err.Error())
-			return loginInfo.Mobile, INVALID_CAPTCHA_ERROR, false
+			return mobile, INVALID_CAPTCHA_ERROR, false
 		}
 		if afsResponse.Data.SecondCheckResult != 1 {
-			return loginInfo.Mobile, INVALID_CAPTCHA_ERROR, false
+			return mobile, INVALID_CAPTCHA_ERROR, false
 		}
 		loginPasswd = loginInfo.Password
 	} else {
 		afsClient, err := afs.NewClientWithAccessKey(Config.Aliyun.RegionId, Config.Aliyun.AK, Config.Aliyun.AS)
 		if err != nil {
 			log.Error(err.Error())
-			return loginInfo.Mobile, INVALID_CAPTCHA_ERROR, false
+			return mobile, INVALID_CAPTCHA_ERROR, false
 		}
 		afsRequest := afs.CreateAuthenticateSigRequest()
 		afsRequest.SessionId = loginInfo.AfsSession
@@ -106,10 +108,10 @@ var AuthenticatorFunc = func(loginInfo jwt.Login, c *gin.Context) (string, int, 
 		afsResponse, err := afsClient.AuthenticateSig(afsRequest)
 		if err != nil {
 			log.Error(err.Error())
-			return loginInfo.Mobile, INVALID_CAPTCHA_ERROR, false
+			return mobile, INVALID_CAPTCHA_ERROR, false
 		}
 		if afsResponse.Code != 100 {
-			return loginInfo.Mobile, INVALID_CAPTCHA_ERROR, false
+			return mobile, INVALID_CAPTCHA_ERROR, false
 		}
 		loginPasswd = loginInfo.Password
 	}
@@ -154,9 +156,9 @@ var AuthenticatorFunc = func(loginInfo jwt.Login, c *gin.Context) (string, int, 
 			log.Error(err.Error())
 		}
 		if len(rows) == 0 {
-			return loginInfo.Mobile, UNACTIVATED_USER_ERROR, false
+			return mobile, UNACTIVATED_USER_ERROR, false
 		}
-		return loginInfo.Mobile, INTERNAL_ERROR, false
+		return mobile, INTERNAL_ERROR, false
 	}
 	row := rows[0]
 	taskBonusRate, _ := decimal.NewFromString(row.Str(17))
@@ -233,20 +235,20 @@ var AuthenticatorFunc = func(loginInfo jwt.Login, c *gin.Context) (string, int, 
 		avatarImg, err := govatar.GenerateFromUsername(gender, user.Wallet)
 		if err != nil {
 			log.Error(err.Error())
-			return loginInfo.Mobile, INTERNAL_ERROR, false
+			return mobile, INTERNAL_ERROR, false
 		}
 		avatarBuf := new(bytes.Buffer)
 		err = png.Encode(avatarBuf, avatarImg)
 		if err != nil {
 			log.Error(err.Error())
-			return loginInfo.Mobile, INTERNAL_ERROR, false
+			return mobile, INTERNAL_ERROR, false
 		}
 
 		timestamp := strconv.FormatInt(time.Now().UnixNano(), 10)
 		avatar, _, err := qiniu.Upload(c, Config.Qiniu, fmt.Sprintf("%s/%s", Config.Qiniu.AvatarPath, user.Wallet), timestamp, avatarBuf.Bytes())
 		if err != nil {
 			log.Error(err.Error())
-			return loginInfo.Mobile, INTERNAL_ERROR, false
+			return mobile, INTERNAL_ERROR, false
 		}
 		user.Avatar = avatar
 		db.Query(`UPDATE ucoin.users SET avatar='%s' WHERE id=%d LIMIT 1`, db.Escape(user.Avatar), user.Id)
@@ -258,7 +260,7 @@ var AuthenticatorFunc = func(loginInfo jwt.Login, c *gin.Context) (string, int, 
 	js, err := json.Marshal(user)
 	if err != nil {
 		log.Error(err.Error())
-		return loginInfo.Mobile, INTERNAL_ERROR, false
+		return mobile, INTERNAL_ERROR, false
 	}
 	if passwdSha1 != user.Password {
 		return string(js), INVALID_PASSWD_ERROR, false

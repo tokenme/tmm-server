@@ -17,7 +17,7 @@ import (
 	"github.com/tokenme/tmm/tools/orderbook-server"
 	"github.com/tokenme/tmm/tools/tmmwithdraw"
 	"github.com/tokenme/tmm/tools/tokenprofile"
-	"github.com/tokenme/tmm/tools/transferwatcher"
+	//"github.com/tokenme/tmm/tools/transferwatcher"
 	"github.com/tokenme/tmm/tools/txaccelerate"
 	"github.com/tokenme/tmm/tools/videospider"
 	"github.com/tokenme/tmm/tools/wechatspider"
@@ -234,18 +234,20 @@ func main() {
 		}
 		go orderbookServer.Start()
 	}
-	transferWatcher, err := transferwatcher.NewWatcher(config.TMMTokenAddress, service, config)
-	if err != nil {
-		log.Error(err.Error())
-		return
-	}
-	go func() {
-		err = transferWatcher.Start()
+	/*
+		transferWatcher, err := transferwatcher.NewWatcher(config.TMMTokenAddress, service, config)
 		if err != nil {
 			log.Error(err.Error())
-			//return
+			return
 		}
-	}()
+		go func() {
+			err = transferWatcher.Start()
+			if err != nil {
+				log.Error(err.Error())
+				//return
+			}
+		}()
+	*/
 	tokenWithdraw := tmmwithdraw.NewService(service, config)
 	if config.EnableTokenWithdraw {
 		go tokenWithdraw.Start()
@@ -309,7 +311,7 @@ func main() {
 	if config.EnableTokenWithdraw {
 		go tokenWithdraw.Stop()
 	}
-	transferWatcher.Stop()
+	//transferWatcher.Stop()
 }
 
 func addArticles(addArticlesCh chan<- struct{}, service *common.Service, config common.Config) {
