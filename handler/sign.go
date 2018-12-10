@@ -54,7 +54,7 @@ func ApiCheckError(c *gin.Context) *APIError {
 	}
 	appKey := c.Request.Header.Get("tmm-appkey")
 	ts, _ := strconv.ParseInt(c.Request.Header.Get("tmm-ts"), 10, 64)
-	if ts < time.Now().Add(-1*time.Minute).Unix() || ts > time.Now().Add(1*time.Minute).Unix() {
+	if ts < time.Now().Add(-10*time.Minute).Unix() || ts > time.Now().Add(10*time.Minute).Unix() {
 		return &APIError{
 			Code: 400,
 			Msg:  "Invalid timestamp, you may need to correct your system clock."}

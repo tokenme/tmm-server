@@ -27,6 +27,7 @@ func New(service *common.Service, config common.Config) *Handler {
 func (this *Handler) Start() {
 	log.Info("GC Start")
 	dailyTicker := time.NewTicker(24 * time.Hour)
+	minuteTicker := time.NewTicker(1 * time.Minute)
 	for {
 		select {
 		case <-dailyTicker.C:
@@ -34,6 +35,8 @@ func (this *Handler) Start() {
 			this.inviteSubmissionRecycle()
 			this.expiredReadingLogs()
 			this.expiredReadingLogKws()
+		case <-minuteTicker.C:
+			this.expiredMobileCode()
 		case <-this.exitCh:
 			dailyTicker.Stop()
 			return
@@ -67,5 +70,11 @@ func (this *Handler) expiredReadingLogs() error {
 func (this *Handler) expiredReadingLogKws() error {
 	db := this.Service.Db
 	_, _, err := db.Query(`DELETE FROM tmm.user_reading_kws WHERE updated_at<DATE_SUB(NOW(), INTERVAL 7 DAY)`)
+	return err
+}
+
+func (this *Handler) expiredMobileCode() error {
+	db := this.Service.Db
+	_, _, err := db.Query(`DELETE FROM tmm.mobile_codes WHERE updated_at<DATE_SUB(NOW(), INTERVAL 10 MINUTE)`)
 	return err
 }

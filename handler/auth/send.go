@@ -6,6 +6,7 @@ import (
 	"github.com/mkideal/log"
 	. "github.com/tokenme/tmm/handler"
 	"github.com/tokenme/tmm/tools/afs"
+	"github.com/tokenme/tmm/tools/mobilecode"
 	"github.com/tokenme/tmm/utils/twilio"
 	"net/http"
 	"strings"
@@ -74,6 +75,18 @@ func SendHandler(c *gin.Context) {
 		}
 	}
 
+	if req.Country == 86 {
+		authClient := mobilecode.NewClient(Service, Config)
+		_, err := authClient.Send(req.Mobile)
+		if CheckErr(err, c) {
+			raven.CaptureError(err, nil)
+			log.Error("Auth Send Failed: %s", err.Error())
+			return
+		}
+		log.Warn("Auth Send: +%d-%s", req.Country, mobile)
+		c.JSON(http.StatusOK, APIResponse{Msg: "ok"})
+		return
+	}
 	ret, err := twilio.AuthSend(Config.TwilioToken, mobile, req.Country, locale)
 	if CheckErr(err, c) {
 		raven.CaptureError(err, nil)

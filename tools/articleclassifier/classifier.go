@@ -16,7 +16,10 @@ import (
 	"strings"
 )
 
-const MaxDocWords int = 200
+const (
+	MaxDocWords int = 200
+	MaxDocs     int = 10000
+)
 
 type Doc struct {
 	Id    uint64
@@ -249,7 +252,7 @@ func (this *Classifier) getDocs() []*Doc {
 	)
 	for {
 		endId := startId
-		rows, _, err := db.Query(`SELECT st.id, stc.cid, st.link, st.title, st.summary FROM tmm.share_tasks AS st INNER JOIN tmm.share_task_categories AS stc ON (stc.task_id=st.id) WHERE st.creator=0 AND stc.is_auto=1 AND st.id>%d AND st.online_status=1 ORDER BY st.id ASC LIMIT %d`, startId, limit)
+		rows, _, err := db.Query(`SELECT st.id, stc.cid, st.link, st.title, st.summary FROM tmm.share_tasks AS st INNER JOIN tmm.share_task_categories AS stc ON (stc.task_id=st.id) WHERE st.creator=0 AND stc.is_auto=1 AND st.id>%d AND st.online_status=1 ORDER BY st.id DESC LIMIT %d`, startId, limit)
 		if err != nil {
 			log.Println(err.Error())
 			break
@@ -318,6 +321,9 @@ func (this *Classifier) getDocs() []*Doc {
 					doc.Words = words
 				}
 			}
+		}
+		if len(docs) >= MaxDocs {
+			break
 		}
 		if endId == startId {
 			break

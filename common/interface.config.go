@@ -42,6 +42,7 @@ type Config struct {
 	Wechat                 WechatConfig      `required:"true"`
 	IOSXinge               XingeConfig       `required:"true"`
 	AndroidXinge           XingeConfig       `required:"true"`
+	ZZ253                  ZZ253Config       `required:"true"`
 	TwilioToken            string            `required:"true"`
 	EthplorerAPIKey        string            `required:"true"`
 	EtherscanAPIKey        string            `required:"true"`
@@ -160,4 +161,9 @@ type XingeConfig struct {
 	SecretKey string `required:"true"`
 	AccessId  string `required:"true"`
 	AccessKey string `required:"true"`
+}
+
+type ZZ253Config struct {
+	Account  string `required:"true"`
+	Password string `required:"true"`
 }
