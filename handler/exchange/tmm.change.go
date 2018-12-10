@@ -122,6 +122,13 @@ WHERE d.id='%s' AND d.user_id=%d`
 		if CheckWithCode(points.LessThan(req.Points), NOT_ENOUGH_POINTS_ERROR, "not enough points", c) {
 			return
 		}
+		tokenBalance, err := utils.TokenBalanceOf(token, poolPubKey)
+		if CheckErr(err, c) {
+			return
+		}
+		if CheckWithCode(amount.Cmp(tokenBalance) == 1, NOT_ENOUGH_TOKEN_ERROR, "not enough token", c) {
+			return
+		}
 		fromAddress = poolPubKey
 		toAddress = user.Wallet
 	} else {

@@ -96,12 +96,7 @@ func createByMobile(c *gin.Context, req CreateRequest) {
 
 	if req.CountryCode == 86 {
 		authClient := mobilecode.NewClient(Service, Config)
-		ret := authClient.Verify(req.Mobile, req.VerifyCode)
-		if CheckErr(err, c) {
-			raven.CaptureError(err, nil)
-			log.Error("Auth Send Failed: %s", err.Error())
-			return
-		}
+		ret := authClient.Verify(mobile, req.VerifyCode)
 		if Check(!ret.Success, ret.Message, c) {
 			log.Error("Auth Send Failed: %s", ret.Message)
 			return
