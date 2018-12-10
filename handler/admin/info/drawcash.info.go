@@ -22,7 +22,6 @@ func DrawCashInfoHandler(c *gin.Context) {
 	var startTime, endTime string
 	var top10 string
 	endTime = time.Now().Format("2006-01-02")
-	fmt.Println(req)
 	if req.StartTime != "" {
 		startTime = req.StartTime
 		ptwhen = append(ptwhen, fmt.Sprintf(" AND pw.inserted_at  >= '%s' ", db.Escape(startTime)))
@@ -38,7 +37,6 @@ func DrawCashInfoHandler(c *gin.Context) {
 		ptwhen = append(ptwhen, fmt.Sprintf(" AND pw.inserted_at <= '%s' ", db.Escape(endTime)))
 		txwhen = append(txwhen, fmt.Sprintf(" AND tx.inserted_at <= '%s' ", db.Escape(endTime)))
 	}
-	fmt.Println(req.Top10)
 	if req.Top10 {
 		top10 = "LIMIT 10"
 	}
@@ -103,7 +101,8 @@ ORDER BY cny DESC
 
 	}
 	info.CurrentTime = fmt.Sprintf("%s-%s", startTime, endTime)
-
+	info.Numbers = len(rows)
+	info.Title = `提现排行榜`
 	c.JSON(http.StatusOK, admin.Response{
 		Code:    0,
 		Message: admin.API_OK,

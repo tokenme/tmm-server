@@ -8,11 +8,17 @@ const (
 	KeyAlive = 60 * 60
 )
 
+type info struct {
+	Top10       []*User `json:"top_10,omitempty"`
+	Numbers     int     `json:"numbers"`
+	CurrentTime string  `json:"current_time"`
+	Title       string  `json:"title"`
+}
+
 //提现
 type DrawCashInfo struct {
-	Top10       []*User         `json:"top_10,omitempty"`
-	Money       decimal.Decimal `json:"money"`
-	CurrentTime string          `json:"current_time"`
+	Money decimal.Decimal `json:"money"`
+	info
 }
 
 type TotalDrawCash struct {
@@ -23,9 +29,9 @@ type TotalDrawCash struct {
 
 //投资
 type InvestsInfo struct {
-	Top10        []*Good         `json:"top_10,omitempty"`
 	InvestsPoint decimal.Decimal `json:"invests_point"`
-	CurrentTime  string          `json:"current_time"`
+	info
+	Top10 []*Good `json:"top_10,omitempty"`
 }
 
 type TotalInvests struct {
@@ -35,16 +41,14 @@ type TotalInvests struct {
 
 //积分
 type PointInfo struct {
-	CurrentTime string          `json:"current_time"`
-	Point       decimal.Decimal `json:"point"`
-	Top10       []*User         `json:"top_10,omitempty"`
+	Point decimal.Decimal `json:"point"`
+	info
 }
 
 //邀请
 type InviteInfo struct {
-	InviteCount int     `json:"invite_count"`
-	Top10       []*User `json:"top_10,omitempty"`
-	CurrentTime string  `json:"current_time"`
+	InviteCount int `json:"invite_count"`
+	info
 }
 
 type TotalInvite struct {
@@ -54,17 +58,15 @@ type TotalInvite struct {
 
 //交换
 type ExchangeInfo struct {
-	ExchangeCount int     `json:"exchange_count"`
-	Top10         []*User `json:"top_10,omitempty"`
-	CurrentTime   string  `json:"current_time,omitempty"`
+	ExchangeCount int `json:"exchange_count"`
+	info
 }
 
 //任务
 type TaskInfo struct {
-	TaskCount   int             `json:"task_count"`
-	Top10       []*User         `json:"top_10,omitempty"`
-	CurrentTime string          `json:"current_time,omitempty"`
-	TotalPoint  decimal.Decimal `json:"total_point,omitempty"`
+	TaskCount  int             `json:"task_count"`
+	TotalPoint decimal.Decimal `json:"total_point,omitempty"`
+	info
 }
 
 type TotalTask struct {
@@ -81,7 +83,7 @@ type User struct {
 	WxNick             string          `json:"wx_nick,omitempty"`
 	Point              decimal.Decimal `json:"point,omitempty"`
 	DrawCash           decimal.Decimal `json:"draw_cash,omitempty"`
-	InvestsCount       int             `json:"invests_count,omitempty"`
+	InviteCount        int             `json:"invite_count,omitempty"`
 	Tmm                decimal.Decimal `json:"tmm,omitempty"`
 	ExchangeCount      int             `json:"exchange_count,omitempty"`
 	CompletedTaskCount int             `json:"completed_task_count,omitempty"`

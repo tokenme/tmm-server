@@ -100,7 +100,8 @@ FROM (
 		info.ExchangeCount = info.ExchangeCount + count
 	}
 	info.CurrentTime = fmt.Sprintf("%s-%s", startTime, endTime)
-
+	info.Numbers = len(rows)
+	info.Title = `交换Ucoin排行榜`
 	c.JSON(http.StatusOK, admin.Response{
 		Code:    0,
 		Message: admin.API_OK,

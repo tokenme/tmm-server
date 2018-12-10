@@ -11,27 +11,27 @@ func InfoRouter(r *gin.Engine) {
 	InfoGroup.Use(AuthMiddleware.MiddlewareFunc(), verify.VerifyAdminFunc())
 	{
 		InfoGroup.GET(`/drawcash/data`, info.DrawCashDataHandler)
-		InfoGroup.POST(`/drawcash/info`, info.DrawCashInfoHandler)
+		InfoGroup.GET(`/drawcash/info`, info.DrawCashInfoHandler)
 		InfoGroup.GET(`/drawcash/total`, info.TotalDrawCashHandler)
 	}
 	{
 		InfoGroup.GET(`/exchange/data`, info.ExchangeDataHandler)
-		InfoGroup.POST(`/exchange/info`, info.ExchangeInfoHandler)
+		InfoGroup.GET(`/exchange/info`, info.ExchangeInfoHandler)
 	}
 	{
 		InfoGroup.GET(`/invest/data`, info.InvestsDataHandler)
-		InfoGroup.POST(`/invest/info`, info.InvestsInfoHandler)
+		InfoGroup.GET(`/invest/info`, info.InvestsInfoHandler)
 		InfoGroup.GET(`/invest/total`, info.TotalInvestHandler)
 	}
 	{
 		InfoGroup.GET(`/invite/data`, info.InviteDataHandler)
-		InfoGroup.POST(`/invite/info`, info.InviteInfoHandler)
+		InfoGroup.GET(`/invite/info`, info.InviteInfoHandler)
 		InfoGroup.GET(`/invite/total`, info.TotalInviteHandler)
 
 	}
 	{
 		InfoGroup.GET(`/point/data`, info.PointDataHandler)
-		InfoGroup.POST(`/point/info`, info.PointInfoHandler)
+		InfoGroup.GET(`/point/info`, info.PointInfoHandler)
 	}
 	{
 		InfoGroup.GET(`/task/data`, info.TaskDataHandler)

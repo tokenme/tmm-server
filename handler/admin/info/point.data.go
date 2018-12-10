@@ -61,7 +61,7 @@ ORDER BY l
 		indexName = append(indexName, Name)
 	}
 	data := Data{
-		Title:     "积分",
+		Title:     "用户积分占比",
 		IndexName: indexName,
 		Value:     valueList,
 	}

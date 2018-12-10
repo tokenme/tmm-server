@@ -113,7 +113,8 @@ GROUP BY ud.user_id
 		info.TotalPoint = info.TotalPoint.Add(point)
 	}
 	info.CurrentTime = fmt.Sprintf("%s-%s", startTime, endTime)
-
+	info.Numbers = len(rows)
+	info.Title = "任务积分排行榜"
 	c.JSON(http.StatusOK, admin.Response{
 		Code:    0,
 		Message: admin.API_OK,

@@ -61,7 +61,7 @@ GROUP BY l ORDER BY l
 		indexName = append(indexName, fmt.Sprintf(`%d-%d`, row.Int(1), row.Int(1)+50))
 	}
 	data := Data{
-		Title:     "商品投资",
+		Title:     "商品投资占比",
 		IndexName: indexName,
 		Value:     valueList,
 	}
