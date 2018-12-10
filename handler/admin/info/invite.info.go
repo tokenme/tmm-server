@@ -44,7 +44,7 @@ func InviteInfoHandler(c *gin.Context) {
 		u.wx_nick  AS wx_nick,
 		COUNT(*) AS total
 	FROM tmm.invite_bonus AS ic
-	INNER JOIN ucoin.users AS u ON  u.id = ic.from_user_id 
+	INNER JOIN ucoin.users AS u ON  u.id = ic.user_id 
 	WHERE ic.task_id = 0 %s
 	GROUP BY u.id  
 	ORDER BY total DESC 
@@ -58,19 +58,20 @@ func InviteInfoHandler(c *gin.Context) {
 	}
 	var info InviteInfo
 	for _, row := range rows {
-		investsCount := row.Int(3)
+		inviteCount := row.Int(3)
 		if req.Top10 {
 			info.Top10 = append(info.Top10, &User{
 				Id:           row.Int(0),
 				Nick:         row.Str(1),
 				WxNick:       row.Str(2),
-				InvestsCount: investsCount,
+				InviteCount: inviteCount,
 			})
 		}
-		info.InviteCount = info.InviteCount + investsCount
+		info.InviteCount = info.InviteCount + inviteCount
 	}
-
+	info.Numbers = len(rows)
 	info.CurrentTime = fmt.Sprintf("%s-%s", startTime, endTime)
+	info.Title = "邀请排行榜"
 	c.JSON(http.StatusOK, admin.Response{
 		Code:    0,
 		Message: admin.API_OK,
