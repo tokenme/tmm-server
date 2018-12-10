@@ -18,20 +18,18 @@ func InviteStatsHandler(c *gin.Context) {
 		return
 	}
 	var when []string
-	endTime = time.Now().Format("2006-01-02 ")
+	endTime = time.Now().Format("2006-01-02")
 	if req.StartTime != "" {
 		startTime = req.StartTime
 		when = append(when, fmt.Sprintf(` AND ic.inserted_at >= '%s'`, db.Escape(startTime)))
 	} else {
-		startTime = time.Now().AddDate(0, 0, -7).Format("2006-01-02 ")
+		startTime = time.Now().AddDate(0, 0, -7).Format("2006-01-02")
 		when = append(when, fmt.Sprintf(` AND ic.inserted_at >= '%s'`, db.Escape(startTime)))
 	}
 
 	if req.EndTime != "" {
 		endTime = req.EndTime
 		when = append(when, fmt.Sprintf(` AND ic.inserted_at <= '%s'`, db.Escape(endTime)))
-	} else {
-		endTime = time.Now().String()
 	}
 	var top10 string
 	if req.Top10 {
@@ -39,14 +37,13 @@ func InviteStatsHandler(c *gin.Context) {
 	}
 	query := `
 	SELECT
-		u.id AS id ,
-		u.nickname AS nickname,
-		u.wx_nick  AS wx_nick,
+		wx.user_id AS id ,
+		wx.nick AS nickname,
 		COUNT(*) AS total
 	FROM tmm.invite_bonus AS ic
-	INNER JOIN ucoin.users AS u ON  u.id = ic.user_id 
+	INNER JOIN tmm.wx AS wx ON  wx.user_id = ic.user_id 
 	WHERE ic.task_id = 0 %s
-	GROUP BY u.id  
+	GROUP BY wx.user_id   
 	ORDER BY total DESC 
 	%s`
 	rows, _, err := db.Query(query, strings.Join(when, " "), top10)
@@ -58,17 +55,14 @@ func InviteStatsHandler(c *gin.Context) {
 	}
 	var info InviteStats
 	for _, row := range rows {
-		inviteCount := row.Int(3)
+		inviteCount := row.Int(2)
 		if req.Top10 {
 			user := &Users{
 				InviteCount: inviteCount,
 			}
 			user.Id = row.Uint64(0)
 			user.Nick = row.Str(1)
-			user.Mobile = row.Str(2)
-			info.Top10 = append(info.Top10, &Users{
-				InviteCount: inviteCount,
-			})
+			info.Top10 = append(info.Top10,user)
 		}
 		info.InviteCount = info.InviteCount + inviteCount
 	}

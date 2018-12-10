@@ -35,7 +35,7 @@ func ExchangeDataHandler(c *gin.Context) {
 FROM (
 	 SELECT 
 		tmp.user_id, 
-		FLOOR((tmp.times-1)/5) * 5 + 1 AS l
+		FLOOR((tmp.times-1)/50) * 50 + 1 AS l
 FROM(			
 	 SELECT
 		COUNT(1) AS times ,
@@ -61,7 +61,7 @@ GROUP BY l ORDER BY l
 	var valueList []int
 	for _, row := range rows {
 		valueList = append(valueList, row.Int(0))
-		name := fmt.Sprintf(`%d-%d`, row.Int(1), row.Int(1)+5)
+		name := fmt.Sprintf(`%d-%d`, row.Int(1), row.Int(1)+50)
 		indexName = append(indexName, name)
 	}
 	data := Data{

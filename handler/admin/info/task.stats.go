@@ -21,13 +21,13 @@ func TaskStatsHandler(c *gin.Context) {
 	var appTaskwhen []string
 	var startTime, endTime string
 	var top10 string
-	endTime = time.Now().Format("2006-01-02 ")
+	endTime = time.Now().Format("2006-01-02")
 	if req.StartTime != "" {
 		startTime = req.StartTime
 		shaTaskwhen = append(shaTaskwhen, fmt.Sprintf(" AND sha.inserted_at >= '%s' ", db.Escape(startTime)))
 		appTaskwhen = append(appTaskwhen, fmt.Sprintf(" AND app.inserted_at >= '%s' ", db.Escape(startTime)))
 	} else {
-		startTime = time.Now().AddDate(0,0,-7).Format("2006-01-02 ")
+		startTime = time.Now().AddDate(0,0,-7).Format("2006-01-02")
 		shaTaskwhen = append(shaTaskwhen, fmt.Sprintf(" AND sha.inserted_at >= '%s' ", db.Escape(startTime)))
 		appTaskwhen = append(appTaskwhen, fmt.Sprintf(" AND app.inserted_at >= '%s' ", db.Escape(startTime)))
 	}
@@ -43,9 +43,8 @@ func TaskStatsHandler(c *gin.Context) {
 	}
 	query := `
 SELECT 
-	u.id AS id,
-	u.mobile AS mobile,
-	u.nickname AS nickname , 
+	wx.user_id AS id,
+	wx.nick AS nickname , 
 	SUM(tmp.point) AS point ,
 	SUM(tmp.count_) AS _count
 FROM (
@@ -61,7 +60,7 @@ FROM (
 	FROM 
 		tmm.device_share_tasks  AS sha
 	WHERE
-		sha.points > 0 %s
+		sha.points > 0  %s
 	GROUP BY 
 		sha.device_id UNION ALL
 	SELECT 
@@ -71,15 +70,15 @@ FROM (
 	FROM 
 		tmm.device_app_tasks AS app
 	WHERE 
-		app.status = 1 %s
+		app.status = 1  %s
 	GROUP BY 
 		app.device_id
 ) AS tmp
 INNER JOIN tmm.user_devices AS ud ON (ud.device_id = tmp.device_id)
 GROUP BY ud.user_id
-	) AS tmp,ucoin.users AS u 
-	WHERE tmp.user_id = u.id
-	GROUP BY u.id 
+	) AS tmp,tmm.wx AS wx 
+	WHERE tmp.user_id = wx.user_id
+	GROUP BY wx.user_id
 	ORDER BY point DESC
 %s`
 	rows, res, err := db.Query(query, strings.Join(shaTaskwhen, ""),
@@ -104,7 +103,6 @@ GROUP BY ud.user_id
 			}
 			user.Id = row.Uint64(res.Map(`id`))
 			user.Nick = row.Str(res.Map(`nickname`))
-			user.Mobile = row.Str(res.Map(`mobile`))
 			info.Top10 = append(info.Top10, user)
 		}
 		info.TaskCount = info.TaskCount + count

@@ -19,12 +19,12 @@ func ExchangeStatsHandler(c *gin.Context) {
 	}
 	var when []string
 	var startTime, endTime string
-	endTime = time.Now().Format("2006-01-02 ")
+	endTime = time.Now().Format("2006-01-02")
 	if req.StartTime != "" {
 		startTime = req.StartTime
 		when = append(when, fmt.Sprintf(` inserted_at >= '%s' `, db.Escape(startTime)))
 	} else {
-		startTime = time.Now().AddDate(0,0,-7).Format("2006-01-02 ")
+		startTime = time.Now().AddDate(0,0,-7).Format("2006-01-02")
 		when = append(when, fmt.Sprintf(` inserted_at >= '%s' `, db.Escape(startTime)))
 	}
 
@@ -39,9 +39,8 @@ func ExchangeStatsHandler(c *gin.Context) {
 
 	query := `
 SELECT 
-	u.id AS id,
-	u.mobile AS mobile,
-	u.nickname AS nickname , 
+	wx.user_id AS id,
+	wx.nick AS nickname , 
 	tmp.tmm_add - tmp.tmm_ AS tmm,
 	tmp.points_add - tmp.points_ AS points,
 	tmp.numbers AS numbers
@@ -56,12 +55,12 @@ FROM (
 	FROM 
 		tmm.exchange_records AS er
 	WHERE 
-		er.status = 1 AND %s
+		er.status = 1  AND %s
 	GROUP BY 
 		user_id
 ) AS tmp , 	
-	ucoin.users AS u 
-	WHERE tmp.user_id = u.id
+tmm.wx AS wx
+	WHERE tmp.user_id = wx.user_id
 	ORDER BY tmm DESC
 %s
 `
@@ -92,7 +91,6 @@ FROM (
 			}
 			user.Id = row.Uint64(res.Map(`id`))
 			user.Nick = row.Str(res.Map(`nickname`))
-			user.Mobile = row.Str(res.Map(`mobile`))
 			info.Top10 = append(info.Top10, user)
 		}
 		info.ExchangeCount = info.ExchangeCount + count

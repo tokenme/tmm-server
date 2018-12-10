@@ -22,13 +22,13 @@ func PointStatsHandler(c *gin.Context) {
 	var appTaskWhen []string
 	var startTime, endTime string
 	var top10 string
-	endTime = time.Now().Format("2006-01-02 ")
+	endTime = time.Now().Format("2006-01-02")
 	if req.StartTime != "" {
 		startTime = req.StartTime
 		shareWhen = append(shareWhen, fmt.Sprintf(" AND sha.inserted_at >= '%s' ", db.Escape(startTime)))
 		appTaskWhen = append(appTaskWhen, fmt.Sprintf(" AND  app.inserted_at >= '%s' ", db.Escape(startTime)))
 	}else{
-		startTime = time.Now().AddDate(0,0,-7).Format("2006-01-02 ")
+		startTime = time.Now().AddDate(0,0,-7).Format("2006-01-02")
 		shareWhen = append(shareWhen, fmt.Sprintf(" AND sha.inserted_at >= '%s' ", db.Escape(startTime)))
 		appTaskWhen = append(appTaskWhen, fmt.Sprintf(" AND  app.inserted_at >= '%s' ", db.Escape(startTime)))
 	}
@@ -37,16 +37,15 @@ func PointStatsHandler(c *gin.Context) {
 		endTime = req.EndTime
 		shareWhen = append(shareWhen, fmt.Sprintf(" AND sha.inserted_at <= '%s' ", db.Escape(endTime)))
 		appTaskWhen = append(appTaskWhen, fmt.Sprintf(" AND  app.inserted_at <= '%s' ", db.Escape(endTime)))
-	}else{
-		endTime = time.Now().String()
 	}
+
 	if req.Top10 {
 		top10 = " LIMIT 10"
 	}
 	query := `
 SELECT
-	u.id AS id,
-	u.nickname AS nick ,
+	wx.user_id AS id,
+	wx.nick AS nick ,
 	tmp.points AS points 
 FROM(
 	SELECT 
@@ -68,13 +67,13 @@ FROM(
 	GROUP BY
      	 app.device_id   
 ) AS tmp,
-ucoin.users AS u
-INNER JOIN tmm.devices AS dev ON (dev.user_id = u.id )
+tmm.wx AS wx
+INNER JOIN tmm.devices AS dev ON (dev.user_id = wx.user_id)
 WHERE 
 		 tmp.device_id = dev.id 
 GROUP BY 
-		 u.id
-ORDER BY points DESC %s`
+		 wx.user_id
+ORDER BY points DESC  %s`
 	rows, res, err := db.Query(query, strings.Join(shareWhen, " "),
 		strings.Join(appTaskWhen, " "),top10)
 	if CheckErr(err, c) {

@@ -35,7 +35,7 @@ func InviteDataHandler(c *gin.Context) {
     l
 FROM (
     SELECT
-        ic.parent_id, FLOOR((COUNT(1)-1)/5)*5+1 AS l
+        ic.parent_id, FLOOR((COUNT(1)-1)/50)*50+1 AS l
     FROM tmm.invite_codes AS ic
     WHERE ic.parent_id>0
     GROUP BY ic.parent_id
@@ -52,7 +52,7 @@ GROUP BY l ORDER BY l`
 	var valueList []int
 	for _, row := range rows {
 		valueList = append(valueList, row.Int(0))
-		name := fmt.Sprintf(`%d-%d`, row.Int(1), row.Int(1)+5)
+		name := fmt.Sprintf(`%d-%d`, row.Int(1), row.Int(1)+50)
 		indexName = append(indexName, name)
 	}
 	data := Data{
