@@ -3,7 +3,6 @@ package task
 import (
 	"fmt"
 	//"github.com/davecgh/go-spew/spew"
-	"github.com/garyburd/redigo/redis"
 	"github.com/gin-gonic/gin"
 	"github.com/mkideal/log"
 	"github.com/shopspring/decimal"
@@ -13,13 +12,13 @@ import (
 	"github.com/ua-parser/uap-go/uaparser"
 	"net/http"
 	"strings"
-	"time"
 )
 
 type ShareData struct {
 	Task       common.ShareTask
 	IsIOS      bool
 	InviteLink string
+	ImpLink    string
 }
 
 func ShareHandler(c *gin.Context) {
@@ -77,121 +76,7 @@ LIMIT 1`
 		task.Link = strings.Replace(task.Link, "https://tmm.tokenmama.io/article/show", "https://static.tianxi100.com/article/show", -1)
 	}
 	task.InIframe = task.ShouldUseIframe()
-
-	userViewers := row.Uint(9)
 	inviteCode := tokenUtils.Token(row.Uint64(10))
-
-	var (
-		cookieFound = false
-		ipFound     = false
-	)
-	if _, err := c.Cookie(task.CookieKey()); err == nil {
-		log.Warn("Cookie Found")
-		cookieFound = true
-	}
-	ipInfo := ClientIP(c)
-	ipKey := task.IpKey(ipInfo)
-	go func() {
-		redisConn := Service.Redis.Master.Get()
-		defer redisConn.Close()
-		ipV, err := redis.String(redisConn.Do("GET", ipKey))
-		if err == nil {
-			log.Warn("IP Found: %s, time: %s", ipKey, ipV)
-			ipFound = true
-		}
-		if !cookieFound && !ipFound && (task.PointsLeft.GreaterThanOrEqual(bonus) && task.MaxViewers > userViewers) {
-			_, _, err := db.Query(`INSERT IGNORE INTO tmm.device_share_tasks (device_id, task_id) VALUES ('%s', %d)`, db.Escape(deviceId), taskId)
-			if err == nil {
-				pointsPerTs, err := common.GetPointsPerTs(Service)
-				if err != nil {
-					return
-				}
-				var bonusRate float64 = 1
-				rows, _, err := db.Query(`SELECT ul.task_bonus_rate FROM tmm.user_settings AS us INNER JOIN tmm.user_levels AS ul ON (ul.id=us.level) INNER JOIN tmm.devices AS d ON (d.user_id=us.user_id) WHERE d.id='%s' LIMIT 1`, db.Escape(deviceId))
-				if err != nil {
-					log.Error(err.Error())
-				} else if len(rows) > 0 {
-					bonusRate = rows[0].ForceFloat(0) / 100
-				}
-
-				query := `UPDATE tmm.devices AS d, tmm.device_share_tasks AS dst, tmm.share_tasks AS st
-            SET
-                d.points = d.points + IF(st.points_left > st.bonus, st.bonus, st.points_left) * %.2f,
-                d.total_ts = d.total_ts + CEIL(IF(st.points_left > st.bonus, st.bonus, st.points_left) / %s),
-                dst.points = dst.points + IF(st.points_left > st.bonus, st.bonus, st.points_left) * %.2f,
-                dst.viewers = dst.viewers + 1,
-                st.points_left = IF(st.points_left > st.bonus, st.points_left - st.bonus, 0),
-                st.viewers = st.viewers + 1
-            WHERE
-                d.id='%s'
-            AND dst.device_id = d.id
-            AND dst.task_id = %d
-            AND st.id = dst.task_id`
-				_, _, err = db.Query(query, bonusRate, pointsPerTs.String(), bonusRate, db.Escape(deviceId), task.Id)
-				if err != nil {
-					log.Error(query, bonusRate, pointsPerTs.String(), bonusRate, db.Escape(deviceId), task.Id)
-					log.Error(err.Error())
-				}
-				c.SetCookie(task.CookieKey(), "1", 60*60*24*30, "/", Config.Domain, true, true)
-				_, err = redisConn.Do("SETEX", ipKey, 600, time.Now().Format("2006-01-02 15:04:05"))
-				if err != nil {
-					log.Error(err.Error())
-				}
-				query = `SELECT id, inviter_id, user_id FROM
-(SELECT
-d.id,
-ic.parent_id AS inviter_id,
-ic.user_id
-FROM tmm.invite_codes AS ic
-LEFT JOIN tmm.devices AS d ON (d.user_id=ic.parent_id)
-LEFT JOIN tmm.devices AS d2 ON (d2.user_id=ic.user_id)
-WHERE d2.id='%s' AND ic.parent_id > 0
-ORDER BY d.lastping_at DESC LIMIT 1) AS t1
-UNION
-SELECT id, inviter_id, user_id FROM
-(SELECT
-d.id,
-ic.grand_id AS inviter_id,
-ic.user_id
-FROM tmm.invite_codes AS ic
-LEFT JOIN tmm.devices AS d ON (d.user_id=ic.grand_id)
-LEFT JOIN tmm.devices AS d2 ON (d2.user_id=ic.user_id)
-WHERE d2.id='%s' AND ic.grand_id > 0
-ORDER BY d.lastping_at DESC LIMIT 1) AS t2`
-				rows, _, err = db.Query(query, db.Escape(deviceId), db.Escape(deviceId))
-				if err != nil {
-					log.Error(err.Error())
-				}
-				var (
-					inviterBonus = bonus.Mul(decimal.NewFromFloat(Config.InviteBonusRate))
-					deviceIds    []string
-					insertLogs   []string
-					userId       uint64
-				)
-				for _, row := range rows {
-					deviceIds = append(deviceIds, fmt.Sprintf("'%s'", db.Escape(row.Str(0))))
-					if userId == 0 {
-						userId = row.Uint64(2)
-					}
-					insertLogs = append(insertLogs, fmt.Sprintf("(%d, %d, %s, 1, %d)", row.Uint64(1), userId, inviterBonus.String(), task.Id))
-				}
-				if len(deviceIds) > 0 {
-					_, ret, err := db.Query(`UPDATE tmm.devices SET points = points + %s, total_ts = total_ts + %d WHERE id IN (%s)`, inviterBonus.String(), inviterBonus.Div(pointsPerTs).IntPart(), strings.Join(deviceIds, ","))
-					if err != nil {
-						return
-					}
-					if ret.AffectedRows() > 0 {
-						_, _, err = db.Query(`INSERT INTO tmm.invite_bonus (user_id, from_user_id, bonus, task_type, task_id) VALUES %s`, strings.Join(insertLogs, ","))
-						if err != nil {
-							return
-						}
-					}
-				}
-			} else {
-				log.Error(err.Error())
-			}
-		}
-	}()
 	parser, err := uaparser.New(Config.UAParserPath)
 	var isIOS bool
 	if err != nil {
@@ -202,5 +87,10 @@ ORDER BY d.lastping_at DESC LIMIT 1) AS t2`
 			isIOS = true
 		}
 	}
-	c.HTML(http.StatusOK, "share.tmpl", ShareData{Task: task, IsIOS: isIOS, InviteLink: fmt.Sprintf("https://tmm.tokenmama.io/invite/%s", inviteCode.Encode())})
+	impLink, _ := task.GetShareImpLink(deviceId, Config)
+	c.HTML(http.StatusOK, "share.tmpl", ShareData{
+		Task:       task,
+		IsIOS:      isIOS,
+		InviteLink: fmt.Sprintf("https://tmm.tokenmama.io/invite/%s", inviteCode.Encode()),
+		ImpLink:    impLink})
 }

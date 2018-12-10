@@ -83,7 +83,9 @@ func SendHandler(c *gin.Context) {
 			log.Error("Auth Send Failed: %s", err.Error())
 			return
 		}
-		log.Warn("Auth Send: +%d-%s", req.Country, mobile)
+		platform := c.GetString("tmm-platform")
+		buildVersionStr := c.GetString("tmm-build")
+		log.Warn("Auth Send: +%d-%s, platform: %s, build: %s", req.Country, mobile, platform, buildVersionStr)
 		c.JSON(http.StatusOK, APIResponse{Msg: "ok"})
 		return
 	}

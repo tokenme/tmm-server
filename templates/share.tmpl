@@ -15,10 +15,6 @@
 <style media="all" type="text/css">
 html,body,div,iframe{margin:0;padding:0;border:0;font-size:100%;font:inherit;vertical-align:baseline}body{overflow:hidden}.container a{font-family:BlinkMacSystemFont,-apple-system,"Segoe UI",Roboto,Oxygen,Ubuntu,Cantarell,"Fira Sans","Droid Sans","Helvetica Neue",Helvetica,Arial,sans-serif;text-decoration:none}iframe{width:100vw;flex-grow:2}#banner{display:flex;flex-direction:row;justify-content:flex-start;height:90px;overflow:hidden;align-items:center;width:100%;border-bottom:1px solid #eee;padding:8px;box-sizing:border-box}#banner .logo{border:1px solid #eee;border-radius:15px;max-height:100%}#banner .title{font-weight:bold;color:#333;font-size:16px;margin-left:16px;display:flex;flex-direction:column;justify-content:space-evenly;align-items:flex-start;width:auto}#banner .title .downloadbtn{background-color:#e91e63;color:white;font-size:14px;font-weight:normal;border-radius:14px;padding:5px 10px;height:auto;width:auto}.container{display:flex;flex-direction:column;height:100%}.iframecontainer{overflow:auto;height:100%}@media only screen and (device-width :414px) and (device-height :896px) and (-webkit-device-pixel-ratio :2){#banner{height:130px}#banner .logo{border:1px solid #eee;border-radius:15px;width:60px;height:60px;padding:5px;margin:10px 10px}}
 </style>
-{{ else }}
-<script language="javascript" type="text/javascript">
-    window.location.href = '{{ .Task.Link }}';
-</script>
 {{ end  }}
 <script>
     var _mtac = {};
@@ -49,4 +45,28 @@ html,body,div,iframe{margin:0;padding:0;border:0;font-size:100%;font:inherit;ver
   </div>
   {{ end }}
 </body>
+<script>
+    var tmmImpFunc = function() {
+        var img = document.createElement("img");
+        img.setAttribute("src", "{{ .ImpLink }}");
+        img.setAttribute("width", "1");
+        img.setAttribute("height", "1");
+        {{ if .Task.InIframe }}
+        var s = document.getElementsByClassName("container")[0];
+        s.parentNode.insertBefore(img, s);
+        {{ else }}
+        document.body.append(img);
+        img.onload = function(e) {
+            window.location.href = '{{ .Task.Link }}';
+        };
+        {{ end }}
+    };
+    (function(){
+        var clientWidth = document.body.clientWidth;
+        var clientHeight = document.body.clientHeight;
+        if (clientWidth >= 300 && clientHeight >= 300) {
+            window.setTimeout("tmmImpFunc()", 1000);
+        }
+    })();
+</script>
 </html>

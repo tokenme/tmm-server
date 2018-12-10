@@ -7,6 +7,7 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/tokenme/tmm/common"
 	. "github.com/tokenme/tmm/handler"
+	"github.com/tokenme/tmm/tools/forex"
 	"net/http"
 )
 
@@ -111,17 +112,26 @@ ORDER BY d.lastping_at DESC LIMIT 1`
 	if len(rows) == 0 {
 		return nil
 	}
+
+	inviterCashBonus := decimal.New(int64(Config.InviterCashBonus), 0)
+	pointPrice := common.GetPointPrice(Service, Config)
+	forexRate := forex.Rate(Service, "USD", "CNY")
+	pointCnyPrice := pointPrice.Mul(forexRate)
+	inviterPointBonus := inviterCashBonus.Div(pointCnyPrice)
+
 	inviterDeviceId := rows[0].Str(0)
 	inviterUserId := rows[0].Uint64(1)
 	pointsPerTs, _ := common.GetPointsPerTs(Service)
-	ts := decimal.New(int64(Config.InviteBonus), 0).Div(pointsPerTs)
-	_, ret2, err := db.Query(`UPDATE tmm.devices AS d1, tmm.devices AS d2 SET d1.points = d1.points + %d, d1.total_ts = d1.total_ts + %d, d2.points = d2.points + %d, d2.total_ts = d2.total_ts + %d WHERE d1.id='%s' AND d2.id='%s'`, Config.InviteBonus, ts.IntPart(), Config.InviterBonus, ts.IntPart(), db.Escape(deviceId), db.Escape(inviterDeviceId))
+	inviteTs := decimal.New(int64(Config.InviteBonus), 0).Div(pointsPerTs)
+	inviterTs := inviterPointBonus.Div(pointsPerTs)
+	//log.Warn("Inviter bonus: %s, inviter:%d", inviterPointBonus.String(), inviterUserId)
+	_, ret2, err := db.Query(`UPDATE tmm.devices AS d1, tmm.devices AS d2 SET d1.points = d1.points + %d, d1.total_ts = d1.total_ts + %d, d2.points = d2.points + %s, d2.total_ts = d2.total_ts + %d WHERE d1.id='%s' AND d2.id='%s'`, Config.InviteBonus, inviteTs.IntPart(), inviterPointBonus.String(), inviterTs.IntPart(), db.Escape(deviceId), db.Escape(inviterDeviceId))
 	if err != nil {
 		log.Error(err.Error())
 		return err
 	}
 	if ret2.AffectedRows() > 0 {
-		_, _, err = db.Query(`INSERT INTO tmm.invite_bonus (user_id, from_user_id, bonus) VALUES (%d, %d, %d), (%d, %d, %d)`, user.Id, user.Id, Config.InviteBonus, inviterUserId, user.Id, Config.InviterBonus)
+		_, _, err = db.Query(`INSERT INTO tmm.invite_bonus (user_id, from_user_id, bonus) VALUES (%d, %d, %d), (%d, %d, %s)`, user.Id, user.Id, Config.InviteBonus, inviterUserId, user.Id, inviterPointBonus.String())
 		if err != nil {
 			log.Error(err.Error())
 			return err

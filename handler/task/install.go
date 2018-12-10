@@ -2,9 +2,9 @@ package task
 
 import (
 	//"github.com/davecgh/go-spew/spew"
-	"github.com/gin-gonic/gin"
-	//"github.com/mkideal/log"
 	"fmt"
+	"github.com/gin-gonic/gin"
+	"github.com/mkideal/log"
 	"github.com/shopspring/decimal"
 	"github.com/tokenme/tmm/common"
 	. "github.com/tokenme/tmm/handler"
@@ -70,12 +70,19 @@ func AppInstallHandler(c *gin.Context) {
 		if CheckErr(err, c) {
 			return
 		}
+		var bonusRate float64 = 1
+		rows, _, err = db.Query(`SELECT ul.task_bonus_rate FROM tmm.user_settings AS us INNER JOIN tmm.user_levels AS ul ON (ul.id=us.level) INNER JOIN tmm.devices AS d ON (d.user_id=us.user_id) WHERE d.id='%s' LIMIT 1`, db.Escape(deviceId))
+		if err != nil {
+			log.Error(err.Error())
+		} else if len(rows) > 0 {
+			bonusRate = rows[0].ForceFloat(0) / 100
+		}
 		query := `UPDATE tmm.devices AS d, tmm.device_app_tasks AS dat, tmm.app_tasks AS appt
-SET d.points = d.points + IF(appt.points_left > appt.bonus, appt.bonus, appt.points_left),
+SET d.points = d.points + IF(appt.points_left > appt.bonus, appt.bonus, appt.points_left) * %.2f,
     d.total_ts = d.total_ts + CEIL(IF(appt.points_left > appt.bonus, appt.bonus, appt.points_left) / %s),
     appt.points_left = IF(appt.points_left > appt.bonus, appt.points_left - appt.bonus, 0),
     appt.downloads = appt.downloads + 1,
-    dat.points = IF(appt.points_left > appt.bonus, appt.bonus, appt.points_left),
+    dat.points = IF(appt.points_left > appt.bonus, appt.bonus, appt.points_left) * %.2f,
     dat.status = 1
 WHERE
     d.id = '%s'
@@ -83,7 +90,7 @@ WHERE
     AND dat.device_id = d.id
     AND dat.task_id = %d
     AND dat.status != 1`
-		_, _, err = db.Query(query, pointsPerTs.String(), db.Escape(deviceId), req.TaskId)
+		_, _, err = db.Query(query, bonusRate, pointsPerTs.String(), bonusRate, db.Escape(deviceId), req.TaskId)
 		if CheckErr(err, c) {
 			return
 		}
@@ -118,7 +125,7 @@ ORDER BY d.lastping_at DESC LIMIT 1) AS t2`
 			return
 		}
 		var (
-			inviterBonus = bonus.Mul(decimal.NewFromFloat(Config.InviteBonusRate))
+			inviterBonus = bonus.Mul(decimal.NewFromFloat(bonusRate))
 			deviceIds    []string
 			insertLogs   []string
 		)

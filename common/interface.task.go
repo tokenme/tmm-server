@@ -47,6 +47,18 @@ func (this ShareTask) GetShareLink(deviceId string, config Config) (string, erro
 	return fmt.Sprintf("%s/%s/%s", config.ShareUrl, encrypted, encryptedDeviceId), nil
 }
 
+func (this ShareTask) GetShareImpLink(deviceId string, config Config) (string, error) {
+	encrypted, err := utils.EncryptUint64(this.Id, []byte(config.LinkSalt))
+	if err != nil {
+		return "", err
+	}
+	encryptedDeviceId, err := utils.AESEncrypt([]byte(config.LinkSalt), deviceId)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%s/%s/%s", config.ShareImpUrl, encrypted, encryptedDeviceId), nil
+}
+
 func DecryptShareTaskLink(encryptedTaskId string, encryptedDeviceId string, config Config) (taskId uint64, deviceId string, err error) {
 	taskId, err = utils.DecryptUint64(encryptedTaskId, []byte(config.LinkSalt))
 	if err != nil {
