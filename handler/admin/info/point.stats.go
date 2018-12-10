@@ -11,10 +11,10 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-func PointInfoHandler(c *gin.Context) {
+func PointStatsHandler(c *gin.Context) {
 
 	db := Service.Db
-	var req InfoRequest
+	var req StatsRequest
 	if CheckErr(c.Bind(&req), c) {
 		return
 	}
@@ -47,7 +47,6 @@ func PointInfoHandler(c *gin.Context) {
 SELECT
 	u.id AS id,
 	u.nickname AS nick ,
-	u.wx_nick AS wx_nick,
 	tmp.points AS points 
 FROM(
 	SELECT 
@@ -81,19 +80,18 @@ ORDER BY points DESC %s`
 	if CheckErr(err, c) {
 		return
 	}
-	var info PointInfo
+	var info PointStats
 	for _, row := range rows {
 		Point, err := decimal.NewFromString(row.Str(res.Map(`points`)))
 		if CheckErr(err, c) {
 			return
 		}
 		if req.Top10 {
-			user := &User{
-				Id:     row.Int(res.Map(`id`)),
-				Nick:   row.Str(res.Map(`nick`)),
-				WxNick: row.Str(res.Map(`wx_nick`)),
+			user := &Users{
 				Point:  Point,
 			}
+			user.Id = row.Uint64(res.Map(`id`))
+			user.Nick = row.Str(res.Map(`nick`))
 			info.Top10 = append(info.Top10, user)
 		}
 		info.Point = info.Point.Add(Point)

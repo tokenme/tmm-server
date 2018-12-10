@@ -11,9 +11,9 @@ import (
 	"time"
 )
 
-func InvestsInfoHandler(c *gin.Context) {
+func InvestsStatsHandler(c *gin.Context) {
 	db := Service.Db
-	var req InfoRequest
+	var req StatsRequest
 	var startTime, endTime string
 	if CheckErr(c.Bind(&req), c) {
 		return
@@ -54,7 +54,7 @@ ORDER BY point DESC %s`
 	if Check(len(rows) == 0, `not found`, c) {
 		return
 	}
-	var info InvestsInfo
+	var info InvestsStats
 	for _, row := range rows {
 		point, err := decimal.NewFromString(row.Str(2))
 		if CheckErr(err, c) {

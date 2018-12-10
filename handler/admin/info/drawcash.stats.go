@@ -11,9 +11,9 @@ import (
 	"time"
 )
 
-func DrawCashInfoHandler(c *gin.Context) {
+func DrawCashStatsHandler(c *gin.Context) {
 	db := Service.Db
-	var req InfoRequest
+	var req StatsRequest
 	if CheckErr(c.Bind(&req), c) {
 		return
 	}
@@ -44,7 +44,6 @@ func DrawCashInfoHandler(c *gin.Context) {
 	u.id AS id,
 	u.mobile AS mobile,
 	u.nickname AS nickname , 
-	u.wx_nick AS wx_nick,
 	tmp.cny AS cny
 FROM (
  SELECT 
@@ -80,7 +79,7 @@ ORDER BY cny DESC
 	if Check(len(rows) == 0, `not found`, c) {
 		return
 	}
-	var info DrawCashInfo
+	var info DrawCashStats
 	for _, row := range rows {
 		cny, err := decimal.NewFromString(row.Str(res.Map(`cny`)))
 		if CheckErr(err, c) {
@@ -88,14 +87,13 @@ ORDER BY cny DESC
 		}
 
 		if req.Top10 {
-			User := &User{
-				Id:       row.Int(res.Map(`id`)),
-				Mobile:   row.Str(res.Map(`mobile`)),
-				Nick:     row.Str(res.Map(`nickname`)),
-				WxNick:   row.Str(res.Map(`wx_nick`)),
+			user := &Users{
 				DrawCash: cny,
 			}
-			info.Top10 = append(info.Top10, User)
+			user.Id = row.Uint64(res.Map(`id`))
+			user.Nick = row.Str(res.Map(`nickname`))
+			user.Mobile = row.Str(res.Map(`mobile`))
+			info.Top10 = append(info.Top10, user)
 		}
 		info.Money = info.Money.Add(cny)
 

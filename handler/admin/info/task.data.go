@@ -7,6 +7,7 @@ import (
 	"github.com/tokenme/tmm/handler/admin"
 	. "github.com/tokenme/tmm/handler"
 	"encoding/json"
+	"github.com/garyburd/redigo/redis"
 )
 
 const taskDataKey = `info-data-draw`
@@ -14,13 +15,11 @@ const taskDataKey = `info-data-draw`
 func TaskDataHandler(c *gin.Context) {
 	db := Service.Db
 	redisConn := Service.Redis.Master.Get()
-	Context, err := redisConn.Do(`GET`, taskDataKey)
-	if CheckErr(err, c) {
-		return
-	}
-	if Context != nil {
+	defer redisConn.Close()
+	context, err := redis.Bytes(redisConn.Do(`GET`, taskDataKey))
+	if context != nil && err ==nil{
 		var data Data
-		if CheckErr(json.Unmarshal(Context.([]byte), &data), c) {
+		if !CheckErr(json.Unmarshal(context, &data), c) {
 			c.JSON(http.StatusOK, admin.Response{
 				Code:    0,
 				Message: admin.API_OK,
@@ -28,6 +27,7 @@ func TaskDataHandler(c *gin.Context) {
 			})
 			return
 		}
+		return
 	}
 	query := `SELECT
     COUNT(*) AS users,
@@ -68,8 +68,8 @@ GROUP BY l ORDER BY l
 	var valueList []int
 	for _, row := range rows {
 		valueList = append(valueList, row.Int(0))
-		Name := fmt.Sprintf(`%d-%d`, row.Int(1), row.Int(1)+5)
-		indexName = append(indexName, Name)
+		name := fmt.Sprintf(`%d-%d`, row.Int(1), row.Int(1)+5)
+		indexName = append(indexName, name)
 	}
 	data := Data{
 		Title:     "任务完成占比",

@@ -11,9 +11,9 @@ import (
 	"github.com/tokenme/tmm/handler/admin"
 )
 
-func ExchangeInfoHandler(c *gin.Context) {
+func ExchangeStatsHandler(c *gin.Context) {
 	db := Service.Db
-	var req InfoRequest
+	var req StatsRequest
 	if CheckErr(c.Bind(&req), c) {
 		return
 	}
@@ -42,7 +42,6 @@ SELECT
 	u.id AS id,
 	u.mobile AS mobile,
 	u.nickname AS nickname , 
-	u.wx_nick AS wx_nick,
 	tmp.tmm_add - tmp.tmm_ AS tmm,
 	tmp.points_add - tmp.points_ AS points,
 	tmp.numbers AS numbers
@@ -74,7 +73,7 @@ FROM (
 	if Check(len(rows) == 0, `not found`, c) {
 		return
 	}
-	var info ExchangeInfo
+	var info ExchangeStats
 	for _, row := range rows {
 		tmm, err := decimal.NewFromString(row.Str(res.Map(`tmm`)))
 		if CheckErr(err, c) {
@@ -86,16 +85,15 @@ FROM (
 		}
 		count := row.Int(res.Map(`numbers`))
 		if req.Top10 {
-			User := &User{
-				Id:            row.Int(res.Map(`id`)),
-				Mobile:        row.Str(res.Map(`mobile`)),
-				Nick:          row.Str(res.Map(`nickname`)),
-				WxNick:        row.Str(res.Map(`wx_nick`)),
+			user := &Users{
 				Tmm:           tmm,
 				Point:         points,
 				ExchangeCount: count,
 			}
-			info.Top10 = append(info.Top10, User)
+			user.Id = row.Uint64(res.Map(`id`))
+			user.Nick = row.Str(res.Map(`nickname`))
+			user.Mobile = row.Str(res.Map(`mobile`))
+			info.Top10 = append(info.Top10, user)
 		}
 		info.ExchangeCount = info.ExchangeCount + count
 	}

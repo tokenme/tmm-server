@@ -11,9 +11,9 @@ import (
 	"time"
 )
 
-func TaskInfoHandler(c *gin.Context) {
+func TaskStatsHandler(c *gin.Context) {
 	db := Service.Db
-	var req InfoRequest
+	var req StatsRequest
 	if CheckErr(c.Bind(&req), c) {
 		return
 	}
@@ -46,7 +46,6 @@ SELECT
 	u.id AS id,
 	u.mobile AS mobile,
 	u.nickname AS nickname , 
-	u.wx_nick AS wx_nick,
 	SUM(tmp.point) AS point ,
 	SUM(tmp.count_) AS _count
 FROM (
@@ -91,7 +90,7 @@ GROUP BY ud.user_id
 	if Check(len(rows) == 0, `not found`, c) {
 		return
 	}
-	var info TaskInfo
+	var info TaskStats
 	for _, row := range rows {
 		point, err := decimal.NewFromString(row.Str(res.Map(`point`)))
 		if CheckErr(err, c) {
@@ -99,15 +98,14 @@ GROUP BY ud.user_id
 		}
 		count := row.Int(res.Map(`_count`))
 		if req.Top10 {
-			User := &User{
-				Id:                 row.Int(res.Map(`id`)),
-				Mobile:             row.Str(res.Map(`mobile`)),
-				Nick:               row.Str(res.Map(`nickname`)),
-				WxNick:             row.Str(res.Map(`wx_nick`)),
+			user := &Users{
 				Point:              point,
 				CompletedTaskCount: count,
 			}
-			info.Top10 = append(info.Top10, User)
+			user.Id = row.Uint64(res.Map(`id`))
+			user.Nick = row.Str(res.Map(`nickname`))
+			user.Mobile = row.Str(res.Map(`mobile`))
+			info.Top10 = append(info.Top10, user)
 		}
 		info.TaskCount = info.TaskCount + count
 		info.TotalPoint = info.TotalPoint.Add(point)

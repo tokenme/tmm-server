@@ -7,6 +7,7 @@ import (
 	. "github.com/tokenme/tmm/handler"
 	"encoding/json"
 	"github.com/shopspring/decimal"
+	"github.com/garyburd/redigo/redis"
 )
 
 const totalDrawCashKey = `info-total-draw`
@@ -14,13 +15,12 @@ const totalDrawCashKey = `info-total-draw`
 func TotalDrawCashHandler(c *gin.Context) {
 	db := Service.Db
 	redisConn := Service.Redis.Master.Get()
-	Context, err := redisConn.Do(`GET`, totalDrawCashKey)
-	if CheckErr(err, c) {
-		return
-	}
-	if Context != nil {
+	defer redisConn.Close()
+	context, err := redis.Bytes(redisConn.Do(`GET`, totalDrawCashKey))
+
+	if context != nil && err ==nil{
 		var total TotalDrawCash
-		if CheckErr(json.Unmarshal(Context.([]byte), &total), c) {
+		if !CheckErr(json.Unmarshal(context, &total), c) {
 			c.JSON(http.StatusOK, admin.Response{
 				Code:    0,
 				Message: admin.API_OK,
@@ -28,6 +28,7 @@ func TotalDrawCashHandler(c *gin.Context) {
 			})
 			return
 		}
+		return
 	}
 	query := `
 SELECT

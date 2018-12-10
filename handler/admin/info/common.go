@@ -2,23 +2,24 @@ package info
 
 import (
 	"github.com/shopspring/decimal"
+	"github.com/tokenme/tmm/common"
 )
 
 const (
 	KeyAlive = 60 * 60
 )
 
-type info struct {
-	Top10       []*User `json:"top_10,omitempty"`
-	Numbers     int     `json:"numbers"`
-	CurrentTime string  `json:"current_time"`
-	Title       string  `json:"title"`
+type Stats struct {
+	Top10       []*Users `json:"top_10,omitempty"`
+	Numbers     int      `json:"numbers"`
+	CurrentTime string   `json:"current_time"`
+	Title       string   `json:"title"`
 }
 
 //提现
-type DrawCashInfo struct {
+type DrawCashStats struct {
 	Money decimal.Decimal `json:"money"`
-	info
+	Stats
 }
 
 type TotalDrawCash struct {
@@ -28,9 +29,9 @@ type TotalDrawCash struct {
 }
 
 //投资
-type InvestsInfo struct {
+type InvestsStats struct {
 	InvestsPoint decimal.Decimal `json:"invests_point"`
-	info
+	Stats
 	Top10 []*Good `json:"top_10,omitempty"`
 }
 
@@ -40,15 +41,15 @@ type TotalInvests struct {
 }
 
 //积分
-type PointInfo struct {
+type PointStats struct {
 	Point decimal.Decimal `json:"point"`
-	info
+	Stats
 }
 
 //邀请
-type InviteInfo struct {
+type InviteStats struct {
 	InviteCount int `json:"invite_count"`
-	info
+	Stats
 }
 
 type TotalInvite struct {
@@ -57,16 +58,16 @@ type TotalInvite struct {
 }
 
 //交换
-type ExchangeInfo struct {
+type ExchangeStats struct {
 	ExchangeCount int `json:"exchange_count"`
-	info
+	Stats
 }
 
 //任务
-type TaskInfo struct {
+type TaskStats struct {
 	TaskCount  int             `json:"task_count"`
 	TotalPoint decimal.Decimal `json:"total_point,omitempty"`
-	info
+	Stats
 }
 
 type TotalTask struct {
@@ -75,21 +76,17 @@ type TotalTask struct {
 }
 
 //其他类
-type User struct {
-	Id                 int             `json:"id,omitempty"`
-	CountryCode        int             `json:"country_code,omitempty"`
-	Mobile             string          `json:"mobile,omitempty"`
-	Nick               string          `json:"nick,omitempty"`
-	WxNick             string          `json:"wx_nick,omitempty"`
+type Users struct {
 	Point              decimal.Decimal `json:"point,omitempty"`
 	DrawCash           decimal.Decimal `json:"draw_cash,omitempty"`
 	InviteCount        int             `json:"invite_count,omitempty"`
 	Tmm                decimal.Decimal `json:"tmm,omitempty"`
 	ExchangeCount      int             `json:"exchange_count,omitempty"`
 	CompletedTaskCount int             `json:"completed_task_count,omitempty"`
+	common.User
 }
 
-type InfoRequest struct {
+type StatsRequest struct {
 	StartTime string `form:"start_time",json:"start_time"`
 	EndTime   string `form:"end_time",json:"end_time" `
 	Top10     bool   `form:"top_10",json:"top_10"`

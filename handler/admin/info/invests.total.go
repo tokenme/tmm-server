@@ -8,6 +8,7 @@ import (
 	"github.com/tokenme/tmm/handler/admin"
 	"github.com/shopspring/decimal"
 	"encoding/json"
+	"github.com/garyburd/redigo/redis"
 )
 
 const totalInvestsKey = `info-total-invest`
@@ -15,20 +16,19 @@ const totalInvestsKey = `info-total-invest`
 func TotalInvestHandler(c *gin.Context) {
 	db := Service.Db
 	redisConn := Service.Redis.Master.Get()
-	Context, err := redisConn.Do(`GET`, totalInvestsKey)
-	if CheckErr(err, c) {
-		return
-	}
-	if Context != nil {
-		var total TotalDrawCash
-		if CheckErr(json.Unmarshal(Context.([]byte), &total), c) {
+	defer redisConn.Close()
+	context, err := redis.Bytes(redisConn.Do(`GET`, totalInvestsKey))
+	if context != nil && err ==nil{
+		var data Data
+		if !CheckErr(json.Unmarshal(context, &data), c) {
 			c.JSON(http.StatusOK, admin.Response{
 				Code:    0,
 				Message: admin.API_OK,
-				Data:    total,
+				Data:    data,
 			})
 			return
 		}
+		return
 	}
 	query := `
 SELECT 

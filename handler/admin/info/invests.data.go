@@ -7,21 +7,19 @@ import (
 	"net/http"
 	"github.com/tokenme/tmm/handler/admin"
 	"encoding/json"
+	"github.com/garyburd/redigo/redis"
 )
 
 const investsDataKey = `info-data-invest`
 
 func InvestsDataHandler(c *gin.Context) {
 	db := Service.Db
-
 	redisConn := Service.Redis.Master.Get()
-	Context, err := redisConn.Do(`GET`, investsDataKey)
-	if CheckErr(err, c) {
-		return
-	}
-	if Context != nil {
+	defer redisConn.Close()
+	context, err := redis.Bytes(redisConn.Do(`GET`, investsDataKey))
+	if context != nil && err ==nil{
 		var data Data
-		if CheckErr(json.Unmarshal(Context.([]byte), &data), c) {
+		if !CheckErr(json.Unmarshal(context, &data), c) {
 			c.JSON(http.StatusOK, admin.Response{
 				Code:    0,
 				Message: admin.API_OK,
@@ -29,6 +27,7 @@ func InvestsDataHandler(c *gin.Context) {
 			})
 			return
 		}
+		return
 	}
 	query := `
 SELECT 
