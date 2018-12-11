@@ -51,5 +51,7 @@ func HookHandler(c *gin.Context) {
 	case "/top.invites.users":
 		num, _ := strconv.ParseInt(txt, 10, 64)
 		TopInvitesUsersHandler(c, num)
+	case "/block.reason":
+		BlockReasonHandler(c, txt)
 	}
 }

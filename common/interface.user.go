@@ -99,3 +99,46 @@ func (this User) IsBlocked(service *Service) error {
 	}
 	return nil
 }
+
+func (this User) BlockReason(service *Service) error {
+	db := service.Db
+	query := `SELECT
+    COUNT( DISTINCT ib.from_user_id ) AS invites,
+    SUM(IF(da.total_ts>0, 1, 0)) AS apps,
+    SUM(ib.bonus) AS bonus,
+    SUM(IFNULL(da.total_ts, 0)) AS ts
+    FROM
+        tmm.invite_bonus AS ib
+        LEFT JOIN tmm.devices AS d ON (d.user_id=ib.from_user_id)
+        LEFT JOIN tmm.device_apps AS da ON ( da.device_id = d.id )
+WHERE ib.task_type=0 AND ib.user_id=%d
+HAVING invites>=10 AND bonus > 20000 AND apps<invites/2
+UNION
+SELECT 0, 0, 0, 0
+FROM tmm.wx AS ws
+WHERE EXISTS (
+    SELECT
+        1
+    FROM tmm.wx AS wx
+    INNER JOIN tmm.user_settings AS us ON (us.user_id=wx.user_id)
+    WHERE us.blocked=1 AND wx.open_id=ws.open_id LIMIT 1
+) AND ws.user_id=%d`
+	rows, _, err := db.Query(query, this.Id, this.Id)
+	if err != nil {
+		return err
+	}
+	if len(rows) > 0 {
+		var reasons []string
+		for _, row := range rows {
+			invites := row.Uint(0)
+			appsInUse := row.Uint(1)
+			if invites > 0 {
+				reasons = append(reasons, fmt.Sprintf("邀请人数 %d, 使用APP人数 %d", invites, appsInUse))
+			} else {
+				reasons = append(reasons, fmt.Sprintf("与屏蔽用户使用相同微信账号"))
+			}
+		}
+		return errors.New(strings.Join(reasons, "\n"))
+	}
+	return nil
+}
