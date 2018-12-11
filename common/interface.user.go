@@ -1,6 +1,7 @@
 package common
 
 import (
+	"errors"
 	"fmt"
 	"github.com/shopspring/decimal"
 	"github.com/tokenme/tmm/utils"
@@ -85,4 +86,16 @@ func (this User) GetAvatar(cdn string) string {
 	}
 	key := utils.Md5(fmt.Sprintf("+%d%s", this.CountryCode, this.Mobile))
 	return fmt.Sprintf("%suser/avatar/%s", cdn, key)
+}
+
+func (this User) IsBlocked(service *Service) error {
+	db := service.Db
+	rows, _, err := db.Query(`SELECT 1 FROM tmm.user_settings WHERE user_id=%d AND blocked=1 AND block_whitelist=0 LIMIT 1`, this.Id)
+	if err != nil {
+		return err
+	}
+	if len(rows) > 0 {
+		return errors.New("您的账户存在异常操作，疑似恶意邀请用户行为，不能执行提现及兑换操作。如有疑问请联系客服。")
+	}
+	return nil
 }

@@ -42,15 +42,9 @@ func DycdpOrderAddHandler(c *gin.Context) {
 		return
 	}
 
-	db := Service.Db
-	{
-		rows, _, err := db.Query(`SELECT 1 FROM tmm.user_settings WHERE user_id=%d AND blocked=1 AND block_whitelist=0`, user.Id)
-		if CheckErr(err, c) {
-			return
-		}
-		if Check(len(rows) > 0, "您的账户存在异常操作，疑似恶意邀请用户行为，不能执行提现操作。如有疑问请联系客服。", c) {
-			return
-		}
+	if CheckErr(user.IsBlocked(Service), c) {
+		log.Error("Blocked User:%d", user.Id)
+		return
 	}
 	userMobile := strings.TrimSpace(user.Mobile)
 	phone, err := phonedata.Find(userMobile)
@@ -83,6 +77,7 @@ func DycdpOrderAddHandler(c *gin.Context) {
 		return
 	}
 	points := price.Div(pointPrice)
+	db := Service.Db
 	rows, _, err := db.Query(`SELECT points FROM tmm.devices WHERE id='%s' AND user_id=%d`, db.Escape(req.DeviceId), user.Id)
 	if CheckErr(err, c) {
 		return

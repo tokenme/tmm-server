@@ -94,7 +94,7 @@ SELECT
         tmm.invite_bonus AS ib
         LEFT JOIN tmm.devices AS d ON (d.user_id=ib.from_user_id)
         LEFT JOIN tmm.device_apps AS da ON ( da.device_id = d.id )
-WHERE NOT EXISTS (SELECT 1 FROM tmm.user_settings AS us WHERE us.user_id=ib.user_id AND us.blocked=1 LIMIT 1)
+WHERE ib.task_type=0 AND NOT EXISTS (SELECT 1 FROM tmm.user_settings AS us WHERE us.user_id=ib.user_id AND us.blocked=1 LIMIT 1)
 GROUP BY ib.user_id
 HAVING invites>=10 AND bonus > 20000 AND apps<invites/2 AND apps<10) AS t
 ON DUPLICATE KEY UPDATE blocked=VALUES(blocked)`
