@@ -191,7 +191,9 @@ func getCreatives(cid uint, page uint, platform string) (map[int][]*common.Adgro
         c.link,
         c.width,
         c.height,
-        z.idx
+        z.idx,
+        c.share_image,
+        c.title
     FROM tmm.creatives AS c
     INNER JOIN tmm.adgroups AS a ON (a.id=c.adgroup_id)
     INNER JOIN tmm.adzones AS z ON (z.id=a.adzone_id)
@@ -204,12 +206,14 @@ func getCreatives(cid uint, page uint, platform string) (map[int][]*common.Adgro
 			adgroupId := row.Uint64(1)
 			adzoneIdx := row.Int(6)
 			creative := &common.Creative{
-				Id:        row.Uint64(0),
-				AdgroupId: adgroupId,
-				Image:     row.Str(2),
-				Link:      row.Str(3),
-				Width:     row.Uint(4),
-				Height:    row.Uint(5),
+				Id:         row.Uint64(0),
+				AdgroupId:  adgroupId,
+				Image:      row.Str(2),
+				Link:       row.Str(3),
+				Width:      row.Uint(4),
+				Height:     row.Uint(5),
+                ShareImage: row.Str(7),
+                Title:      row.Str(8),
 			}
 			creativeCode, err := creative.Code([]byte(Config.LinkSalt))
 			if err != nil {
