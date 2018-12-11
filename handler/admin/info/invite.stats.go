@@ -63,7 +63,7 @@ func InviteStatsHandler(c *gin.Context) {
 			user := &Users{
 				InviteCount: inviteCount,
 			}
-			user.InviteBonus = row.Int(row.Int(4))
+			user.InviteBonus = row.Str(4)
 			user.Mobile = row.Str(3)
 			user.Id = row.Uint64(0)
 			user.Nick = row.Str(1)

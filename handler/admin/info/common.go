@@ -80,7 +80,7 @@ type TotalTask struct {
 //其他类
 type Users struct {
 	Point              decimal.Decimal `json:"point,omitempty"`
-	InviteBonus        int             `json:"invite_bonus"`
+	InviteBonus        string          `json:"invite_bonus"`
 	DrawCash           string          `json:"draw_cash,omitempty"`
 	InviteCount        int             `json:"invite_count,omitempty"`
 	Tmm                decimal.Decimal `json:"tmm,omitempty"`
