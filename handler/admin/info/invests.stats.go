@@ -19,7 +19,7 @@ func InvestsStatsHandler(c *gin.Context) {
 		return
 	}
 	var when []string
-	endTime = time.Now().Format("2006-01-02 ")
+	endTime = time.Now().Format("2006-01-02 15:04:05")
 	if req.StartTime != "" {
 		startTime = req.StartTime
 		when = append(when, fmt.Sprintf(`AND inv.inserted_at >= '%s'`, db.Escape(startTime)))

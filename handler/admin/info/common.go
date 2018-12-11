@@ -23,9 +23,11 @@ type DrawCashStats struct {
 }
 
 type TotalDrawCash struct {
-	TotalCount int    `json:"total_count"`
-	TotalUser  int    `json:"total_user"`
-	TotalMoney string `json:"total_money"`
+	TotalCount int             `json:"total_count"`
+	TotalUser  int             `json:"total_user"`
+	TotalMoney string          `json:"total_money"`
+	Uc         decimal.Decimal `json:"uc"`
+	Point      decimal.Decimal `json:"point"`
 }
 
 //投资
@@ -78,11 +80,13 @@ type TotalTask struct {
 //其他类
 type Users struct {
 	Point              decimal.Decimal `json:"point,omitempty"`
+	InviteBonus        int             `json:"invite_bonus"`
 	DrawCash           string          `json:"draw_cash,omitempty"`
 	InviteCount        int             `json:"invite_count,omitempty"`
 	Tmm                decimal.Decimal `json:"tmm,omitempty"`
 	ExchangeCount      int             `json:"exchange_count,omitempty"`
 	CompletedTaskCount int             `json:"completed_task_count,omitempty"`
+	Mobile             string          `json:"mobile"`
 	common.User
 }
 

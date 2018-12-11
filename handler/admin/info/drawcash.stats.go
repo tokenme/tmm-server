@@ -21,7 +21,7 @@ func DrawCashStatsHandler(c *gin.Context) {
 	var txwhen []string
 	var startTime, endTime string
 	var top10 string
-	endTime = time.Now().Format("2006-01-02")
+	endTime = time.Now().Format("2006-01-02 15:04:05")
 	if req.StartTime != "" {
 		startTime = req.StartTime
 		ptwhen = append(ptwhen, fmt.Sprintf(" AND pw.inserted_at  >= '%s' ", db.Escape(startTime)))
@@ -43,7 +43,8 @@ func DrawCashStatsHandler(c *gin.Context) {
 	query := `SELECT 
 	wx.user_id AS id,
 	wx.nick AS nickname , 
-	tmp.cny AS cny
+	tmp.cny AS cny,
+	us.mobile AS mobile
 FROM (
  SELECT 
  user_id, 
@@ -67,6 +68,7 @@ FROM(
 				) AS tmp
 		GROUP BY user_id
 ) AS tmp,tmm.wx AS wx 
+INNER JOIN ucoin.users AS us ON (us.id = wx.user_id)
 WHERE tmp.user_id = wx.user_id
 GROUP BY id 
 ORDER BY cny DESC 
@@ -89,6 +91,7 @@ ORDER BY cny DESC
 			user := &Users{
 				DrawCash: fmt.Sprintf("%.2f", row.Float(res.Map(`cny`))),
 			}
+			user.Mobile = row.Str(res.Map(`mobile`))
 			user.Id = row.Uint64(res.Map(`id`))
 			user.Nick = row.Str(res.Map(`nickname`))
 			info.Top10 = append(info.Top10, user)
