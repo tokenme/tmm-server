@@ -15,7 +15,10 @@ import (
 	"strings"
 )
 
-const SEND_CODE_KEY = "SCK-%s"
+const (
+	SEND_CODE_KEY    = "SCK-%s"
+	SEND_CODE_IP_KEY = "SCKIP-%s"
+)
 
 type SendRequest struct {
 	Mobile     string `form:"mobile" json:"mobile" binding:"required"`
@@ -95,7 +98,17 @@ func SendHandler(c *gin.Context) {
 			defer redisConn.Close()
 			sendCodeKey := fmt.Sprintf(SEND_CODE_KEY, deviceId)
 			lastMobile, _ := redis.String(redisConn.Do("GET", sendCodeKey))
-			_, err := redisConn.Do("SETEX", sendCodeKey, 60, mobile)
+			_, err := redisConn.Do("SETEX", sendCodeKey, 60*5, mobile)
+			if err != nil {
+				log.Error(err.Error())
+			}
+			if Check(lastMobile != "" && lastMobile != mobile, "bad request", c) {
+				log.Error("Auth Send last:%s, now:%s", lastMobile, mobile)
+				return
+			}
+			sendCodeIPKey := fmt.Sprintf(SEND_CODE_IP_KEY, ClientIP(c))
+			lastMobile, _ = redis.String(redisConn.Do("GET", sendCodeIPKey))
+			_, err = redisConn.Do("SETEX", sendCodeIPKey, 60*5, mobile)
 			if err != nil {
 				log.Error(err.Error())
 			}

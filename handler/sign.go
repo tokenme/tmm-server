@@ -52,6 +52,19 @@ func ApiCheckError(c *gin.Context) *APIError {
 	if len(requestParams) == 0 {
 		return nil
 	}
+	ipInfo, err := Service.Ip2Region.MemorySearch(ClientIP(c))
+	if err != nil {
+		log.Error(err.Error())
+		return &APIError{
+			Code: 400,
+			Msg:  err.Error()}
+	}
+	if strings.Contains(ipInfo.ISP, "阿里云") {
+		log.Warn("%s", ipInfo)
+		return &APIError{
+			Code: 400,
+			Msg:  "invalid signature"}
+	}
 	appKey := c.Request.Header.Get("tmm-appkey")
 	ts, _ := strconv.ParseInt(c.Request.Header.Get("tmm-ts"), 10, 64)
 	if ts < time.Now().Add(-10*time.Minute).Unix() || ts > time.Now().Add(10*time.Minute).Unix() {
@@ -129,7 +142,7 @@ func ApiCheckError(c *gin.Context) *APIError {
 	redisConn := Service.Redis.Master.Get()
 	defer redisConn.Close()
 	nounceKey := fmt.Sprintf(REQUEST_NOUNCE_KEY, nounce)
-	_, err := redis.String(redisConn.Do("GET", nounceKey))
+	_, err = redis.String(redisConn.Do("GET", nounceKey))
 	if err == nil {
 		log.Warn("Duplicate Request Nounce: %s", nounce)
 		return &APIError{

@@ -112,7 +112,7 @@ func (this User) BlockReason(service *Service) error {
         LEFT JOIN tmm.devices AS d ON (d.user_id=ib.from_user_id)
         LEFT JOIN tmm.device_apps AS da ON ( da.device_id = d.id )
 WHERE ib.task_type=0 AND ib.user_id=%d
-HAVING invites>=10 AND bonus > 20000 AND apps<invites/2
+HAVING invites>=10 AND apps<invites/2
 UNION
 SELECT 0, 0, 0, 0
 FROM tmm.wx AS ws

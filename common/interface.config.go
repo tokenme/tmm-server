@@ -50,6 +50,7 @@ type Config struct {
 	Slack                  SlackConfig       `required:"true"`
 	CoinbaseAPI            CoinbaseAPIConfig `required:"true"`
 	GeoIP                  string            `required:"true"`
+	Ip2Region              string            `required:"true"`
 	ProxyApiKey            string            `required:"true"`
 	YktApiSecret           string            `required:"true"`
 	UAParserPath           string            `required:"true"`
