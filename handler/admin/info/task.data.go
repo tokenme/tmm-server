@@ -34,7 +34,7 @@ func TaskDataHandler(c *gin.Context) {
     l
 FROM (   SELECT 
  tmp.device_id, 
- IF(SUM(tmp.total)=0, 0,FLOOR((SUM(tmp.total)-1)/5) * 5 + 1) AS l,
+ IF(SUM(tmp.total)=0, 0,FLOOR((SUM(tmp.total)-1)/100) * 100 + 1) AS l,
  SUM(tmp.total)
 FROM(
 	SELECT 
@@ -68,7 +68,7 @@ GROUP BY l ORDER BY l
 	var valueList []int
 	for _, row := range rows {
 		valueList = append(valueList, row.Int(0))
-		name := fmt.Sprintf(`%d-%d`, row.Int(1), row.Int(1)+5)
+		name := fmt.Sprintf(`%d-%d`, row.Int(1), row.Int(1)+100)
 		indexName = append(indexName, name)
 	}
 	data := Data{

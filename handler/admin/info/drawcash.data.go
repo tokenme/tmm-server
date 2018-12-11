@@ -35,7 +35,7 @@ func DrawCashDataHandler(c *gin.Context) {
 FROM (
     SELECT 
  user_id, 
- IF(SUM(cny)=0, 0,FLOOR((SUM(cny)-1)/50) * 50 + 1) AS l
+ IF(SUM(cny)=0, 0,FLOOR((SUM(cny)-1)/100) * 100 + 1) AS l
 FROM(
 	SELECT
             tx.user_id, SUM( tx.cny ) AS cny
@@ -65,7 +65,7 @@ GROUP BY l ORDER BY l
 	var valueList []int
 	for _, row := range rows {
 		valueList = append(valueList, row.Int(0))
-		name := fmt.Sprintf(`%d-%d`, row.Int(1), row.Int(1)+50)
+		name := fmt.Sprintf(`%d-%d`, row.Int(1), row.Int(1)+100)
 		indexName = append(indexName, name)
 	}
 	data := Data{

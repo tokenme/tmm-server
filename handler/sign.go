@@ -39,7 +39,7 @@ func ApiSignPassFunc() gin.HandlerFunc {
 }
 
 func ApiCheckError(c *gin.Context) *APIError {
-	var headerKeys = []string{"tmm-build", "tmm-ts", "tmm-nounce", "tmm-platform"}
+	var headerKeys = []string{"tmm-build", "tmm-ts", "tmm-nounce", "tmm-platform", "tmm-mac", "tmm-imei"}
 	var requestParams = make(map[string]string)
 	for _, k := range headerKeys {
 		v := c.Request.Header.Get(k)

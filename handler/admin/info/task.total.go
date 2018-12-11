@@ -65,7 +65,7 @@ WHERE
 	if CheckErr(err, c) {
 		return
 	}
-	total.TotalCost = totalCost
+	total.TotalCost = totalCost.Ceil()
 	total.TotaltaskCount = row.Int(res.Map(`total`))
 	bytes, err := json.Marshal(&total)
 	if CheckErr(err, c) {

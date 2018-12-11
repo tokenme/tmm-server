@@ -17,7 +17,7 @@ func PointDataHandler(c *gin.Context) {
 	redisConn := Service.Redis.Master.Get()
 	defer redisConn.Close()
 	context, err := redis.Bytes(redisConn.Do(`GET`, pointDataKey))
-	if context != nil && err ==nil{
+	if context != nil && err == nil {
 		var data Data
 		if !CheckErr(json.Unmarshal(context, &data), c) {
 			c.JSON(http.StatusOK, admin.Response{
@@ -36,8 +36,7 @@ SELECT
 FROM (
     SELECT
 	 	d.user_id,
-	 	IF(SUM(d.points)=0,0,FLOOR(((SUM(d.points)-1)/50))*50+1) AS l,
-	 	d.points
+	 	IF(SUM(d.points)=0,0,FLOOR(((SUM(d.points)-1)/1000))*1000+1) AS l
     FROM tmm.devices AS d
 	GROUP BY 
 		d.user_id
@@ -57,7 +56,7 @@ ORDER BY l
 	var valueList []int
 	for _, row := range rows {
 		valueList = append(valueList, row.Int(0))
-		name := fmt.Sprintf(`%d-%d`, row.Int(1), row.Int(1)+50)
+		name := fmt.Sprintf(`%d-%d`, row.Int(1), row.Int(1)+1000)
 		indexName = append(indexName, name)
 	}
 	data := Data{
@@ -70,7 +69,6 @@ ORDER BY l
 		return
 	}
 	redisConn.Do(`SET`, pointDataKey, bytes, `EX`, KeyAlive)
-
 	c.JSON(http.StatusOK, admin.Response{
 		Code:    0,
 		Message: admin.API_OK,

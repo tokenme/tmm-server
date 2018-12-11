@@ -27,7 +27,7 @@ func DrawCashStatsHandler(c *gin.Context) {
 		ptwhen = append(ptwhen, fmt.Sprintf(" AND pw.inserted_at  >= '%s' ", db.Escape(startTime)))
 		txwhen = append(txwhen, fmt.Sprintf(" AND tx.inserted_at  >= '%s' ", db.Escape(startTime)))
 	} else {
-		startTime = time.Now().AddDate(0, 0, -7).Format("2006-01-02 ")
+		startTime = time.Now().AddDate(0, 0, -7).Format("2006-01-02")
 		ptwhen = append(ptwhen, fmt.Sprintf(" AND pw.inserted_at  >= '%s' ", db.Escape(startTime)))
 		txwhen = append(txwhen, fmt.Sprintf(" AND tx.inserted_at  >= '%s' ", db.Escape(startTime)))
 	}
@@ -41,9 +41,8 @@ func DrawCashStatsHandler(c *gin.Context) {
 		top10 = "LIMIT 10"
 	}
 	query := `SELECT 
-	u.id AS id,
-	u.mobile AS mobile,
-	u.nickname AS nickname , 
+	wx.user_id AS id,
+	wx.nick AS nickname , 
 	tmp.cny AS cny
 FROM (
  SELECT 
@@ -67,8 +66,8 @@ FROM(
 		GROUP BY pw.user_id
 				) AS tmp
 		GROUP BY user_id
-) AS tmp,ucoin.users AS u 
-WHERE user_id = u.id
+) AS tmp,tmm.wx AS wx 
+WHERE tmp.user_id = wx.user_id
 GROUP BY id 
 ORDER BY cny DESC 
 %s`
@@ -88,16 +87,15 @@ ORDER BY cny DESC
 
 		if req.Top10 {
 			user := &Users{
-				DrawCash: cny,
+				DrawCash: fmt.Sprintf("%.2f", row.Float(res.Map(`cny`))),
 			}
 			user.Id = row.Uint64(res.Map(`id`))
 			user.Nick = row.Str(res.Map(`nickname`))
-			user.Mobile = row.Str(res.Map(`mobile`))
 			info.Top10 = append(info.Top10, user)
 		}
 		info.Money = info.Money.Add(cny)
-
 	}
+	info.Money = info.Money.Ceil()
 	info.CurrentTime = fmt.Sprintf("%s-%s", startTime, endTime)
 	info.Numbers = len(rows)
 	info.Title = `提现排行榜`
