@@ -128,12 +128,17 @@ ORDER BY d.lastping_at DESC LIMIT 1`
 		forexRate := forex.Rate(Service, "USD", "CNY")
 		pointCnyPrice := pointPrice.Mul(forexRate)
 		inviterPointBonus := inviterCashBonus.Div(pointCnyPrice)
+		maxInviterBonus := decimal.New(4000, 0)
+		if inviterPointBonus.GreaterThanOrEqual(maxInviterBonus) {
+			inviterPointBonus = maxInviterBonus
+		}
 
 		inviterDeviceId := rows[0].Str(0)
 		inviterUserId := rows[0].Uint64(1)
 		pointsPerTs, _ := common.GetPointsPerTs(Service)
 		inviteTs := decimal.New(int64(Config.InviteBonus), 0).Div(pointsPerTs)
 		inviterTs := inviterPointBonus.Div(pointsPerTs)
+
 		//log.Warn("Inviter bonus: %s, inviter:%d", inviterPointBonus.String(), inviterUserId)
 		_, ret2, err := db.Query(`UPDATE tmm.devices AS d1, tmm.devices AS d2 SET d1.points = d1.points + %d, d1.total_ts = d1.total_ts + %d, d2.points = d2.points + %s, d2.total_ts = d2.total_ts + %d WHERE d1.id='%s' AND d2.id='%s'`, Config.InviteBonus, inviteTs.IntPart(), inviterPointBonus.String(), inviterTs.IntPart(), db.Escape(deviceId), db.Escape(inviterDeviceId))
 		if CheckErr(err, c) {

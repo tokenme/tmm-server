@@ -1,9 +1,12 @@
 package auth
 
 import (
+	"fmt"
+	"github.com/garyburd/redigo/redis"
 	"github.com/getsentry/raven-go"
 	"github.com/gin-gonic/gin"
 	"github.com/mkideal/log"
+	"github.com/tokenme/tmm/common"
 	. "github.com/tokenme/tmm/handler"
 	"github.com/tokenme/tmm/tools/afs"
 	"github.com/tokenme/tmm/tools/mobilecode"
@@ -11,6 +14,8 @@ import (
 	"net/http"
 	"strings"
 )
+
+const SEND_CODE_KEY = "SCK-%s"
 
 type SendRequest struct {
 	Mobile     string `form:"mobile" json:"mobile" binding:"required"`
@@ -76,16 +81,39 @@ func SendHandler(c *gin.Context) {
 	}
 
 	if req.Country == 86 {
+		var deviceId string
+		platform := c.GetString("tmm-platform")
+		buildVersionStr := c.GetString("tmm-build")
+		if platform == "android" {
+			imei := c.GetString("tmm-imei")
+			device := common.DeviceRequest{
+				Platform: common.ANDROID,
+				Imei:     imei,
+			}
+			deviceId = device.DeviceId()
+			redisConn := Service.Redis.Master.Get()
+			defer redisConn.Close()
+			sendCodeKey := fmt.Sprintf(SEND_CODE_KEY, deviceId)
+			lastMobile, _ := redis.String(redisConn.Do("GET", sendCodeKey))
+			_, err := redisConn.Do("SETEX", sendCodeKey, 60, mobile)
+			if err != nil {
+				log.Error(err.Error())
+			}
+			if Check(lastMobile != "" && lastMobile != mobile, "bad request", c) {
+				log.Error("Auth Send last:%s, now:%s", lastMobile, mobile)
+				return
+			}
+		}
+
 		authClient := mobilecode.NewClient(Service, Config)
-		_, err := authClient.Send(req.Mobile)
+		_, err := authClient.Send(mobile)
 		if CheckErr(err, c) {
 			raven.CaptureError(err, nil)
 			log.Error("Auth Send Failed: %s", err.Error())
 			return
 		}
-		platform := c.GetString("tmm-platform")
-		buildVersionStr := c.GetString("tmm-build")
-		log.Warn("Auth Send: +%d-%s, platform: %s, build: %s", req.Country, mobile, platform, buildVersionStr)
+
+		log.Warn("Auth Send: +%d-%s, platform: %s, build: %s, deviceId: %s", req.Country, mobile, platform, buildVersionStr, deviceId)
 		c.JSON(http.StatusOK, APIResponse{Msg: "ok"})
 		return
 	}

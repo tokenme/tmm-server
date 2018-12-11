@@ -118,6 +118,10 @@ ORDER BY d.lastping_at DESC LIMIT 1`
 	forexRate := forex.Rate(Service, "USD", "CNY")
 	pointCnyPrice := pointPrice.Mul(forexRate)
 	inviterPointBonus := inviterCashBonus.Div(pointCnyPrice)
+	maxInviterBonus := decimal.New(4000, 0)
+	if inviterPointBonus.GreaterThanOrEqual(maxInviterBonus) {
+		inviterPointBonus = maxInviterBonus
+	}
 
 	inviterDeviceId := rows[0].Str(0)
 	inviterUserId := rows[0].Uint64(1)
