@@ -14,7 +14,7 @@ import (
 	"github.com/tokenme/tmm/router"
 	"github.com/tokenme/tmm/tools/articleclassifier"
 	"github.com/tokenme/tmm/tools/gc"
-	"github.com/tokenme/tmm/tools/orderbook-server"
+	//"github.com/tokenme/tmm/tools/orderbook-server"
 	"github.com/tokenme/tmm/tools/tmmwithdraw"
 	"github.com/tokenme/tmm/tools/tokenprofile"
 	//"github.com/tokenme/tmm/tools/transferwatcher"
@@ -226,14 +226,16 @@ func main() {
 	if config.EnableGC {
 		go gcHandler.Start()
 	}
-	orderbookServer, err := obs.NewServer(service, config, handler.GlobalLock)
-	if config.EnableOrderBook {
-		if err != nil {
-			log.Error(err.Error())
-			return
+	/*
+		orderbookServer, err := obs.NewServer(service, config, handler.GlobalLock)
+		if config.EnableOrderBook {
+			if err != nil {
+				log.Error(err.Error())
+				return
+			}
+			go orderbookServer.Start()
 		}
-		go orderbookServer.Start()
-	}
+	*/
 	/*
 		transferWatcher, err := transferwatcher.NewWatcher(config.TMMTokenAddress, service, config)
 		if err != nil {
@@ -305,9 +307,11 @@ func main() {
 	//}
 	handler.Close()
 	gcHandler.Stop()
-	if config.EnableOrderBook {
-		orderbookServer.Stop()
-	}
+	/*
+		if config.EnableOrderBook {
+			orderbookServer.Stop()
+		}
+	*/
 	if config.EnableTokenWithdraw {
 		go tokenWithdraw.Stop()
 	}

@@ -65,6 +65,8 @@ type Config struct {
 	MaxBindDevice          int               `required:"true"`
 	Contact                ContactConfig     `required:"true"`
 	App                    AppConfig         `required:"true"`
+	AndroidSig             SigConfig         `required:"true"`
+	IOSSig                 SigConfig         `required:"true"`
 	Debug                  bool              `default:"false"`
 	EnableWeb              bool              `default:"false"`
 	EnableGC               bool              `default:"false"`
@@ -168,4 +170,9 @@ type XingeConfig struct {
 type ZZ253Config struct {
 	Account  string `required:"true"`
 	Password string `required:"true"`
+}
+
+type SigConfig struct {
+	Key    string `required:"true"`
+	Secret string `required:"true"`
 }

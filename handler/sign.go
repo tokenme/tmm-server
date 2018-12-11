@@ -60,9 +60,14 @@ func ApiCheckError(c *gin.Context) *APIError {
 			Msg:  "Invalid timestamp, you may need to correct your system clock."}
 	}
 	sign := c.Request.Header.Get("tmm-sign")
-	secret := GetAppSecret(appKey)
+	platform := c.Request.Header.Get("tmm-platform")
+	var secret string
+	if platform == "android" && appKey == Config.AndroidSig.Key {
+		secret = Config.AndroidSig.Secret
+	} else if appKey == Config.IOSSig.Key {
+		secret = Config.IOSSig.Secret
+	}
 	if secret == "" {
-		log.Error("empty secret")
 		return &APIError{
 			Code: 400,
 			Msg:  "invalid appkey"}

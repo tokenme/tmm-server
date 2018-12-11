@@ -49,6 +49,16 @@ func PointsWithdrawHandler(c *gin.Context) {
 		return
 	}
 	db := Service.Db
+	{
+		rows, _, err := db.Query(`SELECT 1 FROM tmm.user_settings WHERE user_id=%d AND blocked=1 AND block_whitelist=0`, user.Id)
+		if CheckErr(err, c) {
+			return
+		}
+		if Check(len(rows) > 0, "您的账户存在异常操作，疑似恶意邀请用户行为，不能执行提现操作。如有疑问请联系客服。", c) {
+			return
+		}
+	}
+
 	rows, _, err := db.Query(`SELECT wx.union_id, oi.open_id FROM tmm.wx LEFT JOIN tmm.wx_openids AS oi ON (oi.union_id=wx.union_id AND oi.app_id='%s') WHERE wx.user_id=%d LIMIT 1`, db.Escape(Config.Wechat.AppId), user.Id)
 	if CheckErr(err, c) {
 		return
@@ -77,7 +87,7 @@ func PointsWithdrawHandler(c *gin.Context) {
 	defer redisConn.Close()
 	withdrawRateKey := fmt.Sprintf(TMMWithdrawRateKey, user.Id)
 	withdrawTime, err := redis.String(redisConn.Do("GET", withdrawRateKey))
-	if CheckWithCode(err == nil, TOKEN_WITHDRAW_RATE_LIMIT_ERROR, "每次提现时间间隔不能少于2小时", c) {
+	if CheckWithCode(err == nil, TOKEN_WITHDRAW_RATE_LIMIT_ERROR, "每次提现时间间隔不能少于24小时", c) {
 		log.Warn("WithdrawRateLimit: %d, time: %s", user.Id, withdrawTime)
 		return
 	}
@@ -157,7 +167,7 @@ func PointsWithdrawHandler(c *gin.Context) {
 		log.Error(err.Error())
 		return
 	}
-	_, err = redisConn.Do("SETEX", withdrawRateKey, 60*60*2, time.Now().Format("2006-01-02 15:04:05"))
+	_, err = redisConn.Do("SETEX", withdrawRateKey, 60*60*24, time.Now().Format("2006-01-02 15:04:05"))
 	if err != nil {
 		log.Error(err.Error())
 	}
