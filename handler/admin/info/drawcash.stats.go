@@ -87,15 +87,15 @@ ORDER BY cny DESC
 
 		if req.Top10 {
 			user := &Users{
-				DrawCash: cny,
+				DrawCash: fmt.Sprintf("%.2f", row.Float(res.Map(`cny`))),
 			}
 			user.Id = row.Uint64(res.Map(`id`))
 			user.Nick = row.Str(res.Map(`nickname`))
 			info.Top10 = append(info.Top10, user)
 		}
 		info.Money = info.Money.Add(cny)
-
 	}
+	info.Money = info.Money.Ceil()
 	info.CurrentTime = fmt.Sprintf("%s-%s", startTime, endTime)
 	info.Numbers = len(rows)
 	info.Title = `提现排行榜`

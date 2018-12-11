@@ -48,7 +48,7 @@ func TotalInviteHandler(c *gin.Context) {
 	if CheckErr(err, c) {
 		return
 	}
-	total.TotalCost = cost
+	total.TotalCost = cost.Ceil()
 	total.TotalInviteCount = rows[0].Int(1)
 	bytes, err := json.Marshal(&total)
 	if CheckErr(err, c) {

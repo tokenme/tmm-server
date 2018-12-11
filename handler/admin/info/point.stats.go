@@ -87,7 +87,7 @@ ORDER BY points DESC  %s`
 		}
 		if req.Top10 {
 			user := &Users{
-				Point:  Point,
+				Point:  Point.Ceil(),
 			}
 			user.Id = row.Uint64(res.Map(`id`))
 			user.Nick = row.Str(res.Map(`nick`))

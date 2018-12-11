@@ -98,7 +98,7 @@ GROUP BY ud.user_id
 		count := row.Int(res.Map(`_count`))
 		if req.Top10 {
 			user := &Users{
-				Point:              point,
+				Point:              point.Ceil(),
 				CompletedTaskCount: count,
 			}
 			user.Id = row.Uint64(res.Map(`id`))

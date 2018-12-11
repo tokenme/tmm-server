@@ -35,7 +35,7 @@ SELECT
 	l
 FROM (
 	SELECT 
-	    g.user_id,IF(SUM(g.points)=0,0,FLOOR((SUM(g.points)-1)/500)*500+1) AS l
+	    g.user_id,IF(SUM(g.points)=0,0,FLOOR((SUM(g.points)-1)/1000)*1000+1) AS l
 	FROM 
 		tmm.good_invests AS g
 	WHERE
@@ -57,7 +57,7 @@ GROUP BY l ORDER BY l
 	var valueList []int
 	for _, row := range rows {
 		valueList = append(valueList, row.Int(0))
-		indexName = append(indexName, fmt.Sprintf(`%d-%d`, row.Int(1), row.Int(1)+500))
+		indexName = append(indexName, fmt.Sprintf(`%d-%d`, row.Int(1), row.Int(1)+1000))
 	}
 	data := Data{
 		Title:     "商品投资占比",

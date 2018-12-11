@@ -6,8 +6,8 @@ import (
 	"github.com/tokenme/tmm/handler/admin"
 	. "github.com/tokenme/tmm/handler"
 	"encoding/json"
-	"github.com/shopspring/decimal"
 	"github.com/garyburd/redigo/redis"
+	"fmt"
 )
 
 const totalDrawCashKey = `info-total-draw`
@@ -18,7 +18,7 @@ func TotalDrawCashHandler(c *gin.Context) {
 	defer redisConn.Close()
 	context, err := redis.Bytes(redisConn.Do(`GET`, totalDrawCashKey))
 
-	if context != nil && err ==nil{
+	if context != nil && err == nil {
 		var total TotalDrawCash
 		if !CheckErr(json.Unmarshal(context, &total), c) {
 			c.JSON(http.StatusOK, admin.Response{
@@ -72,13 +72,12 @@ FROM(
 	}
 	row := rows[0]
 	var total TotalDrawCash
-	totalMoney, err := decimal.NewFromString(row.Str(res.Map(`cny`)))
 	if CheckErr(err, c) {
 		return
 	}
 	total.TotalCount = row.Int(res.Map(`total`))
 	total.TotalUser = row.Int(res.Map(`users`))
-	total.TotalMoney = totalMoney
+	total.TotalMoney = fmt.Sprintf("%.2f",row.Float(res.Map(`cny`)))
 	bytes, err := json.Marshal(&total)
 	if CheckErr(err, c) {
 		return

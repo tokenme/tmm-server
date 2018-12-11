@@ -85,8 +85,8 @@ tmm.wx AS wx
 		count := row.Int(res.Map(`numbers`))
 		if req.Top10 {
 			user := &Users{
-				Tmm:           tmm,
-				Point:         points,
+				Tmm:           tmm.Ceil(),
+				Point:         points.Ceil(),
 				ExchangeCount: count,
 			}
 			user.Id = row.Uint64(res.Map(`id`))
