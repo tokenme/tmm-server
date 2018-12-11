@@ -19,7 +19,7 @@ func ExchangeStatsHandler(c *gin.Context) {
 	}
 	var when []string
 	var startTime, endTime string
-	endTime = time.Now().Format("2006-01-02")
+	endTime = time.Now().Format("2006-01-02 15:04:05")
 	if req.StartTime != "" {
 		startTime = req.StartTime
 		when = append(when, fmt.Sprintf(` inserted_at >= '%s' `, db.Escape(startTime)))
@@ -43,7 +43,8 @@ SELECT
 	wx.nick AS nickname , 
 	tmp.tmm_add - tmp.tmm_ AS tmm,
 	tmp.points_add - tmp.points_ AS points,
-	tmp.numbers AS numbers
+	tmp.numbers AS numbers,
+	us.mobile AS mobile
 FROM (
 	SELECT  
 		COUNT(1) AS numbers,
@@ -60,6 +61,7 @@ FROM (
 		user_id
 ) AS tmp , 	
 tmm.wx AS wx
+INNER JOIN ucoin.users AS us ON (us.id = wx.user_id)
 	WHERE tmp.user_id = wx.user_id
 	ORDER BY tmm DESC
 %s
@@ -89,6 +91,7 @@ tmm.wx AS wx
 				Point:         points.Ceil(),
 				ExchangeCount: count,
 			}
+			user.Mobile = row.Str(res.Map(`mobile`))
 			user.Id = row.Uint64(res.Map(`id`))
 			user.Nick = row.Str(res.Map(`nickname`))
 			info.Top10 = append(info.Top10, user)
@@ -97,7 +100,7 @@ tmm.wx AS wx
 	}
 	info.CurrentTime = fmt.Sprintf("%s-%s", startTime, endTime)
 	info.Numbers = len(rows)
-	info.Title = `交换Ucoin排行榜`
+	info.Title = `兑换tmm排行榜`
 	c.JSON(http.StatusOK, admin.Response{
 		Code:    0,
 		Message: admin.API_OK,

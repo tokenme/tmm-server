@@ -69,7 +69,7 @@ GROUP BY l ORDER BY l
 		indexName = append(indexName, name)
 	}
 	data := Data{
-		Title:     "提现金额占比",
+		Title:     "提现金额 - X轴:金额  - Y轴:用户人数 ",
 		IndexName: indexName,
 		Value:     valueList,
 	}

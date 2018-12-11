@@ -21,13 +21,13 @@ func TaskStatsHandler(c *gin.Context) {
 	var appTaskwhen []string
 	var startTime, endTime string
 	var top10 string
-	endTime = time.Now().Format("2006-01-02")
+	endTime = time.Now().Format("2006-01-02 15:04:05")
 	if req.StartTime != "" {
 		startTime = req.StartTime
 		shaTaskwhen = append(shaTaskwhen, fmt.Sprintf(" AND sha.inserted_at >= '%s' ", db.Escape(startTime)))
 		appTaskwhen = append(appTaskwhen, fmt.Sprintf(" AND app.inserted_at >= '%s' ", db.Escape(startTime)))
 	} else {
-		startTime = time.Now().AddDate(0,0,-7).Format("2006-01-02")
+		startTime = time.Now().AddDate(0, 0, -7).Format("2006-01-02")
 		shaTaskwhen = append(shaTaskwhen, fmt.Sprintf(" AND sha.inserted_at >= '%s' ", db.Escape(startTime)))
 		appTaskwhen = append(appTaskwhen, fmt.Sprintf(" AND app.inserted_at >= '%s' ", db.Escape(startTime)))
 	}
@@ -46,7 +46,8 @@ SELECT
 	wx.user_id AS id,
 	wx.nick AS nickname , 
 	SUM(tmp.point) AS point ,
-	SUM(tmp.count_) AS _count
+	SUM(tmp.count_) AS _count,
+	us.mobile AS mobile
 FROM (
 	SELECT 
  		ud.user_id, 
@@ -77,6 +78,7 @@ FROM (
 INNER JOIN tmm.user_devices AS ud ON (ud.device_id = tmp.device_id)
 GROUP BY ud.user_id
 	) AS tmp,tmm.wx AS wx 
+	INNER JOIN ucoin.users AS us ON (us.id = wx.user_id)
 	WHERE tmp.user_id = wx.user_id
 	GROUP BY wx.user_id
 	ORDER BY point DESC
@@ -104,6 +106,7 @@ GROUP BY ud.user_id
 			user.Id = row.Uint64(res.Map(`id`))
 			user.Nick = row.Str(res.Map(`nickname`))
 			info.Top10 = append(info.Top10, user)
+			user.Mobile = row.Str(res.Map(`mobile`))
 		}
 		info.TaskCount = info.TaskCount + count
 		info.TotalPoint = info.TotalPoint.Add(point)
