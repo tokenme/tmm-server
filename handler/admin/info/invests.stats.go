@@ -64,7 +64,7 @@ ORDER BY point DESC %s`
 			info.Top10 = append(info.Top10, &Good{
 				Id:    row.Int(0),
 				Title: row.Str(1),
-				Point: point,
+				Point: point.Ceil(),
 			})
 		}
 		info.InvestsPoint = info.InvestsPoint.Add(point)
