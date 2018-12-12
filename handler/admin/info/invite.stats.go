@@ -43,10 +43,10 @@ func InviteStatsHandler(c *gin.Context) {
 		us.mobile AS mobile,
 		SUM(ic.bonus) AS bouns
 	FROM tmm.invite_bonus AS ic
-	INNER JOIN tmm.wx AS wx ON  wx.user_id = ic.user_id 
-	INNER JOIN ucoin.users AS us ON (us.id = wx.user_id)
+	LEFT  JOIN tmm.wx AS wx ON  wx.user_id = ic.user_id 
+	INNER JOIN ucoin.users AS us ON (us.id = ic.user_id)
 	WHERE ic.task_id = 0 %s
-	GROUP BY wx.user_id   
+	GROUP BY us.id  
 	ORDER BY total DESC 
 	%s`
 	rows, _, err := db.Query(query, strings.Join(when, " "), top10)

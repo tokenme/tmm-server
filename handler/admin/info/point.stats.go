@@ -46,9 +46,9 @@ func PointStatsHandler(c *gin.Context) {
 	}
 	query := `
 SELECT
-	wx.user_id AS id,
+	us.id AS id,
 	wx.nick AS nick ,
-	(tmp.points+ SUM(inv.bonus))AS points,
+	tmp.points AS points,
 	us.mobile AS mobile
 FROM(
 	SELECT 
@@ -69,19 +69,17 @@ FROM(
 		 app.status = 0 %s
 	GROUP BY
      	 app.device_id   
-) AS tmp,
-tmm.wx AS wx
-INNER JOIN tmm.devices AS dev ON (dev.user_id = wx.user_id)
-INNER JOIN ucoin.users AS us ON (us.id = wx.user_id)
-INNER JOIN invite_bonus AS inv ON (inv.user_id = wx.user_id  %s)
+) AS tmp,ucoin.users AS us
+INNER JOIN tmm.devices AS dev ON (dev.user_id = us.id)
+LEFT JOIN tmm.wx AS wx ON (wx.user_id = us.id)
+
 WHERE 
 		 tmp.device_id = dev.id 
 GROUP BY 
-		 wx.user_id
-ORDER BY points DESC  %s`
+		 us.id
+ORDER BY points DESC %s`
 	rows, res, err := db.Query(query, strings.Join(shareWhen, " "),
-		strings.Join(appTaskWhen, " "), strings.Join(invWhen, " "),
-	top10)
+		strings.Join(appTaskWhen, " "), top10)
 	if CheckErr(err, c) {
 		return
 	}
@@ -91,6 +89,11 @@ ORDER BY points DESC  %s`
 		if CheckErr(err, c) {
 			return
 		}
+		query = `SELECT 
+			SUM(inv.bonus) FROM tmm.invite_bonus 
+			WHERE inv.user_id = %d %s`
+		db.Query(query,row.Uint64(res.Map(`id`)),strings.Join(invWhen,""))
+
 		if req.Top10 {
 			user := &Users{
 				Point: Point.Ceil(),

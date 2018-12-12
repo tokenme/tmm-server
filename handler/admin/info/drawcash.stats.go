@@ -41,7 +41,7 @@ func DrawCashStatsHandler(c *gin.Context) {
 		top10 = "LIMIT 10"
 	}
 	query := `SELECT 
-	wx.user_id AS id,
+	us.id AS id ,
 	wx.nick AS nickname , 
 	tmp.cny AS cny,
 	us.mobile AS mobile
@@ -67,10 +67,10 @@ FROM(
 		GROUP BY pw.user_id
 				) AS tmp
 		GROUP BY user_id
-) AS tmp,tmm.wx AS wx 
-INNER JOIN ucoin.users AS us ON (us.id = wx.user_id)
-WHERE tmp.user_id = wx.user_id
-GROUP BY id 
+) AS tmp,ucoin.users AS us 
+LEFT JOIN tmm.wx AS wx  ON (wx.user_id = us.id)
+WHERE tmp.user_id = us.id
+GROUP BY us.id 
 ORDER BY cny DESC 
 %s`
 	rows, res, err := db.Query(query, strings.Join(txwhen, ""), strings.Join(ptwhen, ""), db.Escape(top10))
