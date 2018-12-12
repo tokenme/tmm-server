@@ -54,10 +54,12 @@ FROM(
 	GROUP BY 
 		app.device_id
 ) AS tmp,tmm.user_devices AS ud
-WHERE ud.device_id = tmp.device_id
+WHERE NOT EXISTS
+	(SELECT 1 FROM user_settings AS us
+	WHERE us.blocked= 1 AND us.user_id=ud.user_id AND us.block_whitelist=0  LIMIT 1)
+AND ud.device_id = tmp.device_id 
 GROUP BY ud.user_id )AS tmp
 GROUP BY l ORDER BY l
-
 `
 
 	rows, _, err := db.Query(query)

@@ -41,7 +41,10 @@ FROM (
 		IF(SUM(d.points) >= 10000,
 	FLOOR(((SUM(d.points)-1)/10000))*10000+1,
 	FLOOR(((SUM(d.points)-1)/1000))*1000+1) ) AS l
-    FROM tmm.devices AS d
+  FROM tmm.devices AS d
+WHERE NOT EXISTS
+	(SELECT 1 FROM user_settings AS us  
+	WHERE us.blocked= 1 AND us.user_id=d.user_id AND us.block_whitelist=0  LIMIT 1)
 	GROUP BY 
 		d.user_id
 ) AS tmp

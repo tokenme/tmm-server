@@ -18,8 +18,7 @@ func PointStatsHandler(c *gin.Context) {
 	if CheckErr(c.Bind(&req), c) {
 		return
 	}
-	var shareWhen []string
-	var appTaskWhen []string
+	var shareWhen, appTaskWhen, invWhen []string
 	var startTime, endTime string
 	var top10 string
 	endTime = time.Now().Format("2006-01-02 15:04:05")
@@ -27,16 +26,19 @@ func PointStatsHandler(c *gin.Context) {
 		startTime = req.StartTime
 		shareWhen = append(shareWhen, fmt.Sprintf(" AND sha.inserted_at >= '%s' ", db.Escape(startTime)))
 		appTaskWhen = append(appTaskWhen, fmt.Sprintf(" AND  app.inserted_at >= '%s' ", db.Escape(startTime)))
-	}else{
-		startTime = time.Now().AddDate(0,0,-7).Format("2006-01-02")
+		invWhen = append(invWhen, fmt.Sprintf("AND inv.inserted_at >= '%s' ", db.Escape(startTime)))
+	} else {
+		startTime = time.Now().AddDate(0, 0, -7).Format("2006-01-02")
 		shareWhen = append(shareWhen, fmt.Sprintf(" AND sha.inserted_at >= '%s' ", db.Escape(startTime)))
 		appTaskWhen = append(appTaskWhen, fmt.Sprintf(" AND  app.inserted_at >= '%s' ", db.Escape(startTime)))
+		invWhen = append(invWhen, fmt.Sprintf("AND inv.inserted_at >= '%s' ", db.Escape(startTime)))
 	}
 
 	if req.EndTime != "" {
 		endTime = req.EndTime
 		shareWhen = append(shareWhen, fmt.Sprintf(" AND sha.inserted_at <= '%s' ", db.Escape(endTime)))
 		appTaskWhen = append(appTaskWhen, fmt.Sprintf(" AND  app.inserted_at <= '%s' ", db.Escape(endTime)))
+		invWhen = append(invWhen, fmt.Sprintf("AND inv.inserted_at <= '%s' ", db.Escape(endTime)))
 	}
 
 	if req.Top10 {
@@ -71,13 +73,15 @@ FROM(
 tmm.wx AS wx
 INNER JOIN tmm.devices AS dev ON (dev.user_id = wx.user_id)
 INNER JOIN ucoin.users AS us ON (us.id = wx.user_id)
+INNER JOIN invite_bonus AS inv ON (inv.user_id = wx.user_id  %s)
 WHERE 
 		 tmp.device_id = dev.id 
 GROUP BY 
 		 wx.user_id
 ORDER BY points DESC  %s`
 	rows, res, err := db.Query(query, strings.Join(shareWhen, " "),
-		strings.Join(appTaskWhen, " "),top10)
+		strings.Join(appTaskWhen, " "), strings.Join(invWhen, " "),
+	top10)
 	if CheckErr(err, c) {
 		return
 	}
@@ -89,7 +93,7 @@ ORDER BY points DESC  %s`
 		}
 		if req.Top10 {
 			user := &Users{
-				Point:  Point.Ceil(),
+				Point: Point.Ceil(),
 			}
 			user.Mobile = row.Str(res.Map(`mobile`))
 			user.Id = row.Uint64(res.Map(`id`))

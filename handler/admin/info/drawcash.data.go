@@ -51,7 +51,11 @@ FROM(
             tmm.point_withdraws AS pw
         GROUP BY pw.user_id
 				) AS tmp
-		GROUP BY user_id
+	WHERE
+		NOT EXISTS
+		(SELECT 1 FROM user_settings AS us  
+		 WHERE us.blocked= 1 AND us.user_id=tmp.user_id AND us.block_whitelist=0  LIMIT 1)
+	GROUP BY tmp.user_id
 ) AS tmp
 GROUP BY l ORDER BY l
 
