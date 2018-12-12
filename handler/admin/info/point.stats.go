@@ -48,7 +48,7 @@ func PointStatsHandler(c *gin.Context) {
 SELECT
 	wx.user_id AS id,
 	wx.nick AS nick ,
-	tmp.points AS points ,
+	(tmp.points+ SUM(inv.bonus))AS points,
 	us.mobile AS mobile
 FROM(
 	SELECT 
