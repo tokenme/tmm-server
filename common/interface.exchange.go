@@ -102,11 +102,13 @@ func GetPointsPerTsYearly(service *Service) (decimal.Decimal, error) {
 	if ts.LessThan(decimal.Zero) {
 		ts = decimal.New(1, 0)
 	}
-	remainSeconds := commonutils.YearRemainSeconds()
-	remainSecondsDecimal := decimal.NewFromFloat(remainSeconds)
-	if ts.GreaterThan(remainSecondsDecimal) {
-		ts = remainSecondsDecimal
-	}
+	/*
+		remainSeconds := commonutils.YearRemainSeconds()
+		remainSecondsDecimal := decimal.NewFromFloat(remainSeconds)
+		if ts.GreaterThan(remainSecondsDecimal) {
+			ts = remainSecondsDecimal
+		}
+	*/
 	pointsPerTs = points.Div(ts)
 	return pointsPerTs, nil
 }

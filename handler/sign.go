@@ -8,6 +8,7 @@ import (
 	"github.com/garyburd/redigo/redis"
 	"github.com/gin-gonic/gin"
 	"github.com/mkideal/log"
+	"github.com/shopspring/decimal"
 	"github.com/tokenme/tmm/utils"
 	"io/ioutil"
 	"net/http"
@@ -105,6 +106,12 @@ func ApiCheckError(c *gin.Context) *APIError {
 					} else {
 						param = "0"
 					}
+				case float64:
+					d := decimal.NewFromFloat(v.(float64))
+					param = d.String()
+				case float32:
+					d := decimal.NewFromFloat(float64(v.(float32)))
+					param = d.String()
 				default:
 					param = fmt.Sprintf("%v", v)
 				}
