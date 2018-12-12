@@ -71,11 +71,13 @@ GROUP BY l ORDER BY l
 		name := fmt.Sprintf(`%d-%d`, row.Int(1), row.Int(1)+100)
 		indexName = append(indexName, name)
 	}
-	data := Data{
-		Title:     "任务完成 - X轴:完成次数 - Y轴:用户人数 ",
-		IndexName: indexName,
-		Value:     valueList,
-	}
+	var data Data
+	data.Title.Text = "任务"
+	data.Xaxis.Data = indexName
+	data.Xaxis.Name = "任务次数区间"
+	data.Yaxis.Name = "人数"
+	data.Series.Data = valueList
+	data.Series.Name = "用户人数"
 	bytes, err := json.Marshal(&data)
 	if CheckErr(err, c) {
 		return

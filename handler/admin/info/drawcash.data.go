@@ -17,7 +17,7 @@ func DrawCashDataHandler(c *gin.Context) {
 	redisConn := Service.Redis.Master.Get()
 	defer redisConn.Close()
 	context, err := redis.Bytes(redisConn.Do(`GET`, drawDataKey))
-	if context != nil  && err ==nil{
+	if context != nil && err == nil {
 		var data Data
 		if !CheckErr(json.Unmarshal(context, &data), c) {
 			c.JSON(http.StatusOK, admin.Response{
@@ -68,11 +68,13 @@ GROUP BY l ORDER BY l
 		name := fmt.Sprintf(`%d-%d`, row.Int(1), row.Int(1)+100)
 		indexName = append(indexName, name)
 	}
-	data := Data{
-		Title:     "提现金额 - X轴:金额  - Y轴:用户人数 ",
-		IndexName: indexName,
-		Value:     valueList,
-	}
+	var data Data
+	data.Title.Text = "提现金额"
+	data.Xaxis.Data = indexName
+	data.Xaxis.Name = "提现金额区间"
+	data.Yaxis.Name = "人数"
+	data.Series.Data = valueList
+	data.Series.Name = "提现人数"
 	bytes, err := json.Marshal(&data)
 	if CheckErr(err, c) {
 		return
