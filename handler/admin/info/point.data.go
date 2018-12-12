@@ -56,7 +56,11 @@ ORDER BY l
 	var valueList []int
 	for _, row := range rows {
 		valueList = append(valueList, row.Int(0))
-		name := fmt.Sprintf(`%d-%d`, row.Int(1), row.Int(1)+1000)
+		index := row.Int(1)
+		if index < 0 {
+			index = 0
+		}
+		name := fmt.Sprintf(`%d-%d`, index, row.Int(1)+1000)
 		indexName = append(indexName, name)
 	}
 	data := Data{
