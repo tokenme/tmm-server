@@ -56,7 +56,7 @@ GROUP BY l ORDER BY l`
 		indexName = append(indexName, name)
 	}
 	data := Data{
-		Title:     "邀请人数占比",
+		Title:     "邀请人数 - X轴:邀请人数 - Y轴:用户人数 ",
 		IndexName: indexName,
 		Value:     valueList,
 	}

@@ -42,6 +42,11 @@ func TMMChangeHandler(c *gin.Context) {
 		return
 	}
 
+	if CheckErr(user.IsBlocked(Service), c) {
+		log.Error("Blocked User:%d", user.Id)
+		return
+	}
+
 	redisConn := Service.Redis.Master.Get()
 	defer redisConn.Close()
 	changeRateKey := fmt.Sprintf(TMMChangeRateKey, req.Direction, user.Id)

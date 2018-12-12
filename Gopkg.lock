@@ -426,6 +426,12 @@
   version = "0.10"
 
 [[projects]]
+  name = "github.com/lionsoul2014/ip2region"
+  packages = ["binding/golang/ip2region"]
+  revision = "b7e9755c6b12193a882739e50760c86d7f3e8cdd"
+  version = "v1.7.0-release"
+
+[[projects]]
   name = "github.com/mattn/go-isatty"
   packages = ["."]
   revision = "6ca4dbf54d38eea1a992b3c722a76a5d1c4cb25c"
@@ -825,6 +831,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "0bab4cd73e33d133358927739f60676a83854002331051938522412c06907555"
+  inputs-digest = "b9a30e3e32a3abacc5f7620e8b94c71b3cb82f54f3aade03c9a3692b439fcdc0"
   solver-name = "gps-cdcl"
   solver-version = 1

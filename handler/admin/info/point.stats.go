@@ -22,7 +22,7 @@ func PointStatsHandler(c *gin.Context) {
 	var appTaskWhen []string
 	var startTime, endTime string
 	var top10 string
-	endTime = time.Now().Format("2006-01-02")
+	endTime = time.Now().Format("2006-01-02 15:04:05")
 	if req.StartTime != "" {
 		startTime = req.StartTime
 		shareWhen = append(shareWhen, fmt.Sprintf(" AND sha.inserted_at >= '%s' ", db.Escape(startTime)))
@@ -46,7 +46,8 @@ func PointStatsHandler(c *gin.Context) {
 SELECT
 	wx.user_id AS id,
 	wx.nick AS nick ,
-	tmp.points AS points 
+	tmp.points AS points ,
+	us.mobile AS mobile
 FROM(
 	SELECT 
 		 sha.device_id, 
@@ -69,6 +70,7 @@ FROM(
 ) AS tmp,
 tmm.wx AS wx
 INNER JOIN tmm.devices AS dev ON (dev.user_id = wx.user_id)
+INNER JOIN ucoin.users AS us ON (us.id = wx.user_id)
 WHERE 
 		 tmp.device_id = dev.id 
 GROUP BY 
@@ -89,6 +91,7 @@ ORDER BY points DESC  %s`
 			user := &Users{
 				Point:  Point.Ceil(),
 			}
+			user.Mobile = row.Str(res.Map(`mobile`))
 			user.Id = row.Uint64(res.Map(`id`))
 			user.Nick = row.Str(res.Map(`nick`))
 			info.Top10 = append(info.Top10, user)

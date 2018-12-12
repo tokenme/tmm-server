@@ -46,6 +46,10 @@ func TMMWithdrawHandler(c *gin.Context) {
 	if CheckErr(c.Bind(&req), c) {
 		return
 	}
+	if CheckErr(user.IsBlocked(Service), c) {
+		log.Error("Blocked User:%d", user.Id)
+		return
+	}
 	db := Service.Db
 	rows, _, err := db.Query(`SELECT wx.union_id, oi.open_id FROM tmm.wx LEFT JOIN tmm.wx_openids AS oi ON (oi.union_id=wx.union_id AND oi.app_id='%s') WHERE wx.user_id=%d LIMIT 1`, db.Escape(Config.Wechat.AppId), user.Id)
 	if CheckErr(err, c) {
@@ -76,7 +80,7 @@ func TMMWithdrawHandler(c *gin.Context) {
 	defer redisConn.Close()
 	withdrawRateKey := fmt.Sprintf(TMMWithdrawRateKey, user.Id)
 	withdrawTime, err := redis.String(redisConn.Do("GET", withdrawRateKey))
-	if CheckWithCode(err == nil, TOKEN_WITHDRAW_RATE_LIMIT_ERROR, "每次提现时间间隔不能少于2小时", c) {
+	if CheckWithCode(err == nil, TOKEN_WITHDRAW_RATE_LIMIT_ERROR, "每次提现时间间隔不能少于24小时", c) {
 		log.Warn("WithdrawRateLimit: %d, time: %s", user.Id, withdrawTime)
 		return
 	}
@@ -174,7 +178,7 @@ func TMMWithdrawHandler(c *gin.Context) {
 		log.Error(err.Error())
 		return
 	}
-	_, err = redisConn.Do("SETEX", withdrawRateKey, 60*60*2, time.Now().Format("2006-01-02 15:04:05"))
+	_, err = redisConn.Do("SETEX", withdrawRateKey, 60*60*24, time.Now().Format("2006-01-02 15:04:05"))
 	if err != nil {
 		log.Error(err.Error())
 	}

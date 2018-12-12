@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"github.com/garyburd/redigo/redis"
 	"fmt"
+	"github.com/shopspring/decimal"
 )
 
 const totalDrawCashKey = `info-total-draw`
@@ -34,16 +35,22 @@ func TotalDrawCashHandler(c *gin.Context) {
 SELECT
     COUNT(*) AS users,
     SUM(tmp.cny) AS cny,
-	SUM(tmp.total) AS total
+	SUM(tmp.total) AS total,
+	SUM(tmp.tmm) AS tmm ,
+	SUM(tmp.points) AS points
 FROM (
     SELECT 
  user_id, 
  SUM(cny) AS cny,
- SUM(total) AS total 
+ SUM(total) AS total,
+ SUM(tmm) AS tmm,
+ SUM(points) AS points
 FROM(
 		SELECT
             tx.user_id, 
-			SUM( tx.cny ) AS cny,
+			SUM( tx.cny ) AS cny,		 
+			SUM(tx.tmm)  AS tmm,		
+			0    AS points,				
 			COUNT(1) AS total 
         FROM
             tmm.withdraw_txs AS tx
@@ -54,6 +61,8 @@ FROM(
         SELECT
             pw.user_id, 
 			SUM( pw.cny ) AS cny,
+			SUM(0)  AS tmm,
+			SUM(pw.points) AS points,
 			COUNT(1) AS total 
         FROM
             tmm.point_withdraws AS pw
@@ -75,9 +84,19 @@ FROM(
 	if CheckErr(err, c) {
 		return
 	}
+	uc, err := decimal.NewFromString(row.Str(res.Map(`tmm`)))
+	if CheckErr(err, c) {
+		return
+	}
+	totalPoint, err := decimal.NewFromString(row.Str(res.Map(`points`)))
+	if CheckErr(err, c) {
+		return
+	}
 	total.TotalCount = row.Int(res.Map(`total`))
 	total.TotalUser = row.Int(res.Map(`users`))
-	total.TotalMoney = fmt.Sprintf("%.2f",row.Float(res.Map(`cny`)))
+	total.TotalMoney = fmt.Sprintf("%.2f", row.Float(res.Map(`cny`)))
+	total.Uc = uc.Ceil()
+	total.Point = totalPoint.Ceil()
 	bytes, err := json.Marshal(&total)
 	if CheckErr(err, c) {
 		return

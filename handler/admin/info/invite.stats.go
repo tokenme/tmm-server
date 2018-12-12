@@ -18,7 +18,7 @@ func InviteStatsHandler(c *gin.Context) {
 		return
 	}
 	var when []string
-	endTime = time.Now().Format("2006-01-02")
+	endTime = time.Now().Format("2006-01-02 15:04:05")
 	if req.StartTime != "" {
 		startTime = req.StartTime
 		when = append(when, fmt.Sprintf(` AND ic.inserted_at >= '%s'`, db.Escape(startTime)))
@@ -39,9 +39,12 @@ func InviteStatsHandler(c *gin.Context) {
 	SELECT
 		wx.user_id AS id ,
 		wx.nick AS nickname,
-		COUNT(*) AS total
+		COUNT(*) AS total,
+		us.mobile AS mobile,
+		SUM(ic.bonus) AS bouns
 	FROM tmm.invite_bonus AS ic
 	INNER JOIN tmm.wx AS wx ON  wx.user_id = ic.user_id 
+	INNER JOIN ucoin.users AS us ON (us.id = wx.user_id)
 	WHERE ic.task_id = 0 %s
 	GROUP BY wx.user_id   
 	ORDER BY total DESC 
@@ -60,9 +63,12 @@ func InviteStatsHandler(c *gin.Context) {
 			user := &Users{
 				InviteCount: inviteCount,
 			}
+			user.InviteBonus = row.Str(4)
+			user.Mobile = row.Str(3)
 			user.Id = row.Uint64(0)
 			user.Nick = row.Str(1)
-			info.Top10 = append(info.Top10,user)
+
+			info.Top10 = append(info.Top10, user)
 		}
 		info.InviteCount = info.InviteCount + inviteCount
 	}

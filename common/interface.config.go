@@ -50,6 +50,7 @@ type Config struct {
 	Slack                  SlackConfig       `required:"true"`
 	CoinbaseAPI            CoinbaseAPIConfig `required:"true"`
 	GeoIP                  string            `required:"true"`
+	Ip2Region              string            `required:"true"`
 	ProxyApiKey            string            `required:"true"`
 	YktApiSecret           string            `required:"true"`
 	UAParserPath           string            `required:"true"`
@@ -60,10 +61,13 @@ type Config struct {
 	InviteCashBonus        uint              `required:"true"`
 	InviterCashBonus       uint              `required:"true"`
 	InviteBonusRate        float64           `required:"true"`
+	MaxInviteBonus         int64             `required:"true"`
 	GoodCommissionPoints   int64             `required:"true"`
 	MaxBindDevice          int               `required:"true"`
 	Contact                ContactConfig     `required:"true"`
 	App                    AppConfig         `required:"true"`
+	AndroidSig             SigConfig         `required:"true"`
+	IOSSig                 SigConfig         `required:"true"`
 	Debug                  bool              `default:"false"`
 	EnableWeb              bool              `default:"false"`
 	EnableGC               bool              `default:"false"`
@@ -167,4 +171,9 @@ type XingeConfig struct {
 type ZZ253Config struct {
 	Account  string `required:"true"`
 	Password string `required:"true"`
+}
+
+type SigConfig struct {
+	Key    string `required:"true"`
+	Secret string `required:"true"`
 }

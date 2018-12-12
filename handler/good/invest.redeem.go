@@ -27,7 +27,10 @@ func InvestRedeemHandler(c *gin.Context) {
 		return
 	}
 	user := userContext.(common.User)
-
+	if CheckErr(user.IsBlocked(Service), c) {
+		log.Error("Blocked User:%d", user.Id)
+		return
+	}
 	var req InvestRedeemRequest
 	if CheckErr(c.Bind(&req), c) {
 		return
