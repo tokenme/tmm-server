@@ -100,7 +100,7 @@ INNER JOIN ucoin.users AS us ON (us.id = wx.user_id)
 	}
 	info.CurrentTime = fmt.Sprintf("%s-%s", startTime, endTime)
 	info.Numbers = len(rows)
-	info.Title = `兑换tmm排行榜`
+	info.Title = `积分兑换UC数量排行榜`
 	c.JSON(http.StatusOK, admin.Response{
 		Code:    0,
 		Message: admin.API_OK,

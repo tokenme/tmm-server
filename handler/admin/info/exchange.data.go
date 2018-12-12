@@ -18,7 +18,7 @@ func ExchangeDataHandler(c *gin.Context) {
 	defer redisConn.Close()
 	context, err := redis.Bytes(redisConn.Do(`GET`, exchangeDataKey))
 
-	if context != nil && err ==nil{
+	if context != nil && err == nil {
 		var data Data
 		if !CheckErr(json.Unmarshal(context, &data), c) {
 			c.JSON(http.StatusOK, admin.Response{
@@ -35,7 +35,7 @@ func ExchangeDataHandler(c *gin.Context) {
 FROM (
 	 SELECT 
 		tmp.user_id, 
-		FLOOR((tmp.times-1)/50) * 50 + 1 AS l
+		FLOOR((tmp.times-1)/10) * 10 + 1 AS l
 FROM(			
 	 SELECT
 		COUNT(1) AS times ,
@@ -47,8 +47,11 @@ FROM(
 	 GROUP BY 
 		er.user_id 
 ) AS tmp
-	 GROUP BY 
-		user_id
+WHERE 
+	 NOT EXISTS
+	(SELECT 1 FROM user_settings AS us  
+	WHERE us.blocked= 1 AND us.user_id=tmp.user_id AND us.block_whitelist=0  LIMIT 1)
+	 GROUP BY tmp.user_id
 )AS tmp 
 GROUP BY l ORDER BY l
 `
@@ -61,14 +64,16 @@ GROUP BY l ORDER BY l
 	var valueList []int
 	for _, row := range rows {
 		valueList = append(valueList, row.Int(0))
-		name := fmt.Sprintf(`%d-%d`, row.Int(1), row.Int(1)+50)
+		name := fmt.Sprintf(`%d-%d`, row.Int(1), row.Int(1)+10)
 		indexName = append(indexName, name)
 	}
-	data := Data{
-		Title:     "兑换次数 - X轴:积分 Y轴: 用户人数 ",
-		IndexName: indexName,
-		Value:     valueList,
-	}
+	var data Data
+	data.Title.Text = "兑换次数"
+	data.Xaxis.Data = indexName
+	data.Xaxis.Name = "兑换次数区间"
+	data.Yaxis.Name = "人数"
+	data.Series.Data = valueList
+	data.Series.Name = "人数"
 	bytes, err := json.Marshal(&data)
 	if CheckErr(err, c) {
 		return

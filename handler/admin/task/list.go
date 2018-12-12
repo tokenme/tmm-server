@@ -41,7 +41,8 @@ func GetTaskListHandler(c *gin.Context) {
 	s.online_status,
     s.inserted_at,
 	s.updated_at FROM tmm.share_tasks AS s
-	%s ORDER BY s.id DESC LIMIT %d OFFSET %d `
+	%s ORDER BY s.bonus DESC 
+	LIMIT %d OFFSET %d `
 	sumquery = `SELECT count(*) FROM tmm.share_tasks as s %s `
 	var where []string
 	var sumwhere []string
