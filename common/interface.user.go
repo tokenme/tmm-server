@@ -104,7 +104,7 @@ func (this User) BlockReason(service *Service) error {
 	db := service.Db
 	query := `SELECT
     COUNT( DISTINCT ib.from_user_id ) AS invites,
-    SUM(IF(da.total_ts>0, 1, 0)) AS apps,
+    SUM(IF(da.app_id IS NULL, 0, 1)) AS apps,
     SUM(ib.bonus) AS bonus,
     SUM(IFNULL(da.total_ts, 0)) AS ts
     FROM

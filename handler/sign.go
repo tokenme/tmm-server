@@ -52,6 +52,7 @@ func ApiCheckError(c *gin.Context) *APIError {
 	if len(requestParams) == 0 {
 		return nil
 	}
+
 	ipInfo, err := Service.Ip2Region.MemorySearch(ClientIP(c))
 	if err != nil {
 		log.Error(err.Error())
@@ -73,8 +74,8 @@ func ApiCheckError(c *gin.Context) *APIError {
 			Msg:  "Invalid timestamp, you may need to correct your system clock."}
 	}
 	sign := c.Request.Header.Get("tmm-sign")
-	platform := c.Request.Header.Get("tmm-platform")
 	var secret string
+	platform := c.Request.Header.Get("tmm-platform")
 	if platform == "android" && appKey == Config.AndroidSig.Key {
 		secret = Config.AndroidSig.Secret
 	} else if appKey == Config.IOSSig.Key {

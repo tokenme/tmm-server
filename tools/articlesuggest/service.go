@@ -108,7 +108,7 @@ func (this *Engine) Match(userId uint64, page uint, limit uint) []uint64 {
 		if err != nil {
 			log.Println(err.Error())
 		} else {
-			readIds := this.getUserReadIds(userId)
+			//readIds := this.getUserReadIds(userId)
 			totalIds := len(taskIds)
 			if startId >= totalIds {
 				return nil
@@ -118,9 +118,9 @@ func (this *Engine) Match(userId uint64, page uint, limit uint) []uint64 {
 			for {
 				taskId := taskIds[cur]
 				cur += 1
-				if _, found := readIds[taskId]; !found {
-					retIds = append(retIds, taskId)
-				}
+				//if _, found := readIds[taskId]; !found {
+				retIds = append(retIds, taskId)
+				//}
 				if cur >= totalIds || len(retIds) >= int(limit) {
 					redisConn.Do("SETEX", curKey, 1*60, cur)
 					break
@@ -188,7 +188,7 @@ func (this *Engine) Match(userId uint64, page uint, limit uint) []uint64 {
 	if err == nil {
 		redisConn.Do("SETEX", infoKey, 1*60, string(js))
 	}
-	readIds := this.getUserReadIds(userId)
+	//readIds := this.getUserReadIds(userId)
 	totalIds := len(taskIds)
 	if startId >= totalIds {
 		return nil
@@ -198,9 +198,9 @@ func (this *Engine) Match(userId uint64, page uint, limit uint) []uint64 {
 	for {
 		taskId := taskIds[cur]
 		cur += 1
-		if _, found := readIds[taskId]; !found {
-			retIds = append(retIds, taskId)
-		}
+		//if _, found := readIds[taskId]; !found {
+		retIds = append(retIds, taskId)
+		//}
 		if cur >= totalIds || len(retIds) >= int(limit) {
 			_, err := redisConn.Do("SETEX", curKey, 5*60, cur)
 			if err != nil {

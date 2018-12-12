@@ -61,8 +61,6 @@ func ReadingHandler(c *gin.Context) {
 	if err != nil {
 		log.Error(err.Error())
 	}
-	c.JSON(http.StatusOK, payload)
-	return
 	device := common.DeviceRequest{
 		Idfa: req.Idfa,
 		Imei: req.Imei,
@@ -79,7 +77,16 @@ func ReadingHandler(c *gin.Context) {
 	if Check(len(rows) == 0, "not found", c) {
 		return
 	}
-	_, _, err = db.Query(`UPDATE tmm.devices SET total_ts=total_ts+%d, points=points+%s WHERE id='%s' AND user_id=%d`, payload.Duration, payload.Points.String(), db.Escape(deviceId), user.Id)
+	maxPoints := decimal.New(1, 2)
+	if payload.Points.GreaterThan(maxPoints) {
+		payload.Points = maxPoints
+	}
+	pointsPerTs, err := common.GetPointsPerTs(Service)
+	if CheckErr(err, c) {
+		return
+	}
+	ts := payload.Points.Div(pointsPerTs)
+	_, _, err = db.Query(`UPDATE tmm.devices SET total_ts=total_ts+%d, points=points+%s WHERE id='%s' AND user_id=%d`, ts.IntPart(), payload.Points.String(), db.Escape(deviceId), user.Id)
 	if CheckErr(err, c) {
 		return
 	}
