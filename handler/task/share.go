@@ -11,18 +11,28 @@ import (
 	tokenUtils "github.com/tokenme/tmm/utils/token"
 	"github.com/ua-parser/uap-go/uaparser"
 	"net/http"
+    "net/url"
 	"strings"
+)
+
+const (
+    WX_AUTH_GATEWAY = "https://open.weixin.qq.com/connect/oauth2/authorize?appid=%s&redirect_uri=%s&response_type=code&scope=snsapi_base&state=%s#wechat_redirect"
+    WX_REDIRECT_URL = "https://jkgj-isv.isvjcloud.com/rest/m/u/weauth"
 )
 
 type ShareData struct {
 	Task       common.ShareTask
+    OpenId     string
 	IsIOS      bool
 	InviteLink string
 	ImpLink    string
 }
 
 func ShareHandler(c *gin.Context) {
-	taskId, deviceId, err := common.DecryptShareTaskLink(c.Param("encryptedTaskId"), c.Param("encryptedDeviceId"), Config)
+    encryptedTaskId := c.Param("encryptedTaskId")
+    encryptedDeviceId := c.Param("encryptedDeviceId")
+    openId := c.DefaultQuery("openid", "null")
+	taskId, deviceId, err := common.DecryptShareTaskLink(encryptedTaskId, encryptedDeviceId, Config)
 	if CheckErr(err, c) {
 		return
 	}
@@ -57,12 +67,31 @@ LIMIT 1`
 		log.Error("Not found")
 		return
 	}
+
+	parser, err := uaparser.New(Config.UAParserPath)
+	var isIOS bool
+	if err != nil {
+		log.Error(err.Error())
+	} else {
+		client := parser.Parse(c.Request.UserAgent())
+        if (strings.Contains(strings.ToLower(client.Os.Family), "ios") || strings.Contains(strings.ToLower(client.Os.Family), "android")) && strings.Contains(strings.ToLower(c.Request.UserAgent()), "micromessenger") && openId == "null" {
+            wxAuthUrl := url.QueryEscape(WX_REDIRECT_URL)
+            wxRedirectUrl := url.QueryEscape(fmt.Sprintf("%s%s?openid=___OPENID___", Config.BaseUrl, c.Request.URL.String()))
+            redirectUrl := fmt.Sprintf(WX_AUTH_GATEWAY, Config.Wechat.AppId, wxAuthUrl, wxRedirectUrl)
+            c.Redirect(http.StatusFound, redirectUrl)
+            return
+        }
+		if strings.Contains(strings.ToLower(client.Os.Family), "ios") {
+			isIOS = true
+		}
+	}
+
 	row := rows[0]
 	bonus, _ := decimal.NewFromString(row.Str(6))
 	points, _ := decimal.NewFromString(row.Str(7))
 	pointsLeft, _ := decimal.NewFromString(row.Str(8))
 	task := common.ShareTask{
-		Id:         row.Uint64(0),
+        Id:         row.Uint64(0),
 		Title:      row.Str(1),
 		Summary:    row.Str(2),
 		Link:       row.Str(3),
@@ -77,19 +106,10 @@ LIMIT 1`
 	}
 	task.InIframe = task.ShouldUseIframe()
 	inviteCode := tokenUtils.Token(row.Uint64(10))
-	parser, err := uaparser.New(Config.UAParserPath)
-	var isIOS bool
-	if err != nil {
-		log.Error(err.Error())
-	} else {
-		client := parser.Parse(c.Request.UserAgent())
-		if strings.Contains(strings.ToLower(client.Os.Family), "ios") {
-			isIOS = true
-		}
-	}
 	impLink, _ := task.GetShareImpLink(deviceId, Config)
 	c.HTML(http.StatusOK, "share.tmpl", ShareData{
 		Task:       task,
+        OpenId:     openId,
 		IsIOS:      isIOS,
 		InviteLink: fmt.Sprintf("https://tmm.tokenmama.io/invite/%s", inviteCode.Encode()),
 		ImpLink:    impLink})

@@ -48,7 +48,7 @@ html,body,div,iframe{margin:0;padding:0;border:0;font-size:100%;font:inherit;ver
 <script>
     var tmmImpFunc = function() {
         var img = document.createElement("img");
-        img.setAttribute("src", "{{ .ImpLink }}");
+        img.setAttribute("src", "{{ .ImpLink }}?openid={{ .OpenId }}");
         img.setAttribute("width", "1");
         img.setAttribute("height", "1");
         {{ if .Task.InIframe }}
