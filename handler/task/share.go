@@ -17,7 +17,7 @@ import (
 
 const (
     WX_AUTH_GATEWAY = "https://open.weixin.qq.com/connect/oauth2/authorize?appid=%s&redirect_uri=%s&response_type=code&scope=snsapi_base&state=%s#wechat_redirect"
-    WX_REDIRECT_URL = "https://jkgj-isv.isvjcloud.com/rest/m/u/weauth"
+    WX_AUTH_URL = "https://jkgj-isv.isvjcloud.com/rest/m/u/weauth"
 )
 
 type ShareData struct {
@@ -29,10 +29,8 @@ type ShareData struct {
 }
 
 func ShareHandler(c *gin.Context) {
-    encryptedTaskId := c.Param("encryptedTaskId")
-    encryptedDeviceId := c.Param("encryptedDeviceId")
     openId := c.DefaultQuery("openid", "null")
-	taskId, deviceId, err := common.DecryptShareTaskLink(encryptedTaskId, encryptedDeviceId, Config)
+	taskId, deviceId, err := common.DecryptShareTaskLink(c.Param("encryptedTaskId"), c.Param("encryptedDeviceId"), Config)
 	if CheckErr(err, c) {
 		return
 	}
@@ -75,7 +73,7 @@ LIMIT 1`
 	} else {
 		client := parser.Parse(c.Request.UserAgent())
         if (strings.Contains(strings.ToLower(client.Os.Family), "ios") || strings.Contains(strings.ToLower(client.Os.Family), "android")) && strings.Contains(strings.ToLower(c.Request.UserAgent()), "micromessenger") && openId == "null" {
-            wxAuthUrl := url.QueryEscape(WX_REDIRECT_URL)
+            wxAuthUrl := url.QueryEscape(WX_AUTH_URL)
             wxRedirectUrl := url.QueryEscape(fmt.Sprintf("%s%s?openid=___OPENID___", Config.BaseUrl, c.Request.URL.String()))
             redirectUrl := fmt.Sprintf(WX_AUTH_GATEWAY, Config.Wechat.AppId, wxAuthUrl, wxRedirectUrl)
             c.Redirect(http.StatusFound, redirectUrl)
