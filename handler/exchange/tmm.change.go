@@ -51,7 +51,7 @@ func TMMChangeHandler(c *gin.Context) {
 	defer redisConn.Close()
 	changeRateKey := fmt.Sprintf(TMMChangeRateKey, req.Direction, user.Id)
 	changeTime, err := redis.String(redisConn.Do("GET", changeRateKey))
-	if CheckWithCode(err == nil, TOKEN_CHANGE_RATE_LIMIT_ERROR, "每次兑换时间间隔不能少于2小时", c) {
+	if CheckWithCode(err == nil, TOKEN_CHANGE_RATE_LIMIT_ERROR, "每次兑换时间间隔不能少于6小时", c) {
 		log.Warn("TokenChangeRateLimit: %d, direction: %d, time: %s", user.Id, req.Direction, changeTime)
 		return
 	}
@@ -60,7 +60,11 @@ func TMMChangeHandler(c *gin.Context) {
 	if CheckErr(err, c) {
 		return
 	}
-
+	minChangePointRate := decimal.New(3, -1)
+	if Check(req.Direction == common.TMMExchangeOut && exchangeRate.Rate.LessThan(minChangePointRate), "Service not available", c) {
+		return
+		exchangeRate.Rate = minChangePointRate
+	}
 	if req.Points.LessThan(exchangeRate.MinPoints) {
 		c.JSON(INVALID_MIN_POINTS_ERROR, exchangeRate)
 		return
@@ -193,7 +197,7 @@ WHERE d.id='%s' AND d.user_id=%d`
 		return
 	}
 
-	_, err = redisConn.Do("SETEX", changeRateKey, 60*60*2, time.Now().Format("2006-01-02 15:04:05"))
+	_, err = redisConn.Do("SETEX", changeRateKey, 60*60*6, time.Now().Format("2006-01-02 15:04:05"))
 	if err != nil {
 		log.Error(err.Error())
 	}

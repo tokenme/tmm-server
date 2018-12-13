@@ -8,6 +8,7 @@ import (
 	"github.com/tokenme/tmm/handler/admin"
 	"encoding/json"
 	"github.com/garyburd/redigo/redis"
+	"math"
 )
 
 const pointDataKey = `info-Data-points`
@@ -36,8 +37,14 @@ SELECT
 FROM (
     SELECT
 	 	d.user_id,
-	 	IF(SUM(d.points)=0,0,FLOOR(((SUM(d.points)-1)/1000))*1000+1) AS l
-    FROM tmm.devices AS d
+	 	IF(SUM(d.points)=0,0,
+		IF(SUM(d.points) >= 10000,
+	FLOOR(((SUM(d.points)-1)/10000))*10000+1,
+	FLOOR(((SUM(d.points)-1)/1000))*1000+1) ) AS l
+  FROM tmm.devices AS d
+WHERE NOT EXISTS
+	(SELECT 1 FROM user_settings AS us  
+	WHERE us.blocked= 1 AND us.user_id=d.user_id AND us.block_whitelist=0  LIMIT 1)
 	GROUP BY 
 		d.user_id
 ) AS tmp
@@ -56,14 +63,25 @@ ORDER BY l
 	var valueList []int
 	for _, row := range rows {
 		valueList = append(valueList, row.Int(0))
-		name := fmt.Sprintf(`%d-%d`, row.Int(1), row.Int(1)+1000)
+		startPoint := row.Int(1)
+		var endPoints int
+		if startPoint < 0 {
+			startPoint = 0
+			endPoints = 1
+		} else {
+			log10 := math.Log10(float64(startPoint))
+			endPoints = startPoint + int(math.Pow10(int(log10))) - 1
+		}
+		name := fmt.Sprintf(`%d-%d`, startPoint, endPoints)
 		indexName = append(indexName, name)
 	}
-	data := Data{
-		Title:     "用户积分 - X轴:积分 - Y轴:用户数量 ",
-		IndexName: indexName,
-		Value:     valueList,
-	}
+	var data Data
+	data.Title.Text = "用户积分"
+	data.Xaxis.Data = indexName
+	data.Xaxis.Name = "积分区间"
+	data.Yaxis.Name = "人数"
+	data.Series.Data = valueList
+	data.Series.Name = "用户人数"
 	bytes, err := json.Marshal(&data)
 	if CheckErr(err, c) {
 		return

@@ -101,8 +101,23 @@ type Good struct {
 	Title string          `json:"title"`
 	Point decimal.Decimal `json:"point"`
 }
+
 type Data struct {
-	Title     string   `json:"title"`
-	IndexName []string `json:"index_name"`
-	Value     []int    `json:"value"`
+	Title  Title  `json:"title"`
+	Yaxis  Axis   `json:"yAxis"`
+	Xaxis  Axis   `json:"xAxis"`
+	Series Series `json:"series"`
+}
+
+type Axis struct {
+	Name string   `json:"name"`
+	Data []string `json:"data,omitempty"`
+}
+
+type Title struct {
+	Text string `json:"text"`
+}
+type Series struct {
+	Data []int  `json:"data"`
+	Name string `json:"name"`
 }

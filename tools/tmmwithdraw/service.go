@@ -21,22 +21,24 @@ import (
 )
 
 type Service struct {
-	service          *common.Service
-	config           common.Config
-	checkTxCh        chan struct{}
-	checkWechatPayCh chan struct{}
-	exitCh           chan struct{}
-	canStopCh        chan struct{}
+	service                *common.Service
+	config                 common.Config
+	checkTxCh              chan struct{}
+	checkExchangeRecordsCh chan struct{}
+	checkWechatPayCh       chan struct{}
+	exitCh                 chan struct{}
+	canStopCh              chan struct{}
 }
 
 func NewService(service *common.Service, config common.Config) *Service {
 	return &Service{
-		service:          service,
-		config:           config,
-		checkTxCh:        make(chan struct{}, 1),
-		checkWechatPayCh: make(chan struct{}, 1),
-		exitCh:           make(chan struct{}, 1),
-		canStopCh:        make(chan struct{}, 1),
+		service:                service,
+		config:                 config,
+		checkTxCh:              make(chan struct{}, 1),
+		checkExchangeRecordsCh: make(chan struct{}, 1),
+		checkWechatPayCh:       make(chan struct{}, 1),
+		exitCh:                 make(chan struct{}, 1),
+		canStopCh:              make(chan struct{}, 1),
 	}
 }
 
@@ -45,12 +47,15 @@ func (this *Service) Start() {
 	ctx, cancel := context.WithCancel(context.Background())
 	go this.CheckTx(ctx)
 	go this.WechatPay()
+	go this.CheckExchangeRecords(ctx)
 	for !shouldStop {
 		select {
 		case <-this.checkTxCh:
 			go this.CheckTx(ctx)
 		case <-this.checkWechatPayCh:
 			go this.WechatPay()
+		case <-this.checkExchangeRecordsCh:
+			go this.CheckExchangeRecords(ctx)
 		case <-this.exitCh:
 			shouldStop = true
 			cancel()
@@ -90,6 +95,59 @@ func (this *Service) CheckTx(ctx context.Context) error {
 	}
 	time.Sleep(10 * time.Second)
 	this.checkTxCh <- struct{}{}
+	return nil
+}
+
+func (this *Service) CheckExchangeRecords(ctx context.Context) error {
+	db := this.service.Db
+	rows, _, err := db.Query(`SELECT
+        tx, status, device_id, tmm, points, direction, inserted_at
+        FROM tmm.exchange_records
+        WHERE status=2 ORDER BY inserted_at LIMIT 1000`)
+	if err != nil {
+		log.Error(err.Error())
+		return err
+	}
+	pointsPerTs, err := common.GetPointsPerTs(this.service)
+	if err != nil {
+		log.Error(err.Error())
+		return err
+	}
+	for _, row := range rows {
+		tmm, _ := decimal.NewFromString(row.Str(3))
+		points, _ := decimal.NewFromString(row.Str(4))
+		record := common.ExchangeRecord{
+			Tx:         row.Str(0),
+			Status:     common.ExchangeTxStatus(row.Uint(1)),
+			DeviceId:   row.Str(2),
+			Tmm:        tmm,
+			Points:     points,
+			Direction:  common.TMMExchangeDirection(row.Int(5)),
+			InsertedAt: row.ForceLocaltime(6).Format(time.RFC3339),
+		}
+		receipt, err := utils.TransactionReceipt(this.service.Geth, ctx, record.Tx)
+		if err == nil {
+			record.Status = common.ExchangeTxStatus(receipt.Status)
+			if record.Status == common.ExchangeTxFailed && record.Direction == common.TMMExchangeIn {
+				_, _, err = db.Query(`UPDATE tmm.devices AS d, tmm.exchange_records AS er SET d.points=d.points + er.points, d.total_ts = CEIL(d.total_ts + %s), er.status=0 WHERE d.id=er.device_id AND er.tx='%s'`, pointsPerTs.String(), db.Escape(record.Tx))
+				if err != nil {
+					log.Error(err.Error())
+				}
+			} else if record.Status == common.ExchangeTxFailed && record.Direction == common.TMMExchangeOut {
+				_, _, err = db.Query(`UPDATE tmm.devices AS d, tmm.exchange_records AS er SET d.points=IF(d.points > er.points, d.points - er.points, 0), d.consumed_ts = CEIL(d.consumed_ts + %s), er.status=0 WHERE d.id=er.device_id AND er.tx='%s'`, pointsPerTs.String(), db.Escape(record.Tx))
+				if err != nil {
+					log.Error(err.Error())
+				}
+			} else {
+				_, _, err := db.Query(`UPDATE tmm.exchange_records SET status=%d WHERE tx='%s'`, receipt.Status, db.Escape(record.Tx))
+				if err != nil {
+					log.Error(err.Error())
+				}
+			}
+		}
+	}
+	time.Sleep(10 * time.Second)
+	this.checkExchangeRecordsCh <- struct{}{}
 	return nil
 }
 

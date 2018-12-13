@@ -3,6 +3,7 @@ package redeem
 import (
 	"encoding/json"
 	//"github.com/davecgh/go-spew/spew"
+	"fmt"
 	"github.com/garyburd/redigo/redis"
 	"github.com/gin-gonic/gin"
 	"github.com/mkideal/log"
@@ -17,7 +18,7 @@ import (
 	"strings"
 )
 
-const REDEEMCDPS_CACHE_KEY = "REDEEMCDPS"
+const REDEEMCDPS_CACHE_KEY = "REDEEMCDPS-%s-%s"
 
 func DycdpListHandler(c *gin.Context) {
 	userContext, exists := c.Get("USER")
@@ -39,9 +40,10 @@ func DycdpListHandler(c *gin.Context) {
 	}
 	redisConn := Service.Redis.Master.Get()
 	defer redisConn.Close()
+	cacheKey := fmt.Sprintf(REDEEMCDPS_CACHE_KEY, phone.CardType, phone.Province)
 	{
 		var redeemCdps []*common.RedeemCdp
-		js, _ := redis.Bytes(redisConn.Do("GET", REDEEMCDPS_CACHE_KEY))
+		js, _ := redis.Bytes(redisConn.Do("GET", cacheKey))
 		json.Unmarshal(js, &redeemCdps)
 		if len(redeemCdps) > 0 {
 			c.JSON(http.StatusOK, redeemCdps)
@@ -106,7 +108,7 @@ func DycdpListHandler(c *gin.Context) {
 	sort.Sort(redeemCdps)
 	js, err := json.Marshal(redeemCdps)
 	if err == nil {
-		redisConn.Do("SETEX", REDEEMCDPS_CACHE_KEY, 2*60, js)
+		redisConn.Do("SETEX", cacheKey, 20*60, js)
 	}
 	c.JSON(http.StatusOK, redeemCdps)
 }

@@ -59,11 +59,13 @@ GROUP BY l ORDER BY l
 		valueList = append(valueList, row.Int(0))
 		indexName = append(indexName, fmt.Sprintf(`%d-%d`, row.Int(1), row.Int(1)+1000))
 	}
-	data := Data{
-		Title:     "商品投资 - X轴:积分 - Y轴:商品数量 ",
-		IndexName: indexName,
-		Value:     valueList,
-	}
+	var data Data
+	data.Title.Text = "商品投资"
+	data.Xaxis.Data = indexName
+	data.Xaxis.Name = "积分"
+	data.Yaxis.Name = "商品数量"
+	data.Series.Data = valueList
+	data.Series.Name = "数量"
 	bytes, err := json.Marshal(&data)
 	if CheckErr(err, c) {
 		return

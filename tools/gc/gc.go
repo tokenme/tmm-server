@@ -85,9 +85,9 @@ func (this *Handler) blockBadUsers() error {
 	query := `INSERT INTO tmm.user_settings (user_id, blocked)
 SELECT user_id, 1 FROM (
 SELECT
-  ib.user_id AS user_id,
+  ib.user_id,
     COUNT( DISTINCT ib.from_user_id ) AS invites,
-    SUM(IF(da.total_ts>0, 1, 0)) AS apps,
+    SUM(IF(da.app_id IS NULL, 0, 1)) AS apps,
     SUM(ib.bonus) AS bonus,
     SUM(IFNULL(da.total_ts, 0)) AS ts
     FROM
@@ -97,8 +97,24 @@ SELECT
 WHERE ib.task_type=0 AND NOT EXISTS (SELECT 1 FROM tmm.user_settings AS us WHERE us.user_id=ib.user_id AND us.blocked=1 LIMIT 1)
 GROUP BY ib.user_id
 HAVING invites>=10 AND apps<invites/2) AS t
-ON DUPLICATE KEY UPDATE blocked=VALUES(blocked)`
+ON DUPLICATE KEY UPDATE blocked=VALUES(blocked);`
 	_, _, err := db.Query(query)
+	query = `INSERT INTO tmm.user_settings (user_id, blocked)
+SELECT DISTINCT d.user_id, 1 FROM tmm.devices AS d
+WHERE
+    NOT EXISTS(SELECT 1 FROM tmm.device_apps AS da WHERE da.device_id=d.id LIMIT 1)
+    AND NOT EXISTS(SELECT 1 FROM tmm.user_settings AS us WHERE us.user_id=d.user_id AND us.blocked=1 AND us.block_whitelist=0 LIMIT 1)
+    AND d.user_id>0
+ON DUPLICATE KEY UPDATE blocked=VALUES(blocked)`
+	_, _, err = db.Query(query)
+	query = `SELECT d.user_id, 1
+FROM tmm.device_apps AS da
+INNER JOIN tmm.apps AS a ON (a.id=da.app_id)
+INNER JOIN tmm.devices AS d ON (d.id=da.device_id)
+WHERE
+    NOT EXISTS (SELECT 1 FROM tmm.user_settings AS us WHERE us.user_id=d.user_id AND us.blocked=1 LIMIT 1)
+    AND a.bundle_id LIKE 'io.tokenmama.TimeBank.%'`
+	_, _, err = db.Query(query)
 	query = `INSERT INTO tmm.user_settings (user_id, blocked) SELECT user_id, 1 FROM tmm.wx AS ws
 WHERE EXISTS (
     SELECT
@@ -107,14 +123,6 @@ WHERE EXISTS (
     INNER JOIN tmm.user_settings AS us ON (us.user_id=wx.user_id)
     WHERE us.blocked=1 AND wx.open_id=ws.open_id LIMIT 1
 ) AND NOT EXISTS (SELECT 1 FROM tmm.user_settings AS us WHERE us.user_id=ws.user_id AND us.blocked=1 AND us.block_whitelist=0 LIMIT 1)
-ON DUPLICATE KEY UPDATE blocked=VALUES(blocked)`
-	_, _, err = db.Query(query)
-	query = `INSERT INTO tmm.user_settings (user_id, blocked)
-SELECT DISTINCT d.user_id, 1 FROM tmm.devices AS d
-WHERE
-    NOT EXISTS(SELECT 1 FROM tmm.device_apps AS da WHERE da.device_id=d.id LIMIT 1)
-    AND NOT EXISTS(SELECT 1 FROM tmm.user_settings AS us WHERE us.user_id=d.user_id AND us.blocked=1 AND us.block_whitelist=0 LIMIT 1)
-    AND d.user_id>0
 ON DUPLICATE KEY UPDATE blocked=VALUES(blocked)`
 	_, _, err = db.Query(query)
 	return err

@@ -94,6 +94,9 @@ func SendHandler(c *gin.Context) {
 				Imei:     imei,
 			}
 			deviceId = device.DeviceId()
+			if Check(deviceId == "", "bad request", c) {
+				return
+			}
 			redisConn := Service.Redis.Master.Get()
 			defer redisConn.Close()
 			sendCodeKey := fmt.Sprintf(SEND_CODE_KEY, deviceId)
