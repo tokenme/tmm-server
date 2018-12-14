@@ -80,7 +80,7 @@ type TotalTask struct {
 //其他类
 type Users struct {
 	Point              decimal.Decimal `json:"point,omitempty"`
-	InviteBonus        string          `json:"invite_bonus"`
+	InviteBonus        decimal.Decimal `json:"invite_bonus"`
 	DrawCash           string          `json:"draw_cash,omitempty"`
 	InviteCount        int             `json:"invite_count,omitempty"`
 	Tmm                decimal.Decimal `json:"tmm,omitempty"`
@@ -94,6 +94,7 @@ type StatsRequest struct {
 	StartTime string `form:"start_time",json:"start_time"`
 	EndTime   string `form:"end_time",json:"end_time" `
 	Top10     bool   `form:"top_10",json:"top_10"`
+	Hours     int    `form:"hours" ,json:"hours"`
 }
 
 type Good struct {

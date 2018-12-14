@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"github.com/shopspring/decimal"
 )
 
 func InviteStatsHandler(c *gin.Context) {
@@ -23,7 +24,11 @@ func InviteStatsHandler(c *gin.Context) {
 		startTime = req.StartTime
 		when = append(when, fmt.Sprintf(` AND ic.inserted_at >= '%s'`, db.Escape(startTime)))
 	} else {
-		startTime = time.Now().AddDate(0, 0, -7).Format("2006-01-02")
+		if req.Hours != 0 {
+			startTime = time.Now().Add(-time.Hour * time.Duration(req.Hours)).Format("2006-01-02 15:04:05")
+		} else {
+			startTime = time.Now().AddDate(0, 0, -7).Format("2006-01-02")
+		}
 		when = append(when, fmt.Sprintf(` AND ic.inserted_at >= '%s'`, db.Escape(startTime)))
 	}
 
@@ -53,17 +58,26 @@ func InviteStatsHandler(c *gin.Context) {
 	if CheckErr(err, c) {
 		return
 	}
-	if Check(len(rows) == 0, `not found`, c) {
+	if len(rows) == 0 {
+		c.JSON(http.StatusOK, admin.Response{
+			Code:    0,
+			Message: "没有查询到指定数据",
+			Data:    nil,
+		})
 		return
 	}
 	var info InviteStats
 	for _, row := range rows {
+		bouns,err:=decimal.NewFromString(row.Str(4))
+		if CheckErr(err,c){
+			return
+		}
 		inviteCount := row.Int(2)
 		if req.Top10 {
 			user := &Users{
 				InviteCount: inviteCount,
 			}
-			user.InviteBonus = row.Str(4)
+			user.InviteBonus = bouns.Ceil()
 			user.Mobile = row.Str(3)
 			user.Id = row.Uint64(0)
 			user.Nick = row.Str(1)
