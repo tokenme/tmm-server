@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/shopspring/decimal"
 	"github.com/tokenme/tmm/utils"
+	"github.com/tokenme/tmm/utils/binary"
 	"strings"
 )
 
@@ -79,6 +80,10 @@ func (this ShareTask) IpKey(ip string) string {
 	return fmt.Sprintf("share-task-%d-ip-%s", this.Id, ip)
 }
 
+func (this ShareTask) OpenidKey(openId string) string {
+	return fmt.Sprintf("share-task-%d-openid-%s", this.Id, openId)
+}
+
 type AppTask struct {
 	Id            uint64          `json:"id"`
 	Creator       uint64          `json:"creator",omitempty`
@@ -113,4 +118,26 @@ type TaskRecord struct {
 	Image     string          `json:"image,omitempty"`
 	Viewers   uint            `json:"viewers,omitempty"`
 	UpdatedAt string          `json:"updated_at,omitempty"`
+}
+
+type CryptOpenid struct {
+	Openid    string `json:"openid"`
+	Ts        int64  `json:"ts"`
+}
+
+func (this CryptOpenid) Encode(key []byte) (string, error) {
+	enc := binary.NewEncoder()
+	enc.Encode(this)
+	return utils.AESEncryptBytes(key, enc.Buffer())
+}
+
+func DecodeCryptOpenid(key []byte, cryptoText string) (openid CryptOpenid, err error) {
+	data, err := utils.AESDecryptBytes(key, cryptoText)
+	if err != nil {
+		return openid, err
+	}
+	dec := binary.NewDecoder()
+	dec.SetBuffer(data)
+	dec.Decode(&openid)
+	return openid, nil
 }
