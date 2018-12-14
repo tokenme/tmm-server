@@ -22,7 +22,13 @@ func ShareImpHandler(c *gin.Context) {
 	if Check(taskId == 0 || deviceId == "", "not found", c) {
 		return
 	}
-
+	isWx := strings.Contains(strings.ToLower(c.Request.UserAgent()), "micromessenger")
+	if !isWx {
+		log.Info("UA: %s", c.Request.UserAgent())
+	}
+	if Check(!isWx, "invalid client", c) {
+		return
+	}
 	db := Service.Db
 	query := `SELECT
     st.id,
@@ -78,10 +84,11 @@ LIMIT 1`
 			openid = cryptOpenid.Openid
 		}
 	}
-	isWx := strings.Contains(strings.ToLower(c.Request.UserAgent()), "micromessenger")
+
 	if Check(isWx && openid == "", "missing params", c) {
 		return
 	}
+
 	userViewers := row.Uint(9)
 	var (
 		cookieFound = false
