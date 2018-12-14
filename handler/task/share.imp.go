@@ -24,9 +24,10 @@ func ShareImpHandler(c *gin.Context) {
 	}
 	isWx := strings.Contains(strings.ToLower(c.Request.UserAgent()), "micromessenger")
 	if !isWx {
-		log.Info("UA: %s", c.Request.UserAgent())
+		log.Info("DeviceId: %s, UA: %s", deviceId, c.Request.UserAgent())
 	}
-	if Check(!isWx, "invalid client", c) {
+	if !isWx {
+		c.Redirect(http.StatusFound, "https://ucoin.tianxi100.com/_.gif")
 		return
 	}
 	db := Service.Db
@@ -47,11 +48,13 @@ LEFT JOIN tmm.devices AS d ON (d.id=dst.device_id)
 WHERE st.id=%d
 LIMIT 1`
 	rows, _, err := db.Query(query, db.Escape(deviceId), taskId)
-	if CheckErr(err, c) {
+	if err != nil {
+		c.Redirect(http.StatusFound, "https://ucoin.tianxi100.com/_.gif")
 		return
 	}
-	if Check(len(rows) == 0, "not found", c) {
+	if len(rows) == 0 {
 		log.Error("Share Imp Not found")
+		c.Redirect(http.StatusFound, "https://ucoin.tianxi100.com/_.gif")
 		return
 	}
 
@@ -78,14 +81,15 @@ LIMIT 1`
 	var openid string
 	if trackId != "" && trackId != "null" {
 		cryptOpenid, err := common.DecodeCryptOpenid([]byte(Config.YktApiSecret), trackId)
-		if CheckErr(err, c) {
+		if err != nil {
 			log.Error("Decrypt track id error")
 		} else {
 			openid = cryptOpenid.Openid
 		}
 	}
 
-	if Check(isWx && openid == "", "missing params", c) {
+	if isWx && openid == "" {
+		c.Redirect(http.StatusFound, "https://ucoin.tianxi100.com/_.gif")
 		return
 	}
 
