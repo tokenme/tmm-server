@@ -11,6 +11,7 @@ import (
 	"github.com/tokenme/tmm/common"
 	"net/url"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -150,7 +151,7 @@ func (this *Client) UpdateVideos(updateCh chan<- struct{}) error {
 			where = fmt.Sprintf(" AND id<%d", startId)
 		}
 		endId = startId
-		rows, _, err := db.Query(`SELECT id, link FROM tmm.share_tasks WHERE is_video=1 AND video_updated_at<DATE_SUB(NOW(), INTERVAL 30 MINUTE)%s ORDER BY id DESC LIMIT 1000`, where)
+		rows, _, err := db.Query(`SELECT id, link FROM tmm.share_tasks WHERE online_status=1 AND is_video=1 AND video_updated_at<DATE_SUB(NOW(), INTERVAL 30 MINUTE)%s ORDER BY id DESC LIMIT 1000`, where)
 		if err != nil {
 			return err
 		}
@@ -169,15 +170,27 @@ func (this *Client) UpdateVideos(updateCh chan<- struct{}) error {
 			tasks = append(tasks, task)
 		}
 		wg.Wait()
-		var val []string
+		var (
+			val        []string
+			offlineIds []string
+		)
 		for _, task := range tasks {
 			if task.VideoLink != "" {
 				val = append(val, fmt.Sprintf("(%d, '%s', NOW())", task.Id, db.Escape(task.VideoLink)))
+			} else {
+				offlineIds = append(offlineIds, strconv.FormatUint(task.Id, 10))
 			}
 		}
 		if len(val) > 0 {
 			log.Warn("Saving:%d Videos", len(val))
 			_, _, err := db.Query(`INSERT INTO tmm.share_tasks (id, video_link, video_updated_at) VALUES %s ON DUPLICATE KEY UPDATE video_link=VALUES(video_link), video_updated_at=VALUES(video_updated_at)`, strings.Join(val, ","))
+			if err != nil {
+				log.Error(err.Error())
+			}
+		}
+		if len(offlineIds) > 0 {
+			log.Warn("Offline:%d Videos", len(val))
+			_, _, err := db.Query(`UPDATE tmm.share_tasks SET online_status=-1 WHERE id IN (%s)`, strings.Join(offlineIds, ","))
 			if err != nil {
 				log.Error(err.Error())
 			}
