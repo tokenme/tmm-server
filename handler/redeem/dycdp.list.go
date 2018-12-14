@@ -29,6 +29,9 @@ func DycdpListHandler(c *gin.Context) {
 	if CheckWithCode(user.CountryCode != 86, INVALID_CDP_VENDOR_ERROR, "the cdp vendor not supported", c) {
 		return
 	}
+	c.JSON(http.StatusOK, nil)
+	return
+
 	phone, err := phonedata.Find(strings.TrimSpace(user.Mobile))
 	if CheckErr(err, c) {
 		log.Error("%s %s", err.Error(), user.Mobile)
@@ -60,7 +63,7 @@ func DycdpListHandler(c *gin.Context) {
 	cdpRequest.Vendor = phone.CardType
 	cdpRequest.Province = phone.Province
 	cdpResponse, err := cdpClient.QueryCdpOffer(cdpRequest)
-	if CheckErr(err, c) {
+	if CheckWithCode(err != nil, INTERNAL_ERROR, "internal error", c) {
 		log.Error(err.Error())
 		return
 	}
@@ -70,7 +73,8 @@ func DycdpListHandler(c *gin.Context) {
 		cdpRequest.ChannelType = "全国"
 		cdpRequest.Vendor = phone.CardType
 		cdpResponse, err := cdpClient.QueryCdpOffer(cdpRequest)
-		if CheckErr(err, c) {
+		if CheckWithCode(err != nil, INTERNAL_ERROR, "internal error", c) {
+			log.Error(err.Error())
 			return
 		}
 		newOffers := cdpResponse.FlowOffers.FlowOffer

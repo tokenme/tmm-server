@@ -142,6 +142,10 @@ func TransferHandler(c *gin.Context) {
 	}
 
 	if strings.ToLower(req.Token) == Config.TMMTokenAddress {
+		minTransferRequired := decimal.New(1, 3)
+		if Check(req.Amount.LessThan(minTransferRequired), fmt.Sprintf("最低转账要求%s", minTransferRequired.String()), c) {
+			return
+		}
 		agentPrivKey, err := commonutils.AddressDecrypt(Config.TMMAgentWallet.Data, Config.TMMAgentWallet.Salt, Config.TMMAgentWallet.Key)
 		if CheckErr(err, c) {
 			return

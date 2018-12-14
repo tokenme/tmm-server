@@ -29,7 +29,7 @@ func AssetsHandler(c *gin.Context) {
 	var (
 		tokens   []*common.Token
 		tokenMap = make(map[string]*common.Token)
-		ethPrice = common.GetETHPrice(Service, Config)
+		//ethPrice = common.GetETHPrice(Service, Config)
 		currency = c.Query("currency")
 	)
 
@@ -45,7 +45,7 @@ func AssetsHandler(c *gin.Context) {
 			Icon:     "https://www.ethereum.org/images/logos/ETHEREUM-ICON_Black_small.png",
 			Balance:  decimal.NewFromBigInt(ethBalance, -18),
 		}
-		token.Price = ethPrice
+		//token.Price = ethPrice
 		tokens = append(tokens, token)
 	}
 
