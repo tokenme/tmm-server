@@ -18,6 +18,7 @@ import (
 	"github.com/tokenme/tmm/tools/tmmwithdraw"
 	"github.com/tokenme/tmm/tools/tokenprofile"
 	//"github.com/tokenme/tmm/tools/transferwatcher"
+	"github.com/tokenme/tmm/tools/etherscanspider"
 	"github.com/tokenme/tmm/tools/txaccelerate"
 	"github.com/tokenme/tmm/tools/videospider"
 	"github.com/tokenme/tmm/tools/wechatspider"
@@ -45,6 +46,7 @@ func main() {
 		updateVideoFlag            bool
 		accelerateTxFlag           string
 		accelerateGasFlag          int64
+		ucoinHoldersFlag           bool
 	)
 
 	os.Setenv("CONFIGOR_ENV_PREFIX", "-")
@@ -68,6 +70,7 @@ func main() {
 	flag.BoolVar(&updateVideoFlag, "update-videos", false, "enable update videos")
 	flag.StringVar(&addVideoFlag, "add-video", "", "add video")
 	flag.BoolVar(&addArticlesFlag, "add-articles", false, "enable add articles")
+	flag.BoolVar(&ucoinHoldersFlag, "update-holders", false, "enable update ucoin holders")
 	flag.Parse()
 
 	configor.New(&configor.Config{Verbose: configFlag.Debug, ErrorOnUnmatchedKeys: true, Environment: "production"}).Load(&config, configPath)
@@ -219,6 +222,34 @@ func main() {
 			}
 		}
 	}
+
+	if ucoinHoldersFlag {
+		updateHoldersCh := make(chan struct{}, 1)
+		exitChan := make(chan struct{}, 1)
+		go func() {
+			ch := make(chan os.Signal, 1)
+			signal.Notify(ch, syscall.SIGINT, syscall.SIGKILL, syscall.SIGQUIT, syscall.SIGSTOP, syscall.SIGTERM)
+			<-ch
+			exitChan <- struct{}{}
+			close(ch)
+		}()
+		updateHoldersCh <- struct{}{}
+		for {
+			select {
+			case <-updateHoldersCh:
+				go func() {
+					etherscanspider.GetHolders(service)
+					time.Sleep(1 * time.Hour)
+					updateHoldersCh <- struct{}{}
+				}()
+			case <-exitChan:
+				close(updateHoldersCh)
+				return
+			}
+		}
+		return
+	}
+
 	handler.InitHandler(service, config)
 	handler.Start()
 
