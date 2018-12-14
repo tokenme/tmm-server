@@ -39,7 +39,7 @@ func ExchangeStatsHandler(c *gin.Context) {
 
 	query := `
 SELECT 
-	wx.user_id AS id,
+	us.id AS id,
 	wx.nick AS nickname , 
 	tmp.tmm_add - tmp.tmm_ AS tmm,
 	tmp.points_add - tmp.points_ AS points,
@@ -59,10 +59,9 @@ FROM (
 		er.status = 1  AND %s
 	GROUP BY 
 		user_id
-) AS tmp , 	
-tmm.wx AS wx
-INNER JOIN ucoin.users AS us ON (us.id = wx.user_id)
-	WHERE tmp.user_id = wx.user_id
+) AS tmp ,ucoin.users AS us
+LEFT JOIN tmm.wx AS wx ON (wx.user_id = us.id)
+	WHERE tmp.user_id = us.id
 	ORDER BY tmm DESC
 %s
 `

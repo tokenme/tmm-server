@@ -26,12 +26,12 @@ func PointStatsHandler(c *gin.Context) {
 		startTime = req.StartTime
 		shareWhen = append(shareWhen, fmt.Sprintf(" AND sha.inserted_at >= '%s' ", db.Escape(startTime)))
 		appTaskWhen = append(appTaskWhen, fmt.Sprintf(" AND  app.inserted_at >= '%s' ", db.Escape(startTime)))
-		invWhen = append(invWhen, fmt.Sprintf("AND inv.inserted_at >= '%s' ", db.Escape(startTime)))
+		invWhen = append(invWhen, fmt.Sprintf(" inv.inserted_at >= '%s' ", db.Escape(startTime)))
 	} else {
 		startTime = time.Now().AddDate(0, 0, -7).Format("2006-01-02")
 		shareWhen = append(shareWhen, fmt.Sprintf(" AND sha.inserted_at >= '%s' ", db.Escape(startTime)))
 		appTaskWhen = append(appTaskWhen, fmt.Sprintf(" AND  app.inserted_at >= '%s' ", db.Escape(startTime)))
-		invWhen = append(invWhen, fmt.Sprintf("AND inv.inserted_at >= '%s' ", db.Escape(startTime)))
+		invWhen = append(invWhen, fmt.Sprintf("  inv.inserted_at >= '%s' ", db.Escape(startTime)))
 	}
 
 	if req.EndTime != "" {
@@ -46,9 +46,9 @@ func PointStatsHandler(c *gin.Context) {
 	}
 	query := `
 SELECT
-	wx.user_id AS id,
+	us.id AS id,
 	wx.nick AS nick ,
-	tmp.points AS points ,
+	(tmp.points+IFNULL(inv.bonus,0)) AS points,
 	us.mobile AS mobile
 FROM(
 	SELECT 
@@ -69,19 +69,20 @@ FROM(
 		 app.status = 0 %s
 	GROUP BY
      	 app.device_id   
-) AS tmp,
-tmm.wx AS wx
-INNER JOIN tmm.devices AS dev ON (dev.user_id = wx.user_id)
-INNER JOIN ucoin.users AS us ON (us.id = wx.user_id)
-INNER JOIN invite_bonus AS inv ON (inv.user_id = wx.user_id  %s)
+) AS tmp,ucoin.users AS us
+INNER JOIN tmm.devices AS dev ON (dev.user_id = us.id)
+LEFT JOIN tmm.wx AS wx ON (wx.user_id = us.id)
+LEFT JOIN (SELECT SUM(inv.bonus) AS bonus,inv.user_id AS user_id FROM tmm.invite_bonus AS inv 
+ 		  WHERE %s
+   		  GROUP BY inv.user_id)AS inv ON (inv.user_id = us.id )  
 WHERE 
 		 tmp.device_id = dev.id 
 GROUP BY 
-		 wx.user_id
-ORDER BY points DESC  %s`
+		 us.id
+ORDER BY points DESC %s`
 	rows, res, err := db.Query(query, strings.Join(shareWhen, " "),
 		strings.Join(appTaskWhen, " "), strings.Join(invWhen, " "),
-	top10)
+		top10)
 	if CheckErr(err, c) {
 		return
 	}

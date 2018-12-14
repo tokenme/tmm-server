@@ -39,8 +39,8 @@ FROM (
 	 	d.user_id,
 	 	IF(SUM(d.points)=0,0,
 		IF(SUM(d.points) >= 10000,
-	FLOOR(((SUM(d.points)-1)/10000))*10000+1,
-	FLOOR(((SUM(d.points)-1)/1000))*1000+1) ) AS l
+	FLOOR(((SUM(d.points))/10000))*10000+1,
+	FLOOR((SUM(d.points)/1000))*1000+1) ) AS l
   FROM tmm.devices AS d
 WHERE NOT EXISTS
 	(SELECT 1 FROM user_settings AS us  
@@ -65,12 +65,12 @@ ORDER BY l
 		valueList = append(valueList, row.Int(0))
 		startPoint := row.Int(1)
 		var endPoints int
-		if startPoint < 0 {
+		if startPoint == 1 {
 			startPoint = 0
-			endPoints = 1
+			endPoints = 1001
 		} else {
 			log10 := math.Log10(float64(startPoint))
-			endPoints = startPoint + int(math.Pow10(int(log10))) - 1
+			endPoints = startPoint + int(math.Pow10(int(log10)))
 		}
 		name := fmt.Sprintf(`%d-%d`, startPoint, endPoints)
 		indexName = append(indexName, name)

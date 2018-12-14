@@ -43,7 +43,7 @@ func TaskStatsHandler(c *gin.Context) {
 	}
 	query := `
 SELECT 
-	wx.user_id AS id,
+	us.id AS id,
 	wx.nick AS nickname , 
 	SUM(tmp.point) AS point ,
 	SUM(tmp.count_) AS _count,
@@ -75,12 +75,12 @@ FROM (
 	GROUP BY 
 		app.device_id
 ) AS tmp
-INNER JOIN tmm.user_devices AS ud ON (ud.device_id = tmp.device_id)
-GROUP BY ud.user_id
-	) AS tmp,tmm.wx AS wx 
-	INNER JOIN ucoin.users AS us ON (us.id = wx.user_id)
-	WHERE tmp.user_id = wx.user_id
-	GROUP BY wx.user_id
+INNER JOIN tmm.devices AS ud ON (ud.id = tmp.device_id)
+GROUP BY ud.id
+	) AS tmp,ucoin.users AS us
+	LEFT JOIN 	tmm.wx AS wx  ON (wx.user_id = us.id)
+	WHERE tmp.user_id = us.id
+	GROUP BY us.id
 	ORDER BY point DESC
 %s`
 	rows, res, err := db.Query(query, strings.Join(shaTaskwhen, ""),
