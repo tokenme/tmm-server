@@ -7,7 +7,6 @@ import (
 	"github.com/tokenme/tmm/common"
 	"net/http"
 	"github.com/tokenme/tmm/handler/admin"
-	"strings"
 )
 
 type AddGroupRequest struct {
@@ -16,37 +15,36 @@ type AddGroupRequest struct {
 	Page        int    `json:"page"`
 	ChannelId   int    `json:"channel_id"`
 	ChannelName string `json:"channel_name"`
-	Creatives
 }
 
 type Creatives struct {
-	Title        string `json:"title"`
-	InsertAt     string `json:"insert_at,omitempty"`
-	UpdateAt     string `json:"update_at,omitempty"`
-	StartDate    string `json:"start_date,omitempty"`
-	EndDate      string `json:"end_date,omitempty"`
-	Platform     int    `json:"platform,omitempty"`
-	OnlineStatus int    `json:"online_status,omitempty"`
-	ShareImage   string `json:"share_image,omitempty"`
+	Title        string  `json:"title,omitempty"`
+	InsertAt     string  `json:"insert_at,omitempty"`
+	UpdateAt     string  `json:"update_at,omitempty"`
+	StartDate    string  `json:"start_date,omitempty"`
+	EndDate      string  `json:"end_date,omitempty"`
+	Platform     int     `json:"platform,omitempty"`
+	OnlineStatus int     `json:"online_status,omitempty"`
+	ShareImage   string  `json:"share_image,omitempty"`
+	AdGroup      AdGroup `json:"ad_group,omitempty"`
+	Adzone       Adzone  `json:"adzone,omitempty"`
 	common.Creative
 	Data
 }
 
 type AdGroup struct {
 	common.Adgroup
-	Title     string    `json:"title"`
-	Creatives Creatives `json:"creatives"`
+	Title string `json:"title,omitempty"`
 	Data
 }
 type Adzone struct {
 	common.Adzone
-	Group AdGroup `json:"group"`
 	Data
 }
 
 type Data struct {
-	Img   int `json:"img"`
-	Click int `json:"click"`
+	Img   int `json:"img,omitempty"`
+	Click int `json:"click,omitempty"`
 }
 
 func AddGroupsHandler(c *gin.Context) {
@@ -60,7 +58,7 @@ func AddGroupsHandler(c *gin.Context) {
 	if CheckErr(c.Bind(&req), c) {
 		return
 	}
-	if Check(req.Title == "" || req.ChannelId <  0 || req.Page < 0 || req.Location < 0 || req.Image == "" || req.Link == "" || req.Platform != 1 && req.Platform != -1 , `Invalid param`, c) {
+	if Check(req.ChannelId < 0 || req.Page < 0 || req.Location < 0, `Invalid param`, c) {
 		return
 	}
 	var adzId uint64
@@ -79,58 +77,11 @@ func AddGroupsHandler(c *gin.Context) {
 		adzId = rows[0].Uint64(0)
 	}
 	query := `INSERT tmm.adgroups(adzone_id,user_id,title)VALUES(%d,%d,'%s')  `
-	_, res, err := db.Query(query, adzId, user.Id, db.Escape(req.GroupTitle))
+	_, _, err = db.Query(query, adzId, user.Id, db.Escape(req.GroupTitle))
 	if CheckErr(err, c) {
 		return
 	}
-	var valueList, fieldList []string
-	id := res.InsertId()
-	if id != 0 {
-		valueList = append(valueList, fmt.Sprintf("%d", id))
-		fieldList = append(fieldList, fmt.Sprintf("adgroup_id"))
-	}
 
-	if req.Title != "" {
-		valueList = append(valueList, fmt.Sprintf(" '%s' ", db.Escape(req.Title)))
-		fieldList = append(fieldList, fmt.Sprintf("title"))
-	}
-
-	if req.Image != "" {
-		valueList = append(valueList, fmt.Sprintf(" '%s' ", db.Escape(req.Image)))
-		fieldList = append(fieldList, fmt.Sprintf("image"))
-	}
-
-	if req.Link != "" {
-		valueList = append(valueList, fmt.Sprintf(" '%s' ", db.Escape(req.Link)))
-		fieldList = append(fieldList, fmt.Sprintf("link"))
-	}
-
-	if req.ShareImage != "" {
-		valueList = append(valueList, fmt.Sprintf(" '%s' ", db.Escape(req.ShareImage)))
-		fieldList = append(fieldList, fmt.Sprintf("share_image"))
-	}
-
-	if req.Platform == 1 || req.Platform == 2 {
-		valueList = append(valueList, fmt.Sprintf(" %d ", req.Platform))
-		fieldList = append(fieldList, fmt.Sprintf("platform"))
-	}
-
-	if req.Width != 0 {
-		valueList = append(valueList, fmt.Sprintf(" %d ", req.Width))
-		fieldList = append(fieldList, fmt.Sprintf("width"))
-	}
-	if req.Height != 0 {
-		valueList = append(valueList, fmt.Sprintf(" %d ", req.Height))
-		fieldList = append(fieldList, fmt.Sprintf("height"))
-	}
-
-	if len(valueList) > 0 {
-		_, _, err = db.Query(`INSERT tmm.creatives(%s )
-		VALUES (%s)`, strings.Join(fieldList, ","), strings.Join(valueList, ","))
-		if CheckErr(err, c) {
-			return
-		}
-	}
 	c.JSON(http.StatusOK, admin.Response{
 		Code:    0,
 		Message: admin.API_OK,

@@ -88,7 +88,11 @@ func InviteStatsHandler(c *gin.Context) {
 	}
 	info.Numbers = len(rows)
 	info.CurrentTime = fmt.Sprintf("%s-%s", startTime, endTime)
-	info.Title = "邀请排行榜"
+	if req.Hours != 0 {
+		info.Title = "邀请排行榜(二小时)"
+	}else{
+		info.Title = "邀请排行榜"
+	}
 	c.JSON(http.StatusOK, admin.Response{
 		Code:    0,
 		Message: admin.API_OK,

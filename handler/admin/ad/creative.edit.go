@@ -5,6 +5,8 @@ import (
 	. "github.com/tokenme/tmm/handler"
 	"net/http"
 	"github.com/tokenme/tmm/handler/admin"
+	"fmt"
+	"strings"
 )
 
 func EditCreativeHanlder(c *gin.Context) {
@@ -16,7 +18,14 @@ func EditCreativeHanlder(c *gin.Context) {
 	if Check(req.OnlineStatus == 0 && req.Id == 0, `Invalid param`, c) {
 		return
 	}
-	_, _, err := db.Query("UPDATE tmm.creatives SET online_status = %d WHERE id = %d", req.OnlineStatus, req.Id)
+	var SetList []string
+	if req.OnlineStatus != 0 {
+		SetList = append(SetList, fmt.Sprintf(" online_status = %d ", req.OnlineStatus))
+	}
+	if req.EndDate != "" {
+		SetList = append(SetList, fmt.Sprintf(" end_date = '%s' ", db.Escape(req.EndDate)))
+	}
+	_, _, err := db.Query("UPDATE tmm.creatives SET %s WHERE id = %d", strings.Join(SetList, " , "), req.Id)
 	if CheckErr(err, c) {
 		return
 	}

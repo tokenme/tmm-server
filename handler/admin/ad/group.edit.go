@@ -13,6 +13,7 @@ type EditRequest struct {
 	Id           int    `form:"id"`
 	Title        string `form:"title"`
 	OnlineStatus int    `form:"online_status"`
+	EndDate 	 string `form:"end_date"`
 }
 
 func EditGroupHanler(c *gin.Context) {

@@ -11,6 +11,12 @@ import (
 	"github.com/tokenme/tmm/handler/admin"
 )
 
+type ReturnData struct {
+	AdGroup   AdGroup   `json:"ad_group"`
+	Creatives Creatives `json:"creatives"`
+	Adzone    Adzone    `json:"adzone"`
+}
+
 func CreativeListHandler(c *gin.Context) {
 	db := Service.Db
 	online, err := strconv.Atoi(c.DefaultQuery(`online`, "0"))
@@ -100,14 +106,9 @@ OFFSET %d `
 	if Check(len(rows) == 0, `not found`, c) {
 		return
 	}
-	var list []*Adzone
+	var list []*Creatives
 	for _, row := range rows {
-		adzone := &Adzone{}
-		adzone.Id = row.Uint64(res.Map(`adz_id`))
-		adzone.Summery = row.Str(res.Map(`summary`))
-		adzone.Group.Title = row.Str(res.Map(`group_title`))
-		adzone.Group.Id = row.Uint64(res.Map(`group_id`))
-		adzone.Group.Creatives = Creatives{
+		creatives := &Creatives{
 			InsertAt:     row.Str(res.Map(`inserted_at`)),
 			StartDate:    row.Str(res.Map(`start_date`)),
 			EndDate:      row.Str(res.Map(`end_date`)),
@@ -115,46 +116,51 @@ OFFSET %d `
 			OnlineStatus: row.Int(res.Map(`online_status`)),
 			Platform:     row.Int(res.Map(`platform`)),
 		}
-		adzone.Group.Creatives.Img = row.Int(res.Map(`imp`))
-		adzone.Group.Creatives.Click = row.Int(res.Map(`cik`))
-		adzone.Group.Creatives.Id = row.Uint64(res.Map(`id`))
-		adzone.Group.Creatives.Title = row.Str(res.Map(`title`))
-		adzone.Group.Creatives.Image = row.Str(res.Map(`image`))
-		adzone.Group.Creatives.Link = row.Str(res.Map(`link`))
-		list = append(list, adzone)
+		creatives.Img = row.Int(res.Map(`imp`))
+		creatives.Click = row.Int(res.Map(`cik`))
+		creatives.Id = row.Uint64(res.Map(`id`))
+		creatives.Title = row.Str(res.Map(`title`))
+		creatives.Image = row.Str(res.Map(`image`))
+		creatives.Link = row.Str(res.Map(`link`))
+		creatives.Adzone.Id = row.Uint64(res.Map(`adz_id`))
+		creatives.Adzone.Summery = row.Str(res.Map(`summary`))
+		creatives.AdGroup.Title = row.Str(res.Map(`group_title`))
+		creatives.AdGroup.Id = row.Uint64(res.Map(`group_id`))
+		creatives.Click = row.Int(res.Map(`cik`))
+		list = append(list, creatives)
 	}
 
 	groupImpClick := make(map[uint64]*Data)
 	adzoneImpClick := make(map[uint64]*Data)
-	for _, adzone := range list {
-		creat := adzone.Group.Creatives
-		if data, ok := groupImpClick[adzone.Group.Id]; ok {
+	for _, creatives := range list {
+		creat := creatives
+		if data, ok := groupImpClick[creat.AdGroup.Id]; ok {
 			data.Click += creat.Click
 			data.Img += creat.Img
-			groupImpClick[adzone.Group.Id] = data
+			groupImpClick[creat.AdGroup.Id] = data
 		} else {
-			groupImpClick[adzone.Group.Id] = &Data{
+			groupImpClick[creat.AdGroup.Id] = &Data{
 				Click: creat.Click,
 				Img:   creat.Img,
 			}
 		}
-		if data, ok := adzoneImpClick[adzone.Id]; ok {
+		if data, ok := adzoneImpClick[creat.Adzone.Id]; ok {
 			data.Click += creat.Click
 			data.Img += creat.Img
-			adzoneImpClick[adzone.Id] = data
+			adzoneImpClick[creat.Adzone.Id] = data
 		} else {
-			adzoneImpClick[adzone.Id] = &Data{
+			adzoneImpClick[creat.Adzone.Id] = &Data{
 				Click: creat.Click,
 				Img:   creat.Img,
 			}
 		}
 	}
 
-	for _, adzone := range list {
-		adzone.Img = adzoneImpClick[adzone.Id].Img
-		adzone.Click = adzoneImpClick[adzone.Id].Click
-		adzone.Group.Click = groupImpClick[adzone.Group.Id].Click
-		adzone.Group.Img = groupImpClick[adzone.Group.Id].Img
+	for _, creat := range list {
+		creat.Adzone.Img = adzoneImpClick[creat.Adzone.Id].Img
+		creat.Adzone.Click = adzoneImpClick[creat.Adzone.Id].Click
+		creat.AdGroup.Click = groupImpClick[creat.AdGroup.Id].Click
+		creat.AdGroup.Img = groupImpClick[creat.AdGroup.Id].Img
 	}
 	rows, _, err = db.Query(`SELECT COUNT(1) FROM tmm.creatives AS creat  
 	INNER JOIN tmm.adgroups AS adg ON (adg.id = creat.adgroup_id)
