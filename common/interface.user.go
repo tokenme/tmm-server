@@ -121,7 +121,7 @@ WHERE EXISTS (
         1
     FROM tmm.wx AS wx
     INNER JOIN tmm.user_settings AS us ON (us.user_id=wx.user_id)
-    WHERE us.blocked=1 AND wx.open_id=ws.open_id LIMIT 1
+    WHERE us.blocked=1 AND wx.open_id=ws.open_id AND wx.user_id!=ws.user_id LIMIT 1
 ) AND ws.user_id=%d`
 	rows, _, err := db.Query(query, this.Id, this.Id)
 	if err != nil {

@@ -102,7 +102,7 @@ ON DUPLICATE KEY UPDATE blocked=VALUES(blocked);`
 	query = `INSERT INTO tmm.user_settings (user_id, blocked)
 SELECT DISTINCT d.user_id, 1 FROM tmm.devices AS d
 WHERE
-    NOT EXISTS(SELECT 1 FROM tmm.device_apps AS da WHERE da.device_id=d.id LIMIT 1)
+    (NOT EXISTS(SELECT 1 FROM tmm.device_apps AS da WHERE da.device_id=d.id LIMIT 1) OR d.system_version IS NULL)
     AND NOT EXISTS(SELECT 1 FROM tmm.user_settings AS us WHERE us.user_id=d.user_id AND us.blocked=1 AND us.block_whitelist=0 LIMIT 1)
     AND d.user_id>0
 ON DUPLICATE KEY UPDATE blocked=VALUES(blocked)`
@@ -121,7 +121,7 @@ WHERE EXISTS (
         1
     FROM tmm.wx AS wx
     INNER JOIN tmm.user_settings AS us ON (us.user_id=wx.user_id)
-    WHERE us.blocked=1 AND wx.open_id=ws.open_id LIMIT 1
+    WHERE us.blocked=1 AND wx.open_id=ws.open_id AND wx.user_id!=ws.user_id LIMIT 1
 ) AND NOT EXISTS (SELECT 1 FROM tmm.user_settings AS us WHERE us.user_id=ws.user_id AND us.blocked=1 AND us.block_whitelist=0 LIMIT 1)
 ON DUPLICATE KEY UPDATE blocked=VALUES(blocked)`
 	_, _, err = db.Query(query)
