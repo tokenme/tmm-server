@@ -48,7 +48,8 @@ LIMIT 1`
 		log.Error("Share Imp Not found")
 		return
 	}
-	row := rows[0]
+
+    row := rows[0]
 	bonus, _ := decimal.NewFromString(row.Str(6))
 	points, _ := decimal.NewFromString(row.Str(7))
 	pointsLeft, _ := decimal.NewFromString(row.Str(8))
@@ -67,17 +68,31 @@ LIMIT 1`
 		task.Link = strings.Replace(task.Link, "https://tmm.tokenmama.io/article/show", "https://static.tianxi100.com/article/show", -1)
 	}
 
+    trackId := c.Query("track_id")
+    var openid string
+    if len(trackId) > 0 && trackId != "null" {
+        cryptOpenid, err := common.DecodeCryptOpenid([]byte(Config.YktApiSecret), trackId)
+        if CheckErr(err, c) {
+            log.Error("Decrypt track id error")
+        } else {
+            openid = cryptOpenid.Openid
+        }
+    }
+
 	userViewers := row.Uint(9)
 	var (
 		cookieFound = false
 		ipFound     = false
+        openidFound = false
 	)
 	if _, err := c.Cookie(task.CookieKey()); err == nil {
 		log.Warn("Share Imp Cookie Found")
 		cookieFound = true
 	}
+
 	ipInfo := ClientIP(c)
 	ipKey := task.IpKey(ipInfo)
+    openidKey := task.OpenidKey(openid)
 	{
 		redisConn := Service.Redis.Master.Get()
 		defer redisConn.Close()
@@ -86,7 +101,15 @@ LIMIT 1`
 			log.Warn("Share Imp IP Found: %s, time: %s", ipKey, ipV)
 			ipFound = true
 		}
-		if !cookieFound && !ipFound && (task.PointsLeft.GreaterThanOrEqual(bonus) && task.MaxViewers > userViewers) {
+        if len(openid) > 0 {
+            openidV, err := redis.String(redisConn.Do("GET", openidKey))
+            if err == nil {
+                log.Warn("Share Imp Openid Found: %s, time: %s", openidKey, openidV)
+                openidFound = true
+            }
+        }
+
+		if !cookieFound && !ipFound && !openidFound && (task.PointsLeft.GreaterThanOrEqual(bonus) && task.MaxViewers > userViewers) {
 			log.Info("Share Imp Task: %d, Device: %s", taskId, deviceId)
 			_, _, err := db.Query(`INSERT IGNORE INTO tmm.device_share_tasks (device_id, task_id) VALUES ('%s', %d)`, db.Escape(deviceId), taskId)
 			if err == nil {
@@ -124,6 +147,12 @@ LIMIT 1`
 				if err != nil {
 					log.Error(err.Error())
 				}
+                if len(openid) > 0 {
+                    _ ,err = redisConn.Do("SETEX", openidKey, 60*60*24*30, time.Now().Format("2006-01-02 15:04:05"))
+                    if err != nil {
+                        log.Error(err.Error())
+                    }
+                }
 				query = `SELECT id, inviter_id, user_id FROM
 (SELECT
 d.id,

@@ -22,14 +22,14 @@ const (
 
 type ShareData struct {
 	Task       common.ShareTask
-    OpenId     string
+    TrackId    string
 	IsIOS      bool
 	InviteLink string
 	ImpLink    string
 }
 
 func ShareHandler(c *gin.Context) {
-    openId := c.DefaultQuery("openid", "null")
+    trackId := c.DefaultQuery("track_id", "null")
 	taskId, deviceId, err := common.DecryptShareTaskLink(c.Param("encryptedTaskId"), c.Param("encryptedDeviceId"), Config)
 	if CheckErr(err, c) {
 		return
@@ -72,9 +72,14 @@ LIMIT 1`
 		log.Error(err.Error())
 	} else {
 		client := parser.Parse(c.Request.UserAgent())
-        if (strings.Contains(strings.ToLower(client.Os.Family), "ios") || strings.Contains(strings.ToLower(client.Os.Family), "android")) && strings.Contains(strings.ToLower(c.Request.UserAgent()), "micromessenger") && openId == "null" {
+        if (strings.Contains(strings.ToLower(client.Os.Family), "ios") || strings.Contains(strings.ToLower(client.Os.Family), "android")) && strings.Contains(strings.ToLower(c.Request.UserAgent()), "micromessenger") && trackId == "null" {
             wxAuthUrl := url.QueryEscape(WX_AUTH_URL)
-            wxRedirectUrl := url.QueryEscape(fmt.Sprintf("%s%s?openid=___OPENID___", Config.BaseUrl, c.Request.URL.String()))
+            shareUri := c.Request.URL.String()
+            symbol := "?"
+            if strings.Contains(shareUri, "?") {
+                symbol = "&"
+            }
+            wxRedirectUrl := url.QueryEscape(fmt.Sprintf("%s%s%strack_id=___OPENID___", Config.BaseUrl, shareUri, symbol))
             redirectUrl := fmt.Sprintf(WX_AUTH_GATEWAY, Config.Wechat.AppId, wxAuthUrl, wxRedirectUrl)
             c.Redirect(http.StatusFound, redirectUrl)
             return
@@ -107,7 +112,7 @@ LIMIT 1`
 	impLink, _ := task.GetShareImpLink(deviceId, Config)
 	c.HTML(http.StatusOK, "share.tmpl", ShareData{
 		Task:       task,
-        OpenId:     openId,
+        TrackId:    trackId,
 		IsIOS:      isIOS,
 		InviteLink: fmt.Sprintf("https://tmm.tokenmama.io/invite/%s", inviteCode.Encode()),
 		ImpLink:    impLink})
