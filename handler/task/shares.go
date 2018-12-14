@@ -76,7 +76,7 @@ func SharesHandler(c *gin.Context) {
 	if req.Cid > 0 {
 		inCidConstrain = fmt.Sprintf("INNER JOIN tmm.share_task_categories AS stc ON (stc.task_id=st.id AND stc.cid=%d)", req.Cid)
 	} else if !req.MineOnly && !req.IsVideo {
-		taskIds = SuggestEngine.Match(user.Id, req.Page, req.PageSize)
+		//taskIds = SuggestEngine.Match(user.Id, req.Page, req.PageSize)
 	}
 	if len(taskIds) > 0 {
 		var tids []string
@@ -212,8 +212,8 @@ func getCreatives(cid uint, page uint, platform string) (map[int][]*common.Adgro
 				Link:       row.Str(3),
 				Width:      row.Uint(4),
 				Height:     row.Uint(5),
-                ShareImage: row.Str(7),
-                Title:      row.Str(8),
+				ShareImage: row.Str(7),
+				Title:      row.Str(8),
 			}
 			creativeCode, err := creative.Code([]byte(Config.LinkSalt))
 			if err != nil {

@@ -46,12 +46,12 @@ func InitHandler(s *common.Service, c common.Config) {
 
 func Start() {
 	//BlowupService.Start()
-	go SuggestEngine.Start()
+	//go SuggestEngine.Start()
 }
 
 func Close() {
 	//BlowupService.Stop()
-	SuggestEngine.Stop()
+	//SuggestEngine.Stop()
 }
 
 type APIResponse struct {

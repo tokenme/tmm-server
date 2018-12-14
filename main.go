@@ -250,9 +250,6 @@ func main() {
 		return
 	}
 
-	handler.InitHandler(service, config)
-	handler.Start()
-
 	gcHandler := gc.New(service, config)
 	if config.EnableGC {
 		go gcHandler.Start()
@@ -298,6 +295,8 @@ func main() {
 	//}
 
 	if config.EnableWeb {
+		handler.InitHandler(service, config)
+		handler.Start()
 		if config.Debug {
 			gin.SetMode(gin.DebugMode)
 		} else {
@@ -336,7 +335,9 @@ func main() {
 	//		queue.Stop()
 	//	}
 	//}
-	handler.Close()
+	if config.EnableWeb {
+		handler.Close()
+	}
 	gcHandler.Stop()
 	/*
 		if config.EnableOrderBook {
@@ -344,7 +345,7 @@ func main() {
 		}
 	*/
 	if config.EnableTokenWithdraw {
-		go tokenWithdraw.Stop()
+		tokenWithdraw.Stop()
 	}
 	//transferWatcher.Stop()
 }

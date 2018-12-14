@@ -63,17 +63,20 @@ func NewEngine(service *common.Service, config common.Config) *Engine {
 
 func (this *Engine) Start() {
 	this.Gse.LoadDict(this.config.GseDict)
+	log.Println("Loading Weighter")
 	this.weighter.Load(this.config.ArticleClassifierTFIDF)
+	log.Println("Weighter Loaded")
 	taskTicker := time.NewTicker(3 * time.Hour)
 	logTicker := time.NewTicker(1 * time.Hour)
-	this.getTasks()
-	this.getLogs()
+	log.Println("SuggestEngine Started")
+	go this.getTasks()
+	go this.getLogs()
 	for {
 		select {
 		case <-taskTicker.C:
-			this.getTasks()
+			go this.getTasks()
 		case <-logTicker.C:
-			this.getLogs()
+			go this.getLogs()
 		case <-this.exitCh:
 			taskTicker.Stop()
 			logTicker.Stop()
@@ -226,6 +229,8 @@ func (this *Engine) getUserReadIds(userId uint64) map[uint64]struct{} {
 }
 
 func (this *Engine) getLogs() {
+	log.Println("SuggestEngine getting Logs")
+	defer log.Println("SuggestEngine got Logs")
 	var (
 		db        = this.service.Db
 		startTime string
@@ -353,6 +358,8 @@ func (this *Engine) getLogs() {
 }
 
 func (this *Engine) getTasks() {
+	log.Println("SuggestEngine getting Tasks")
+	defer log.Println("SuggestEngine got Tasks")
 	db := this.service.Db
 	rows, _, err := db.Query(`SELECT
     st.id,
@@ -389,6 +396,8 @@ ORDER BY st.bonus DESC, st.id DESC LIMIT 5000`)
 		tasks = append(tasks, task)
 		if !strings.Contains(link, "https://tmm.tokenmama.io/article/show/") {
 			continue
+		} else {
+			task.Gravity = 0
 		}
 		idStr := strings.Replace(link, "https://tmm.tokenmama.io/article/show/", "", -1)
 		id, err := strconv.ParseUint(idStr, 10, 64)
