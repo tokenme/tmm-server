@@ -16,8 +16,8 @@ type AppsRequest struct {
 	Page     uint            `json:"page" form:"page"`
 	PageSize uint            `json:"page_size" form:"page_size"`
 	Idfa     string          `json:"idfa" form:"idfa"`
-    Imei     string          `json:"imei" form:"imei"`
-    Mac      string          `json:"mac" form:"mac"`
+	Imei     string          `json:"imei" form:"imei"`
+	Mac      string          `json:"mac" form:"mac"`
 	Platform common.Platform `json:"platform" form:"platform" binding:"required"`
 	MineOnly bool            `json:"mine_only" form:"mine_only"`
 }
@@ -41,12 +41,12 @@ func AppsHandler(c *gin.Context) {
 	}
 
 	device := common.DeviceRequest{
-		Idfa:     req.Idfa,
-        Imei:     req.Imei,
-        Mac:      req.Mac,
+		Idfa: req.Idfa,
+		Imei: req.Imei,
+		Mac:  req.Mac,
 	}
 	deviceId := device.DeviceId()
-    if Check(len(deviceId) == 0, "not found", c) {
+	if Check(len(deviceId) == 0, "not found", c) {
 		return
 	}
 
@@ -91,26 +91,26 @@ ORDER BY %s LIMIT %d, %d`
 		pointsLeft, _ := decimal.NewFromString(row.Str(7))
 		creator := row.Uint64(11)
 		task := common.AppTask{
-			Id:             row.Uint64(0),
-			Platform:       row.Str(1),
-			Name:           row.Str(2),
-			BundleId:       row.Str(3),
-			StoreId:        row.Uint64(4),
-			Bonus:          bonus,
-			Points:         points,
-			PointsLeft:     pointsLeft,
-			InsertedAt:     row.ForceLocaltime(9).Format(time.RFC3339),
-			UpdatedAt:      row.ForceLocaltime(10).Format(time.RFC3339),
-			SchemeId:       row.Uint64(12),
-            DownloadUrl:    row.Str(14),
-            Icon:           row.Str(15),
+			Id:          row.Uint64(0),
+			Platform:    row.Str(1),
+			Name:        row.Str(2),
+			BundleId:    row.Str(3),
+			StoreId:     row.Uint64(4),
+			Bonus:       bonus,
+			Points:      points,
+			PointsLeft:  pointsLeft,
+			InsertedAt:  row.ForceLocaltime(9).Format(time.RFC3339),
+			UpdatedAt:   row.ForceLocaltime(10).Format(time.RFC3339),
+			SchemeId:    row.Uint64(12),
+			DownloadUrl: row.Str(14),
+			Icon:        row.Str(15),
 		}
 		if creator == user.Id {
 			task.Downloads = row.Uint(8)
 			task.Creator = creator
 			task.OnlineStatus = int8(row.Int(13))
 		}
-		if task.Icon == "" && task.StoreId == 0 {
+		if task.Icon == "" && task.Platform == common.IOS {
 			lookup, err := common.App{BundleId: task.BundleId}.LookUp(Service)
 			if err == nil {
 				task.StoreId = lookup.TrackId

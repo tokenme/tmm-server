@@ -39,6 +39,7 @@ func SdksHandler(c *gin.Context) {
     a.store_id,
     a.app_version,
     a.build_version,
+    a.icon,
     a.total_ts,
     a.tmm
 FROM tmm.apps AS a
@@ -49,7 +50,7 @@ WHERE a.platform='%s' AND a.is_active=1 ORDER BY a.total_ts DESC LIMIT %d, %d`
 	}
 	var apps []common.App
 	for _, row := range rows {
-		tmmBalance, _ := decimal.NewFromString(row.Str(8))
+		tmmBalance, _ := decimal.NewFromString(row.Str(9))
 		app := common.App{
 			Id:           row.Str(0),
 			Platform:     row.Str(1),
@@ -58,11 +59,12 @@ WHERE a.platform='%s' AND a.is_active=1 ORDER BY a.total_ts DESC LIMIT %d, %d`
 			StoreId:      row.Uint64(4),
 			Version:      row.Str(5),
 			BuildVersion: row.Str(6),
-			Ts:           row.Uint64(7),
+			Icon:         row.Str(7),
+			Ts:           row.Uint64(8),
 			TMMBalance:   tmmBalance,
 		}
 		app.GrowthFactor, _ = app.GetGrowthFactor(Service)
-		if app.StoreId == 0 {
+		if app.Icon == "" && app.Platform == common.IOS {
 			lookup, err := app.LookUp(Service)
 			if err == nil {
 				app.StoreId = lookup.TrackId
