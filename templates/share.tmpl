@@ -46,9 +46,13 @@ var _mtac = {};
   var tmmImg = '{{ .ImpLink }}?track_id={{ .TrackId }}';
   {{ if .Task.InIframe }}
   var targetLink = false;
-  {{ else }}
+  {{ else if .ValidTrack }}
   var targetLink = '{{ .Task.Link }}';
+  {{ else }}
+  window.location = '{{ .Task.Link }}';
   {{ end }}
 </script>
+{{ if .ValidTrack }}
 <script src="https://ucoin.tianxi100.com/ucoin-share.js"></script>
+{{ end }}
 </html>

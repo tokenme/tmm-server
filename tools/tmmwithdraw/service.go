@@ -153,11 +153,15 @@ func (this *Service) CheckExchangeRecords(ctx context.Context) error {
 
 func (this *Service) WechatPay() error {
 	db := this.service.Db
-	rows, _, err := db.Query(`SELECT wt.tx, wt.cny, wt.client_ip, oi.open_id, wt.user_id FROM tmm.withdraw_txs AS wt INNER JOIN tmm.wx AS wx ON (wx.user_id=wt.user_id) INNER JOIN tmm.wx_openids AS oi ON (oi.union_id=wx.union_id AND oi.app_id='%s') WHERE wt.tx_status=1 AND wt.withdraw_status=2 ORDER BY wt.inserted_at ASC LIMIT 1000`, db.Escape(this.config.Wechat.AppId))
+	rows, _, err := db.Query(`SELECT wt.tx, wt.cny, wt.client_ip, oi.open_id, wt.user_id FROM tmm.withdraw_txs AS wt INNER JOIN tmm.wx AS wx ON (wx.user_id=wt.user_id) INNER JOIN tmm.wx_openids AS oi ON (oi.union_id=wx.union_id AND oi.app_id='%s') WHERE wt.tx_status=1 AND wt.withdraw_status=2 AND NOT EXISTS(SELECT 1 FROM tmm.user_settings AS us WHERE us.user_id=wx.user_id AND us.blocked=1 AND us.block_whitelist=0 LIMIT 1) ORDER BY wt.inserted_at ASC LIMIT 1000`, db.Escape(this.config.Wechat.AppId))
 	if err != nil {
 		log.Error(err.Error())
 		return err
 	}
+	if len(rows) == 0 {
+		return nil
+	}
+	log.Info("WechatPay %d Accounts", len(rows))
 	for _, row := range rows {
 		txHex := row.Str(0)
 		cny, err := decimal.NewFromString(row.Str(1))
@@ -193,6 +197,7 @@ func (this *Service) WechatPay() error {
 			log.Error(payRes.ErrCodeDesc)
 			continue
 		}
+		log.Info("Transferred %d CNY to Account:%d", payParams.Amount, userId)
 		_, _, err = db.Query(`UPDATE tmm.withdraw_txs SET withdraw_status=1, trade_num='%s' WHERE tx='%s' AND withdraw_status=2`, db.Escape(tradeNum), db.Escape(txHex))
 		if err != nil {
 			log.Error(err.Error())
@@ -276,5 +281,5 @@ func (this *Service) PushMsg(userId uint64, cny decimal.Decimal) {
 	body, _ := ioutil.ReadAll(rsp.Body)
 	var r xinge.CommonRsp
 	json.Unmarshal(body, r)
-	log.Info("%+v", r)
+	log.Info("Code:%d, %+v", rsp.StatusCode, r)
 }

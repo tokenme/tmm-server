@@ -92,9 +92,12 @@ func giveDailyInterests(c *gin.Context, user common.User) (origin decimal.Decima
 	}
 	origin = decimal.NewFromBigInt(balance, -1*int32(tokenDecimal))
 	interests = origin.Mul(decimal.NewFromFloat(Config.DailyTMMInterestsRate))
+	maxInsterests := decimal.New(1, 2)
 	if interests.LessThanOrEqual(decimal.New(1, -4)) {
 		log.Error("Interests: %s", interests.String())
 		return
+	} else if interests.GreaterThanOrEqual(maxInsterests) {
+		interests = maxInsterests
 	}
 
 	tmmInt := interests.Mul(decimal.New(1, int32(tokenDecimal)))

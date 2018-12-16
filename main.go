@@ -364,6 +364,6 @@ func addArticles(addArticlesCh chan<- struct{}, service *common.Service, config 
 		return
 	}
 	classifier.ClassifyDocs()
-	time.Sleep(12 * time.Hour)
+	time.Sleep(6 * time.Hour)
 	addArticlesCh <- struct{}{}
 }

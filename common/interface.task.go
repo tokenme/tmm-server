@@ -27,6 +27,7 @@ type ShareTask struct {
 	OnlineStatus  int8            `json:"online_status,omitempty"`
 	IsVideo       uint8           `json:"is_video,omitempty"`
 	InIframe      bool            `json:"-"`
+	TimelineOnly  bool            `json:"-"`
 	ShowBonusHint bool            `json:"show_bonus_hint,omitempty"`
 	Creative      *Creative       `json:"creative,omitempty"`
 	Cid           []int           `json:"cid,omitempty"`
@@ -121,8 +122,8 @@ type TaskRecord struct {
 }
 
 type CryptOpenid struct {
-	Openid    string `json:"openid"`
-	Ts        int64  `json:"ts"`
+	Openid string `json:"openid"`
+	Ts     int64  `json:"ts"`
 }
 
 func (this CryptOpenid) Encode(key []byte) (string, error) {
