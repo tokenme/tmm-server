@@ -125,7 +125,7 @@ ORDER BY d.lastping_at DESC LIMIT 1) AS t2`
 			return
 		}
 		var (
-			inviterBonus = bonus.Mul(decimal.NewFromFloat(bonusRate))
+			inviterBonus = bonus.Mul(decimal.NewFromFloat(bonusRate * Config.InviteBonusRate))
 			deviceIds    []string
 			insertLogs   []string
 		)

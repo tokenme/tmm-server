@@ -29,8 +29,6 @@ func DycdpListHandler(c *gin.Context) {
 	if CheckWithCode(user.CountryCode != 86, INVALID_CDP_VENDOR_ERROR, "the cdp vendor not supported", c) {
 		return
 	}
-	c.JSON(http.StatusOK, nil)
-	return
 
 	phone, err := phonedata.Find(strings.TrimSpace(user.Mobile))
 	if CheckErr(err, c) {

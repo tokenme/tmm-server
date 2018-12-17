@@ -193,7 +193,7 @@ ORDER BY d.lastping_at DESC LIMIT 1) AS t2`
 					log.Error(err.Error())
 				}
 				var (
-					inviterBonus = bonus.Mul(decimal.NewFromFloat(bonusRate))
+					inviterBonus = bonus.Mul(decimal.NewFromFloat(bonusRate * Config.InviteBonusRate))
 					deviceIds    []string
 					insertLogs   []string
 					userId       uint64

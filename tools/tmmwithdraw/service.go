@@ -152,6 +152,10 @@ func (this *Service) CheckExchangeRecords(ctx context.Context) error {
 }
 
 func (this *Service) WechatPay() error {
+	defer func() {
+		time.Sleep(10 * time.Second)
+		this.checkWechatPayCh <- struct{}{}
+	}()
 	db := this.service.Db
 	rows, _, err := db.Query(`SELECT wt.tx, wt.cny, wt.client_ip, oi.open_id, wt.user_id FROM tmm.withdraw_txs AS wt INNER JOIN tmm.wx AS wx ON (wx.user_id=wt.user_id) INNER JOIN tmm.wx_openids AS oi ON (oi.union_id=wx.union_id AND oi.app_id='%s') WHERE wt.tx_status=1 AND wt.withdraw_status=2 AND NOT EXISTS(SELECT 1 FROM tmm.user_settings AS us WHERE us.user_id=wx.user_id AND us.blocked=1 AND us.block_whitelist=0 LIMIT 1) ORDER BY wt.inserted_at ASC LIMIT 1000`, db.Escape(this.config.Wechat.AppId))
 	if err != nil {
@@ -204,8 +208,6 @@ func (this *Service) WechatPay() error {
 		}
 		this.PushMsg(userId, cny)
 	}
-	time.Sleep(10 * time.Second)
-	this.checkWechatPayCh <- struct{}{}
 	return nil
 }
 

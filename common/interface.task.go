@@ -26,6 +26,7 @@ type ShareTask struct {
 	UpdatedAt     string          `json:"updated_at,omitempty"`
 	OnlineStatus  int8            `json:"online_status,omitempty"`
 	IsVideo       uint8           `json:"is_video,omitempty"`
+	IsTask        bool            `json:"is_task,omitempty"`
 	InIframe      bool            `json:"-"`
 	TimelineOnly  bool            `json:"-"`
 	ShowBonusHint bool            `json:"show_bonus_hint,omitempty"`

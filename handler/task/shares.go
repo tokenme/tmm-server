@@ -162,6 +162,8 @@ ORDER BY %s %s`
 		}
 		if strings.HasPrefix(task.Link, "https://tmm.tokenmama.io/article/show") {
 			task.Link = strings.Replace(task.Link, "https://tmm.tokenmama.io/article/show", "https://static.tianxi100.com/article/show", -1)
+		} else {
+			task.IsTask = true
 		}
 		if creator == user.Id {
 			task.Viewers = row.Uint(9)
