@@ -28,6 +28,8 @@ type Creatives struct {
 	ShareImage   string  `json:"share_image,omitempty"`
 	AdGroup      AdGroup `json:"ad_group,omitempty"`
 	Adzone       Adzone  `json:"adzone,omitempty"`
+	AdMode       string  `json:"ad_mode"`
+	AdIncome     string  `json:"ad_income"`
 	common.Creative
 	Data
 }
@@ -43,7 +45,7 @@ type Adzone struct {
 }
 
 type Data struct {
-	Img   int `json:"img,omitempty"`
+	Imp   int `json:"impress,omitempty"`
 	Click int `json:"click,omitempty"`
 }
 
@@ -67,7 +69,7 @@ func AddGroupsHandler(c *gin.Context) {
 		return
 	}
 	if len(rows) == 0 {
-		summary := fmt.Sprintf("文章%s%d刷%d", req.ChannelName, req.Page, req.Location)
+		summary := fmt.Sprintf("文章%s-%d刷-%d", req.ChannelName, req.Page, req.Location)
 		_, res, err := db.Query(`INSERT INTO tmm.adzones(summary,cid,page,idx) VALUES('%s',%d,%d,%d)`, db.Escape(summary), req.ChannelId, req.Page, req.Location)
 		if CheckErr(err, c) {
 			return

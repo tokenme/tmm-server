@@ -8,7 +8,8 @@ import (
 type Adgroup struct {
 	Id           uint64      `json:"id"`
 	OnlineStatus int         `json:"online_status"`
-	Adzone       *Adzone     `json:"-"`
+	//Adzone       *Adzone     `json:"-"`
+	Adzone       *Adzone `json:"adzone"`
 	Creatives    []*Creative `json:"creatives"`
 	Title        string      `json:"title"`
 }

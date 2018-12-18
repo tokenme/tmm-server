@@ -11,7 +11,7 @@ import (
 func AdzoneListHandler(c *gin.Context) {
 	db := Service.Db
 
-	query := `SELECT id,summary FROM tmm.adzones ORDER BY id `
+	query := `SELECT id,summary FROM tmm.adzones ORDER BY id DESC `
 	var list []*common.Adzone
 	rows, _, err := db.Query(query)
 	if CheckErr(err, c) {

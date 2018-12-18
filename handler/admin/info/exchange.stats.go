@@ -61,7 +61,7 @@ FROM (
 		user_id
 ) AS tmp ,ucoin.users AS us
 LEFT JOIN tmm.wx AS wx ON (wx.user_id = us.id)
-	WHERE tmp.user_id = us.id
+	WHERE tmp.user_id = us.id AND NOT EXISTS  (SELECT 1 FROM user_settings AS us  WHERE us.blocked= 1 AND us.user_id=us.id AND us.block_whitelist=0  LIMIT 1)
 	ORDER BY tmm DESC
 %s
 `

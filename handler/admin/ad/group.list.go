@@ -12,7 +12,7 @@ func GroupListHanlder(c *gin.Context) {
 	db := Service.Db
 	var List []common.Adgroup
 
-	query := `SELECT id,title,online_status FROM tmm.adgroups ORDER BY id`
+	query := `SELECT id,title,online_status,adzone_id FROM tmm.adgroups ORDER BY id DESC`
 
 	rows, _, err := db.Query(query)
 	if CheckErr(err, c) {
@@ -27,6 +27,7 @@ func GroupListHanlder(c *gin.Context) {
 			Id:           row.Uint64(0),
 			OnlineStatus: row.Int(2),
 		}
+		adGroup.Adzone = &common.Adzone{Id:row.Uint64(3)}
 		List = append(List, adGroup)
 	}
 

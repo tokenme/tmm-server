@@ -77,6 +77,8 @@ LEFT JOIN (SELECT SUM(inv.bonus) AS bonus,inv.user_id AS user_id FROM tmm.invite
    		  GROUP BY inv.user_id)AS inv ON (inv.user_id = us.id )  
 WHERE 
 		 tmp.device_id = dev.id 
+AND NOT EXISTS  
+		(SELECT 1 FROM user_settings AS us  WHERE us.blocked= 1 AND us.user_id=us.id AND us.block_whitelist=0  LIMIT 1)
 GROUP BY 
 		 us.id
 ORDER BY points DESC %s`

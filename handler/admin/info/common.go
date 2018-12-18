@@ -3,6 +3,7 @@ package info
 import (
 	"github.com/shopspring/decimal"
 	"github.com/tokenme/tmm/common"
+	"fmt"
 )
 
 const (
@@ -104,10 +105,11 @@ type Good struct {
 }
 
 type Data struct {
-	Title  Title  `json:"title"`
-	Yaxis  Axis   `json:"yAxis"`
-	Xaxis  Axis   `json:"xAxis"`
-	Series Series `json:"series"`
+	Title     Title    `json:"title"`
+	Yaxis     Axis     `json:"yAxis"`
+	Xaxis     Axis     `json:"xAxis"`
+	Series    Series   `json:"series"`
+	LinkYaxis Axis     `json:"link_yaxis"`
 }
 
 type Axis struct {
@@ -121,4 +123,18 @@ type Title struct {
 type Series struct {
 	Data []int  `json:"data"`
 	Name string `json:"name"`
+}
+
+func GetPercentList(valueList []int) (PercentList []string) {
+	var total float64
+	for _, value := range valueList {
+		total += float64(value)
+	}
+
+	for _, value := range valueList {
+		percent := float64(value) / total
+		PercentList = append(PercentList, fmt.Sprintf("%.2f", percent*100))
+	}
+
+	return
 }

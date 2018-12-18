@@ -15,7 +15,7 @@ func AddCreativeHandler(c *gin.Context) {
 	if CheckErr(c.Bind(&creat), c) {
 		return
 	}
-	if Check(creat.AdgroupId == 0 ||  creat.Platform != 1 && creat.Platform != 2  || creat.Title == "" || creat.Link == "" || creat.Image == "", `Invalid param`, c) {
+	if Check(creat.AdgroupId == 0 ||  creat.Platform != 1 && creat.Platform != 2 && creat.Platform != 0  || creat.Title == "" || creat.Link == "" || creat.Image == "", `Invalid param`, c) {
 		return
 	}
 
@@ -52,16 +52,16 @@ func AddCreativeHandler(c *gin.Context) {
 		valueList = append(valueList, fmt.Sprintf(" %d ", creat.Height))
 		fieldList = append(fieldList, fmt.Sprintf("height"))
 	}
-	if creat.Platform == 1 || creat.Platform == 2 {
+	if creat.Platform == 1 || creat.Platform == 2 || creat.Platform == 0 {
 		valueList = append(valueList, fmt.Sprintf(" %d ", creat.Platform))
 		fieldList = append(fieldList, fmt.Sprintf("platform"))
 	}
 	if creat.StartDate != "" {
-		valueList = append(valueList, fmt.Sprintf(" '%s' ", creat.StartDate))
+		valueList = append(valueList, fmt.Sprintf(" '%s' ", db.Escape(creat.StartDate)))
 		fieldList = append(fieldList, fmt.Sprintf("start_date"))
 	}
 	if creat.EndDate != "" {
-		valueList = append(valueList, fmt.Sprintf(" '%s' ", creat.EndDate))
+		valueList = append(valueList, fmt.Sprintf(" '%s' ", db.Escape(creat.EndDate)))
 		fieldList = append(fieldList, fmt.Sprintf("end_date"))
 	}
 

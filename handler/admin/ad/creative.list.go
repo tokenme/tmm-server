@@ -2,7 +2,6 @@ package ad
 
 import (
 	"github.com/gin-gonic/gin"
-	"strconv"
 	. "github.com/tokenme/tmm/handler"
 	"time"
 	"fmt"
@@ -17,52 +16,52 @@ type ReturnData struct {
 	Adzone    Adzone    `json:"adzone"`
 }
 
+type SearchOptions struct {
+	Online   int    `form:"online"`
+	AdzoneId int    `form:"adzoneId"`
+	GroupId  int    `form:"groupId"`
+	Page     int    `form:"page"`
+	PageSize int    `form:"page_size"`
+	Title    string `form:"title"`
+}
+
 func CreativeListHandler(c *gin.Context) {
 	db := Service.Db
-	online, err := strconv.Atoi(c.DefaultQuery(`online`, "0"))
-	if CheckErr(err, c) {
+	var req SearchOptions
+	if CheckErr(c.Bind(&req), c) {
 		return
 	}
-	adzoneId, err := strconv.Atoi(c.DefaultQuery(`adzoneId`, "-1"))
-	if CheckErr(err, c) {
-		return
-	}
-	adGroupId, err := strconv.Atoi(c.DefaultQuery(`groupId`, "-1"))
-	if CheckErr(err, c) {
-		return
-	}
-	page, err := strconv.Atoi(c.DefaultQuery(`page`, "0"))
-	if CheckErr(err, c) {
-		return
-	}
-	channelId, err := strconv.Atoi(c.DefaultQuery(`channelid`, "-1"))
-	if CheckErr(err, c) {
-		return
-	}
+	ChannelId := c.DefaultQuery(`channelid`, `-1`)
 	when := c.DefaultQuery(`when`, "")
 	if when == "" {
 		when = time.Now().AddDate(0, 0, -7).String()
 	}
 	var where []string
-	if online == 1 || online == -1 {
-		where = append(where, fmt.Sprintf(" AND creat.online_status = %d ", online))
+	if req.Online == 1 || req.Online == -1 {
+		where = append(where, fmt.Sprintf(" AND creat.online_status = %d ", req.Online))
 	}
-	if adzoneId != -1 {
-		where = append(where, fmt.Sprintf(" AND adz.id = %d ", adzoneId))
+	if req.AdzoneId != 0 {
+		where = append(where, fmt.Sprintf(" AND adz.id = %d ", req.AdzoneId))
 	}
-	if adGroupId != -1 {
-		where = append(where, fmt.Sprintf(" AND creat.adgroup_id = %d ", adGroupId))
+	if req.GroupId != 0 {
+		where = append(where, fmt.Sprintf(" AND creat.adgroup_id = %d ", req.GroupId))
 	}
-	if channelId != -1 {
-		where = append(where, fmt.Sprintf(" AND adz.cid = %d ", channelId))
+	if ChannelId != "-1" {
+		where = append(where, fmt.Sprintf(" AND adz.cid = %s ", db.Escape(ChannelId)))
 	}
-	var limit, offset int
-	if page == 0 {
-		limit = 10
+	if req.Title != "" {
+		where = append(where, fmt.Sprintf(" AND title like '%s%s'", db.Escape(req.Title), "%"))
+	}
+	var offset, limit int
+	if req.PageSize > 0 {
+		limit = req.PageSize
+	} else {
+		limit = 25
+	}
+	if req.Page <= 0 {
 		offset = 0
 	} else {
-		limit = 10
-		offset = 10 * page
+		offset = limit * (req.Page - 1)
 	}
 
 	query := `
@@ -77,6 +76,8 @@ SELECT
 	creat.updated_at AS updated,
 	creat.link AS link,
 	creat.platform AS platform,
+	creat.ad_mode AS mode,
+	creat.ad_income AS income,
 	stats.cik AS cik,
 	stats.imp AS imp,
 	adz.id AS adz_id,
@@ -93,7 +94,7 @@ LEFT JOIN (SELECT
 		   ON (stats.id = creat.id )
 INNER JOIN tmm.adgroups AS group_ ON (group_.id = creat.adgroup_id)
 INNER JOIN tmm.adzones AS  adz ON (adz.id = group_.adzone_id)
-WHERE 1 = 1 %s
+WHERE 1 = 1 %s 
 ORDER BY adz.id,stats.imp DESC
 LIMIT  %d 
 OFFSET %d `
@@ -103,7 +104,15 @@ OFFSET %d `
 	if CheckErr(err, c) {
 		return
 	}
-	if Check(len(rows) == 0, `not found`, c) {
+	if len(rows) == 0  {
+		c.JSON(http.StatusOK,admin.Response{
+			Code:0,
+			Message:"没有找到数据",
+			Data:  gin.H{
+				"total": 0,
+				"data":  nil,
+			},
+		})
 		return
 	}
 	var list []*Creatives
@@ -115,8 +124,10 @@ OFFSET %d `
 			UpdateAt:     row.Str(res.Map(`updated`)),
 			OnlineStatus: row.Int(res.Map(`online_status`)),
 			Platform:     row.Int(res.Map(`platform`)),
+			AdMode:       row.Str(res.Map(`mode`)),
+			AdIncome:     fmt.Sprintf("%.2f", row.Float(res.Map(`income`))),
 		}
-		creatives.Img = row.Int(res.Map(`imp`))
+		creatives.Imp = row.Int(res.Map(`imp`))
 		creatives.Click = row.Int(res.Map(`cik`))
 		creatives.Id = row.Uint64(res.Map(`id`))
 		creatives.Title = row.Str(res.Map(`title`))
@@ -136,31 +147,31 @@ OFFSET %d `
 		creat := creatives
 		if data, ok := groupImpClick[creat.AdGroup.Id]; ok {
 			data.Click += creat.Click
-			data.Img += creat.Img
+			data.Imp += creat.Imp
 			groupImpClick[creat.AdGroup.Id] = data
 		} else {
 			groupImpClick[creat.AdGroup.Id] = &Data{
 				Click: creat.Click,
-				Img:   creat.Img,
+				Imp:   creat.Imp,
 			}
 		}
 		if data, ok := adzoneImpClick[creat.Adzone.Id]; ok {
 			data.Click += creat.Click
-			data.Img += creat.Img
+			data.Imp += creat.Imp
 			adzoneImpClick[creat.Adzone.Id] = data
 		} else {
 			adzoneImpClick[creat.Adzone.Id] = &Data{
 				Click: creat.Click,
-				Img:   creat.Img,
+				Imp:   creat.Imp,
 			}
 		}
 	}
 
 	for _, creat := range list {
-		creat.Adzone.Img = adzoneImpClick[creat.Adzone.Id].Img
+		creat.Adzone.Imp = adzoneImpClick[creat.Adzone.Id].Imp
 		creat.Adzone.Click = adzoneImpClick[creat.Adzone.Id].Click
 		creat.AdGroup.Click = groupImpClick[creat.AdGroup.Id].Click
-		creat.AdGroup.Img = groupImpClick[creat.AdGroup.Id].Img
+		creat.AdGroup.Imp = groupImpClick[creat.AdGroup.Id].Imp
 	}
 	rows, _, err = db.Query(`SELECT COUNT(1) FROM tmm.creatives AS creat  
 	INNER JOIN tmm.adgroups AS adg ON (adg.id = creat.adgroup_id)
