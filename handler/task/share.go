@@ -9,6 +9,7 @@ import (
 	"github.com/tokenme/tmm/common"
 	. "github.com/tokenme/tmm/handler"
 	tokenUtils "github.com/tokenme/tmm/utils/token"
+    "github.com/tokenme/tmm/tools/wechatmp"
 	"github.com/ua-parser/uap-go/uaparser"
 	"net/http"
 	"net/url"
@@ -21,11 +22,14 @@ const (
 )
 
 type ShareData struct {
+    AppId      string
+    JSConfig   wechatmp.JSConfig
 	Task       common.ShareTask
 	TrackId    string
 	IsIOS      bool
 	InviteLink string
 	ImpLink    string
+    ShareLink  string
 	ValidTrack bool
 }
 
@@ -46,7 +50,7 @@ func ShareHandler(c *gin.Context) {
 		if strings.Contains(shareUri, "?") {
 			symbol = "&"
 		}
-		wxRedirectUrl := url.QueryEscape(fmt.Sprintf("https://ucoin.io%s%strack_id=___OPENID___", shareUri, symbol))
+		wxRedirectUrl := url.QueryEscape(fmt.Sprintf("%s%s%strack_id=___OPENID___", Config.ShareBaseUrl, shareUri, symbol))
 		redirectUrl := fmt.Sprintf(WX_AUTH_GATEWAY, Config.Wechat.AppId, wxAuthUrl, wxRedirectUrl)
 		c.Redirect(http.StatusFound, redirectUrl)
 		return
@@ -118,11 +122,21 @@ LIMIT 1`
 		}
 	}
 
+    mpClient := wechatmp.NewClient(Config.Wechat.AppId, Config.Wechat.AppSecret, Service)
+    currentUrl := fmt.Sprintf("%s%s", Config.ShareBaseUrl, c.Request.URL.String())
+    jsConfig, err := mpClient.GetJSConfig(currentUrl)
+    if err != nil {
+        log.Error(err.Error())
+    }
+
 	c.HTML(http.StatusOK, "share.tmpl", ShareData{
+        AppId:      Config.Wechat.AppId,
+        JSConfig:   jsConfig,
 		Task:       task,
 		TrackId:    trackId,
 		IsIOS:      isIOS,
 		ValidTrack: validTrack,
 		InviteLink: fmt.Sprintf("https://tmm.tokenmama.io/invite/%s", inviteCode.Encode()),
+        ShareLink:  currentUrl,
 		ImpLink:    impLink})
 }

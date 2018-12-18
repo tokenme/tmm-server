@@ -9,6 +9,7 @@ type Config struct {
 	Port                   int               `default:"8008"`
 	Geth                   string            `default:"geth.xibao100.com"`
 	GethWSS                string            `required:"true"`
+	ShareBaseUrl           string            `required:"true"`
 	ShareUrl               string            `required:"true"`
 	ShareImpUrl            string            `required:"true"`
 	AdImpUrl               string            `required:"true"`
@@ -141,11 +142,12 @@ type ReCaptchaConfig struct {
 }
 
 type WechatConfig struct {
-	AppId   string `required:"true"`
-	MchId   string `required:"true"`
-	Key     string `required:"true"`
-	CertCrt string `required:"true"`
-	CertKey string `required:"true"`
+	AppId       string `required:"true"`
+    AppSecret   string `required:"true"`
+	MchId       string `required:"true"`
+	Key         string `required:"true"`
+	CertCrt     string `required:"true"`
+	CertKey     string `required:"true"`
 }
 
 type SlackConfig struct {
