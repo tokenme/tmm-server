@@ -55,4 +55,39 @@ var _mtac = {};
 {{ if .ValidTrack }}
 <script src="https://ucoin.tianxi100.com/ucoin-share.js"></script>
 {{ end }}
+{{ if .Task.InIframe }}
+    {{ if .JSConfig.Sign }}
+    <script src="https://res.wx.qq.com/open/js/jweixin-1.4.0.js"></script>
+    <script>
+        try {
+            var jsConfig = {
+                debug: false,
+                appId: {{ .AppId }},
+                timestamp: {{ .JSConfig.Timestamp }},
+                nonceStr: {{ .JSConfig.Nonce }},
+                signature: {{ .JSConfig.Sign }},
+                jsApiList: ['updateAppMessageShareData','updateTimelineShareData']
+            };
+            wx.config(jsConfig);
+            wx.ready(function () {
+                var shareAppMessageData = { 
+                    title: {{ .Task.Title }},
+                    desc: {{ .Task.Summary }},
+                    link: {{ .ShareLink }},
+                    imgUrl: {{ .Task.Image }},
+                    success: function () {}
+                };
+                wx.updateAppMessageShareData(shareAppMessageData);
+                var shareTimelineData = { 
+                    title: {{ .Task.Title }},
+                    link: {{ .ShareLink }},
+                    imgUrl: {{ .Task.Image }},
+                    success: function () {}
+                };
+                wx.updateTimelineShareData(shareTimelineData);
+            });
+        } catch (e) {}
+    </script>
+    {{ end }}
+{{ end }}
 </html>
