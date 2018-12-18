@@ -59,15 +59,20 @@ func InviteStatsHandler(c *gin.Context) {
 	if CheckErr(err, c) {
 		return
 	}
+	var info InviteStats
+	if req.Hours != 0 {
+		info.Title = "邀请排行榜(二小时)"
+	}else{
+		info.Title = "邀请排行榜"
+	}
 	if len(rows) == 0 {
 		c.JSON(http.StatusOK, admin.Response{
 			Code:    0,
 			Message: "没有查询到指定数据",
-			Data:    nil,
+			Data:    info,
 		})
 		return
 	}
-	var info InviteStats
 	for _, row := range rows {
 		bouns,err:=decimal.NewFromString(row.Str(4))
 		if CheckErr(err,c){
@@ -89,11 +94,6 @@ func InviteStatsHandler(c *gin.Context) {
 	}
 	info.Numbers = len(rows)
 	info.CurrentTime = fmt.Sprintf("%s-%s", startTime, endTime)
-	if req.Hours != 0 {
-		info.Title = "邀请排行榜(二小时)"
-	}else{
-		info.Title = "邀请排行榜"
-	}
 	c.JSON(http.StatusOK, admin.Response{
 		Code:    0,
 		Message: admin.API_OK,
