@@ -1,12 +1,7 @@
 package wechatmp
 
 import (
-	// "fmt"
     "github.com/tokenme/tmm/common"
-)
-
-const (
-	GATEWAY_PAY = ""
 )
 
 type Client struct {
