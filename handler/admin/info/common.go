@@ -3,6 +3,7 @@ package info
 import (
 	"github.com/shopspring/decimal"
 	"github.com/tokenme/tmm/common"
+	"fmt"
 )
 
 const (
@@ -80,7 +81,7 @@ type TotalTask struct {
 //其他类
 type Users struct {
 	Point              decimal.Decimal `json:"point,omitempty"`
-	InviteBonus        string          `json:"invite_bonus"`
+	InviteBonus        decimal.Decimal `json:"invite_bonus"`
 	DrawCash           string          `json:"draw_cash,omitempty"`
 	InviteCount        int             `json:"invite_count,omitempty"`
 	Tmm                decimal.Decimal `json:"tmm,omitempty"`
@@ -94,6 +95,7 @@ type StatsRequest struct {
 	StartTime string `form:"start_time",json:"start_time"`
 	EndTime   string `form:"end_time",json:"end_time" `
 	Top10     bool   `form:"top_10",json:"top_10"`
+	Hours     int    `form:"hours" ,json:"hours"`
 }
 
 type Good struct {
@@ -103,10 +105,11 @@ type Good struct {
 }
 
 type Data struct {
-	Title  Title  `json:"title"`
-	Yaxis  Axis   `json:"yAxis"`
-	Xaxis  Axis   `json:"xAxis"`
-	Series Series `json:"series"`
+	Title     Title    `json:"title"`
+	Yaxis     Axis     `json:"yAxis"`
+	Xaxis     Axis     `json:"xAxis"`
+	Series    Series   `json:"series"`
+	LinkYaxis Axis     `json:"link_yaxis"`
 }
 
 type Axis struct {
@@ -120,4 +123,18 @@ type Title struct {
 type Series struct {
 	Data []int  `json:"data"`
 	Name string `json:"name"`
+}
+
+func GetPercentList(valueList []int) (PercentList []string) {
+	var total float64
+	for _, value := range valueList {
+		total += float64(value)
+	}
+
+	for _, value := range valueList {
+		percent := float64(value) / total
+		PercentList = append(PercentList, fmt.Sprintf("%.2f", percent*100))
+	}
+
+	return
 }

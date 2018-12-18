@@ -38,4 +38,7 @@ func InfoRouter(r *gin.Engine) {
 		InfoGroup.GET(`/task/info`, info.TaskStatsHandler)
 		InfoGroup.GET(`/task/total`, info.TotalTaskHandler)
 	}
+	{
+		InfoGroup.GET(`/user/total`,info.UserStatsHandler)
+	}
 }

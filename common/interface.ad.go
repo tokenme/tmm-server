@@ -7,9 +7,11 @@ import (
 
 type Adgroup struct {
 	Id           uint64      `json:"id"`
-	OnlineStatus uint8       `json:"online_status"`
-	Adzone       *Adzone     `json:"-"`
+	OnlineStatus int         `json:"online_status"`
+	//Adzone       *Adzone     `json:"-"`
+	Adzone       *Adzone `json:"adzone"`
 	Creatives    []*Creative `json:"creatives"`
+	Title        string      `json:"title"`
 }
 
 type Creative struct {
@@ -41,8 +43,9 @@ func DecodeCreative(key []byte, cryptoText string) (creative Creative, err error
 }
 
 type Adzone struct {
-	Id   uint64 `json:"id"`
-	Cid  uint   `json:"cid"`
-	Page uint   `json:"page"`
-	Idx  int    `json:"idx"`
+	Id      uint64 `json:"id,omitempty"`
+	Cid     uint   `json:"cid,omitempty"`
+	Page    uint   `json:"page,omitempty"`
+	Idx     int    `json:"idx,omitempty"`
+	Summery string `json:"summery,omitempty"`
 }

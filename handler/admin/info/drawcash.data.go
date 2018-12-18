@@ -75,6 +75,8 @@ GROUP BY l ORDER BY l
 	data.Yaxis.Name = "人数"
 	data.Series.Data = valueList
 	data.Series.Name = "提现人数"
+	data.LinkYaxis.Data = GetPercentList(valueList)
+	data.LinkYaxis.Name = `占比`
 	bytes, err := json.Marshal(&data)
 	if CheckErr(err, c) {
 		return
