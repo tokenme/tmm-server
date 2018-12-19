@@ -78,7 +78,7 @@ SELECT
 	creat.platform AS platform,
 	creat.ad_mode AS mode,
 	creat.ad_income AS income,
-	stats.cik AS cik,
+	stats.clk AS clk,
 	stats.imp AS imp,
 	adz.id AS adz_id,
 	adz.summary AS summary,
@@ -86,8 +86,8 @@ SELECT
 	group_.title AS group_title
 FROM tmm.creatives  AS creat 
 LEFT JOIN (SELECT 
-		   SUM(imp) AS imp ,
-           SUM(cik) AS cik,
+		   SUM(imp) AS imp,
+           SUM(clk) AS clk,
 		   creative_id AS id FROM tmm.creative_stats
 		   WHERE record_on > '%s'
 		   GROUP BY id) AS stats 
@@ -95,7 +95,7 @@ LEFT JOIN (SELECT
 INNER JOIN tmm.adgroups AS group_ ON (group_.id = creat.adgroup_id)
 INNER JOIN tmm.adzones AS  adz ON (adz.id = group_.adzone_id)
 WHERE 1 = 1 %s 
-ORDER BY adz.id,stats.imp DESC
+ORDER BY adz.id DESC,stats.imp DESC
 LIMIT  %d 
 OFFSET %d `
 
@@ -104,11 +104,11 @@ OFFSET %d `
 	if CheckErr(err, c) {
 		return
 	}
-	if len(rows) == 0  {
-		c.JSON(http.StatusOK,admin.Response{
-			Code:0,
-			Message:"没有找到数据",
-			Data:  gin.H{
+	if len(rows) == 0 {
+		c.JSON(http.StatusOK, admin.Response{
+			Code:    0,
+			Message: "没有找到数据",
+			Data: gin.H{
 				"total": 0,
 				"data":  nil,
 			},
@@ -128,7 +128,7 @@ OFFSET %d `
 			AdIncome:     fmt.Sprintf("%.2f", row.Float(res.Map(`income`))),
 		}
 		creatives.Imp = row.Int(res.Map(`imp`))
-		creatives.Click = row.Int(res.Map(`cik`))
+		creatives.Click = row.Int(res.Map(`clk`))
 		creatives.Id = row.Uint64(res.Map(`id`))
 		creatives.Title = row.Str(res.Map(`title`))
 		creatives.Image = row.Str(res.Map(`image`))
@@ -137,7 +137,6 @@ OFFSET %d `
 		creatives.Adzone.Summery = row.Str(res.Map(`summary`))
 		creatives.AdGroup.Title = row.Str(res.Map(`group_title`))
 		creatives.AdGroup.Id = row.Uint64(res.Map(`group_id`))
-		creatives.Click = row.Int(res.Map(`cik`))
 		list = append(list, creatives)
 	}
 
