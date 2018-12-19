@@ -307,7 +307,7 @@ func main() {
 		}
 		activeBonusService := invitebonus.NewService(service, config, handler.GlobalLock)
 		if activeBonusFlag {
-			activeBonusService.Start()
+			go activeBonusService.Start()
 		}
 		//gin.DisableBindValidation()
 		templatePath := path.Join(config.Template, "./*")

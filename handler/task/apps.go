@@ -2,9 +2,9 @@ package task
 
 import (
 	//"github.com/davecgh/go-spew/spew"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	//"github.com/mkideal/log"
-	"fmt"
 	"github.com/shopspring/decimal"
 	"github.com/tokenme/tmm/common"
 	. "github.com/tokenme/tmm/handler"
@@ -52,7 +52,8 @@ func AppsHandler(c *gin.Context) {
 
 	db := Service.Db
 
-	onlineStatusConstrain := fmt.Sprintf("AND a.points_left>0 AND a.online_status=1 AND NOT EXISTS (SELECT 1 FROM tmm.device_app_tasks AS dat WHERE dat.task_id=a.id AND dat.device_id='%s' AND dat.status=1 LIMIT 1)", db.Escape(deviceId))
+	onlineStatusConstrain := "AND a.points_left>0 AND a.online_status=1"
+	//onlineStatusConstrain := fmt.Sprintf("AND a.points_left>0 AND a.online_status=1 AND NOT EXISTS (SELECT 1 FROM tmm.device_app_tasks AS dat WHERE dat.task_id=a.id AND dat.device_id='%s' AND dat.status=1 LIMIT 1)", db.Escape(deviceId))
 	orderBy := "a.bonus DESC, a.id DESC"
 	if req.MineOnly {
 		onlineStatusConstrain = fmt.Sprintf("AND a.creator = %d", user.Id)
@@ -75,12 +76,13 @@ func AppsHandler(c *gin.Context) {
     IFNULL(asi.id, 0),
     a.online_status,
     a.download_url,
-    a.icon
+    a.icon,
+    EXISTS (SELECT 1 FROM tmm.device_app_tasks AS dat WHERE dat.task_id=a.id AND dat.device_id='%s' AND dat.status=1 LIMIT 1)
 FROM tmm.app_tasks AS a
 LEFT JOIN tmm.app_scheme_ids AS asi ON (asi.bundle_id = a.bundle_id)
 WHERE a.platform='%s' %s
 ORDER BY %s LIMIT %d, %d`
-	rows, _, err := db.Query(query, db.Escape(req.Platform), onlineStatusConstrain, orderBy, (req.Page-1)*req.PageSize, req.PageSize)
+	rows, _, err := db.Query(query, db.Escape(deviceId), db.Escape(req.Platform), onlineStatusConstrain, orderBy, (req.Page-1)*req.PageSize, req.PageSize)
 	if CheckErr(err, c) {
 		return
 	}
@@ -91,19 +93,20 @@ ORDER BY %s LIMIT %d, %d`
 		pointsLeft, _ := decimal.NewFromString(row.Str(7))
 		creator := row.Uint64(11)
 		task := common.AppTask{
-			Id:          row.Uint64(0),
-			Platform:    row.Str(1),
-			Name:        row.Str(2),
-			BundleId:    row.Str(3),
-			StoreId:     row.Uint64(4),
-			Bonus:       bonus,
-			Points:      points,
-			PointsLeft:  pointsLeft,
-			InsertedAt:  row.ForceLocaltime(9).Format(time.RFC3339),
-			UpdatedAt:   row.ForceLocaltime(10).Format(time.RFC3339),
-			SchemeId:    row.Uint64(12),
-			DownloadUrl: row.Str(14),
-			Icon:        row.Str(15),
+			Id:            row.Uint64(0),
+			Platform:      row.Str(1),
+			Name:          row.Str(2),
+			BundleId:      row.Str(3),
+			StoreId:       row.Uint64(4),
+			Bonus:         bonus,
+			Points:        points,
+			PointsLeft:    pointsLeft,
+			InsertedAt:    row.ForceLocaltime(9).Format(time.RFC3339),
+			UpdatedAt:     row.ForceLocaltime(10).Format(time.RFC3339),
+			SchemeId:      row.Uint64(12),
+			DownloadUrl:   row.Str(14),
+			Icon:          row.Str(15),
+			InstallStatus: int8(row.Int(16)),
 		}
 		if creator == user.Id {
 			task.Downloads = row.Uint(8)

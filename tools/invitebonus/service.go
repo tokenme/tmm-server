@@ -148,7 +148,7 @@ func (this *Service) CheckTransferBonus(ctx context.Context) error {
 		this.transferBonusCh <- struct{}{}
 	}()
 	db := this.service.Db
-	rows, _, err := db.Query(`SELECT ib.id, u.wallet_addr, ib.tmm, u.id FROM tmm.invite_bonus AS ib INNER JOIN ucoin.users AS u ON (u.id=ib.user_id) WHERE tmm_tx='' AND task_type=3 ORDER BY id ASC LIMIT 1000`)
+	rows, _, err := db.Query(`SELECT ib.id, u.wallet_addr, ib.tmm, u.id FROM tmm.invite_bonus AS ib INNER JOIN ucoin.users AS u ON (u.id=ib.user_id) WHERE ib.tmm_tx='' AND ib.task_type=3 ORDER BY ib.id ASC LIMIT 1000`)
 	if err != nil {
 		log.Error(err.Error())
 		return err
