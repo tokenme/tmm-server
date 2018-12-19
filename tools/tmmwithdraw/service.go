@@ -71,6 +71,10 @@ func (this *Service) Stop() {
 }
 
 func (this *Service) CheckTx(ctx context.Context) error {
+	defer func() {
+		time.Sleep(10 * time.Second)
+		this.checkTxCh <- struct{}{}
+	}()
 	db := this.service.Db
 	rows, _, err := db.Query(`SELECT tx FROM tmm.withdraw_txs WHERE tx_status=2 ORDER BY inserted_at ASC LIMIT 1000`)
 	if err != nil {
@@ -93,8 +97,6 @@ func (this *Service) CheckTx(ctx context.Context) error {
 			continue
 		}
 	}
-	time.Sleep(10 * time.Second)
-	this.checkTxCh <- struct{}{}
 	return nil
 }
 

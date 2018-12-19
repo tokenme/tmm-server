@@ -19,6 +19,7 @@ import (
 	"github.com/tokenme/tmm/tools/tokenprofile"
 	//"github.com/tokenme/tmm/tools/transferwatcher"
 	"github.com/tokenme/tmm/tools/etherscanspider"
+	"github.com/tokenme/tmm/tools/invitebonus"
 	"github.com/tokenme/tmm/tools/txaccelerate"
 	"github.com/tokenme/tmm/tools/videospider"
 	"github.com/tokenme/tmm/tools/wechatspider"
@@ -47,6 +48,7 @@ func main() {
 		accelerateTxFlag           string
 		accelerateGasFlag          int64
 		ucoinHoldersFlag           bool
+		activeBonusFlag            bool
 	)
 
 	os.Setenv("CONFIGOR_ENV_PREFIX", "-")
@@ -71,6 +73,7 @@ func main() {
 	flag.StringVar(&addVideoFlag, "add-video", "", "add video")
 	flag.BoolVar(&addArticlesFlag, "add-articles", false, "enable add articles")
 	flag.BoolVar(&ucoinHoldersFlag, "update-holders", false, "enable update ucoin holders")
+	flag.BoolVar(&activeBonusFlag, "active-bonus", false, "enable check active bonus")
 	flag.Parse()
 
 	configor.New(&configor.Config{Verbose: configFlag.Debug, ErrorOnUnmatchedKeys: true, Environment: "production"}).Load(&config, configPath)
@@ -302,6 +305,10 @@ func main() {
 		} else {
 			gin.SetMode(gin.ReleaseMode)
 		}
+		activeBonusService := invitebonus.NewService(service, config, handler.GlobalLock)
+		if activeBonusFlag {
+			activeBonusService.Start()
+		}
 		//gin.DisableBindValidation()
 		templatePath := path.Join(config.Template, "./*")
 		log.Info("Template path: %s", templatePath)
@@ -318,6 +325,9 @@ func main() {
 		if err != nil {
 			log.Error(err.Error())
 			return
+		}
+		if activeBonusFlag {
+			activeBonusService.Stop()
 		}
 	} else {
 		exitChan := make(chan struct{}, 1)
