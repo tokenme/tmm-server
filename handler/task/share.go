@@ -12,8 +12,8 @@ import (
     "github.com/tokenme/tmm/tools/wechatmp"
 	"github.com/ua-parser/uap-go/uaparser"
 	"net/http"
-	"net/url"
 	"strings"
+    "time"
 )
 
 const (
@@ -34,7 +34,8 @@ type ShareData struct {
 }
 
 func ShareHandler(c *gin.Context) {
-	trackId := c.DefaultQuery("track_id", "null")
+    var trackId string
+    code := c.DefaultQuery("code", "null")
 	taskId, deviceId, err := common.DecryptShareTaskLink(c.Param("encryptedTaskId"), c.Param("encryptedDeviceId"), Config)
 	if CheckErr(err, c) {
 		return
@@ -42,18 +43,30 @@ func ShareHandler(c *gin.Context) {
 	if Check(taskId == 0 || deviceId == "", "not found", c) {
 		return
 	}
+    mpClient := wechatmp.NewClient(Config.Wechat.AppId, Config.Wechat.AppSecret, Service, c)
 	isWx := strings.Contains(strings.ToLower(c.Request.UserAgent()), "micromessenger")
-	if isWx && trackId == "null" {
-		wxAuthUrl := url.QueryEscape(WX_AUTH_URL)
-		shareUri := c.Request.URL.String()
-		symbol := "?"
-		if strings.Contains(shareUri, "?") {
-			symbol = "&"
-		}
-		wxRedirectUrl := url.QueryEscape(fmt.Sprintf("%s%s%strack_id=___OPENID___", Config.ShareBaseUrl, shareUri, symbol))
-		redirectUrl := fmt.Sprintf(WX_AUTH_GATEWAY, Config.Wechat.AppId, wxAuthUrl, wxRedirectUrl)
-		c.Redirect(http.StatusFound, redirectUrl)
-		return
+	if isWx {
+        if len(code) > 0 && code != "null" {
+            oauthAccessToken, err := mpClient.GetOAuthAccessToken(code)
+            if err != nil {
+                log.Error(err.Error())
+            } else if len(oauthAccessToken.Openid) > 0 {
+                now := time.Now()
+                cryptOpenid := common.CryptOpenid{
+                    Openid: oauthAccessToken.Openid,
+                    Ts: now.Unix(),
+                }
+                trackId, err = cryptOpenid.Encode([]byte(Config.YktApiSecret))
+                if err != nil {
+                    log.Error(err.Error())
+                }
+            }
+        } else if code == "null" {
+            shareUri := c.Request.URL.String()
+            redirectUrl := fmt.Sprintf("%s%s", Config.ShareBaseUrl, shareUri)
+            mpClient.AuthRedirect(redirectUrl, "snsapi_base", "tmm-share")
+            return
+        }
 	}
 
 	db := Service.Db
@@ -122,7 +135,6 @@ LIMIT 1`
 		}
 	}
 
-    mpClient := wechatmp.NewClient(Config.Wechat.AppId, Config.Wechat.AppSecret, Service)
     currentUrl := fmt.Sprintf("%s%s", Config.ShareBaseUrl, c.Request.URL.String())
     jsConfig, err := mpClient.GetJSConfig(currentUrl)
     if err != nil {

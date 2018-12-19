@@ -2,12 +2,14 @@ package wechatmp
 
 import (
     "github.com/tokenme/tmm/common"
+	"github.com/gin-gonic/gin"
 )
 
 type Client struct {
 	AppId       string
 	AppSecret   string
     Service     *common.Service
+    Context     *gin.Context
 }
 
 type JSConfig struct {
@@ -40,10 +42,21 @@ type JSTicketResponse struct {
     ExpiresIn   uint    `json:"expires_in"`
 }
 
-func NewClient(appId string, appSecret string, service *common.Service) *Client {
+type OAuthAccessToken struct {
+    AccessToken     string  `json:"access_token"`
+    ExpiresIn       uint    `json:"expires_in"`
+    RefreshToken    string  `json:"refresh_token"`
+    Openid          string  `json:"openid"`
+    Scope           string  `json:"scope"`
+    ErrorCode       uint    `json:"errcode"`
+    ErrorMsg        string  `json:"errmsg"`
+}
+
+func NewClient(appId string, appSecret string, service *common.Service, context *gin.Context) *Client {
 	return &Client{
 		AppId:      appId,
         AppSecret:  appSecret,
         Service:    service,
+        Context:    context,
 	}
 }
