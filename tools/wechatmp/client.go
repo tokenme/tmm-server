@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"net/http"
+    "net/url"
     "time"
 	"sort"
 	"strings"
@@ -16,11 +17,44 @@ import (
 )
 
 const (
+	WX_AUTH_GATEWAY         = "https://open.weixin.qq.com/connect/oauth2/authorize?appid=%s&redirect_uri=%s&response_type=code&scope=%s&state=%s#wechat_redirect"
     WX_ACCESS_TOKEN         = "https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=%s&secret=%s"
+    WX_OAUTH_TOKEN          = "https://api.weixin.qq.com/sns/oauth2/access_token?appid=%s&secret=%s&code=%s&grant_type=authorization_code"
     WX_JS_TICKET            = "https://api.weixin.qq.com/cgi-bin/ticket/getticket?access_token=%s&type=jsapi"
     WX_AT_EXPIRES           = 7000
     WX_JS_TICKET_EXPIRES    = 7000
 )
+
+func (this *Client) AuthRedirect(oriUrl string, authType string, state string) {
+    redirectUrl := fmt.Sprintf(WX_AUTH_GATEWAY, this.AppId, url.QueryEscape(oriUrl), authType, state)
+    this.Context.Redirect(http.StatusFound, redirectUrl)
+}
+
+func (this *Client) GetOAuthAccessToken(code string) (oauthAccessToken OAuthAccessToken, err error) {
+    var respBytes []byte
+    request, err := http.NewRequest("GET", fmt.Sprintf(WX_OAUTH_TOKEN, this.AppId, this.AppSecret, code), nil)
+    if err != nil {
+        return oauthAccessToken, err
+    }
+    client := http.Client{}
+    resp, err := client.Do(request)
+    if err != nil {
+        return oauthAccessToken, err
+    }
+    defer resp.Body.Close()
+    respBytes, err = ioutil.ReadAll(resp.Body)
+    if err != nil {
+        return oauthAccessToken, err
+    }
+    err = json.Unmarshal(respBytes, &oauthAccessToken)
+    if err != nil {
+        return oauthAccessToken, err
+    }
+    if oauthAccessToken.ErrorCode > 0 {
+        return oauthAccessToken, errors.New(fmt.Sprintf("Get wechat oauth access token error(%d): %s", oauthAccessToken.ErrorCode, oauthAccessToken.ErrorMsg))
+    }
+    return oauthAccessToken, err
+}
 
 func (this *Client) GetJSConfig(url string) (jsConfig JSConfig, err error) {
     jsTicket, err := this.GetJSTicket()
@@ -41,10 +75,10 @@ func (this *Client) GetJSConfig(url string) (jsConfig JSConfig, err error) {
 func (this *Client) GetJSTicket() (jsTicket string, err error) {
     redisConn := this.Service.Redis.Master.Get()
     defer redisConn.Close()
-    var respBytes []byte
     cacheKey := "wx-mp-js-ticket"
     jsTicket, _ = redis.String(redisConn.Do("GET", cacheKey))
     if len(jsTicket) == 0 {
+        var respBytes []byte
         at, err := this.GetAccessToken()
         if err != nil {
             return jsTicket, err
@@ -81,10 +115,10 @@ func (this *Client) GetJSTicket() (jsTicket string, err error) {
 func (this *Client) GetAccessToken() (accessToken string, err error) {
     redisConn := this.Service.Redis.Master.Get()
     defer redisConn.Close()
-    var respBytes []byte
     cacheKey := "wx-mp-access-token"
     accessToken, _ = redis.String(redisConn.Do("GET", cacheKey))
     if len(accessToken) == 0 {
+        var respBytes []byte
         request, err := http.NewRequest("GET", fmt.Sprintf(WX_ACCESS_TOKEN, this.AppId, this.AppSecret), nil)
         if err != nil {
             return accessToken, err

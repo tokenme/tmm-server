@@ -79,7 +79,7 @@ LIMIT 1`
 
 	trackId := c.Query("track_id")
 	var openid string
-	if trackId != "" && trackId != "null" {
+	if len(trackId) > 0 {
 		cryptOpenid, err := common.DecodeCryptOpenid([]byte(Config.YktApiSecret), trackId)
 		if err != nil {
 			log.Error("Decrypt track id error")
