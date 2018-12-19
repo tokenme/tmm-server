@@ -99,6 +99,10 @@ func (this *Service) CheckTx(ctx context.Context) error {
 }
 
 func (this *Service) CheckExchangeRecords(ctx context.Context) error {
+	defer func() {
+		time.Sleep(10 * time.Second)
+		this.checkExchangeRecordsCh <- struct{}{}
+	}()
 	db := this.service.Db
 	rows, _, err := db.Query(`SELECT
         tx, status, device_id, tmm, points, direction, inserted_at
@@ -146,8 +150,6 @@ func (this *Service) CheckExchangeRecords(ctx context.Context) error {
 			}
 		}
 	}
-	time.Sleep(10 * time.Second)
-	this.checkExchangeRecordsCh <- struct{}{}
 	return nil
 }
 

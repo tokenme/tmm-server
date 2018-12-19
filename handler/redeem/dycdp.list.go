@@ -18,7 +18,7 @@ import (
 	"strings"
 )
 
-const REDEEMCDPS_CACHE_KEY = "REDEEMCDPS-%s-%s"
+const REDEEMCDPS_CACHE_KEY = "CDPSOFFERS-%s-%s"
 
 func DycdpListHandler(c *gin.Context) {
 	userContext, exists := c.Get("USER")
@@ -39,46 +39,48 @@ func DycdpListHandler(c *gin.Context) {
 		log.Error(err.Error())
 		return
 	}
+	var offers []dycdp.FlowOffer
 	redisConn := Service.Redis.Master.Get()
 	defer redisConn.Close()
 	cacheKey := fmt.Sprintf(REDEEMCDPS_CACHE_KEY, phone.CardType, phone.Province)
 	{
-		var redeemCdps []*common.RedeemCdp
 		js, _ := redis.Bytes(redisConn.Do("GET", cacheKey))
-		json.Unmarshal(js, &redeemCdps)
-		if len(redeemCdps) > 0 {
-			c.JSON(http.StatusOK, redeemCdps)
+		json.Unmarshal(js, &offers)
+	}
+	if len(offers) == 0 {
+		cdpClient, err := dycdp.NewClientWithAccessKey(Config.Aliyun.RegionId, Config.Aliyun.AK, Config.Aliyun.AS)
+		if CheckErr(err, c) {
+			log.Error(err.Error())
 			return
 		}
-	}
-	cdpClient, err := dycdp.NewClientWithAccessKey(Config.Aliyun.RegionId, Config.Aliyun.AK, Config.Aliyun.AS)
-	if CheckErr(err, c) {
-		log.Error(err.Error())
-		return
-	}
-	cdpRequest := dycdp.CreateQueryCdpOfferRequest()
-	cdpRequest.ChannelType = "分省"
-	cdpRequest.Vendor = phone.CardType
-	cdpRequest.Province = phone.Province
-	cdpResponse, err := cdpClient.QueryCdpOffer(cdpRequest)
-	if CheckWithCode(err != nil, INTERNAL_ERROR, "internal error", c) {
-		log.Error(err.Error())
-		return
-	}
-	offers := cdpResponse.FlowOffers.FlowOffer
-	{
 		cdpRequest := dycdp.CreateQueryCdpOfferRequest()
-		cdpRequest.ChannelType = "全国"
+		cdpRequest.ChannelType = "分省"
 		cdpRequest.Vendor = phone.CardType
+		cdpRequest.Province = phone.Province
 		cdpResponse, err := cdpClient.QueryCdpOffer(cdpRequest)
 		if CheckWithCode(err != nil, INTERNAL_ERROR, "internal error", c) {
 			log.Error(err.Error())
 			return
 		}
-		newOffers := cdpResponse.FlowOffers.FlowOffer
-		offers = append(offers, newOffers...)
+		offers = cdpResponse.FlowOffers.FlowOffer
+		{
+			cdpRequest := dycdp.CreateQueryCdpOfferRequest()
+			cdpRequest.ChannelType = "全国"
+			cdpRequest.Vendor = phone.CardType
+			cdpResponse, err := cdpClient.QueryCdpOffer(cdpRequest)
+			if CheckWithCode(err != nil, INTERNAL_ERROR, "internal error", c) {
+				log.Error(err.Error())
+				return
+			}
+			newOffers := cdpResponse.FlowOffers.FlowOffer
+			offers = append(offers, newOffers...)
+			js, err := json.Marshal(offers)
+			if err == nil {
+				redisConn.Do("SETEX", cacheKey, 2*60*60, js)
+			}
+		}
 	}
-	var redeemCdps common.RedeemCdpSlice
+
 	gradeMap := make(map[string]*common.RedeemCdp)
 	for _, offer := range offers {
 		if offer.Discount.GreaterThan(decimal.NewFromFloat(0.7)) {
@@ -98,19 +100,16 @@ func DycdpListHandler(c *gin.Context) {
 			}
 		}
 	}
+	var redeemCdpsSlice common.RedeemCdpSlice
 	pointPrice := common.GetPointPrice(Service, Config)
 	currencyRate := forex.Rate(Service, "USD", "CNY")
 	pointPrice = pointPrice.Mul(currencyRate)
 	if pointPrice.GreaterThan(decimal.Zero) {
 		for _, grade := range gradeMap {
 			grade.Points = grade.Price.Div(pointPrice)
-			redeemCdps = append(redeemCdps, grade)
+			redeemCdpsSlice = append(redeemCdpsSlice, grade)
 		}
 	}
-	sort.Sort(redeemCdps)
-	js, err := json.Marshal(redeemCdps)
-	if err == nil {
-		redisConn.Do("SETEX", cacheKey, 20*60, js)
-	}
-	c.JSON(http.StatusOK, redeemCdps)
+	sort.Sort(redeemCdpsSlice)
+	c.JSON(http.StatusOK, redeemCdpsSlice)
 }
