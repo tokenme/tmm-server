@@ -70,10 +70,18 @@ LEFT JOIN tmm.wx AS wx ON (wx.user_id = us.id)
 	if CheckErr(err, c) {
 		return
 	}
-	if Check(len(rows) == 0, `not found`, c) {
+	var info ExchangeStats
+	info.CurrentTime = fmt.Sprintf("%s-%s", startTime, endTime)
+	info.Numbers = len(rows)
+	info.Title = `积分兑换UC数量排行榜`
+	if len(rows) == 0 {
+		c.JSON(http.StatusOK, admin.Response{
+			Code:    0,
+			Message: admin.API_OK,
+			Data:    info,
+		})
 		return
 	}
-	var info ExchangeStats
 	for _, row := range rows {
 		tmm, err := decimal.NewFromString(row.Str(res.Map(`tmm`)))
 		if CheckErr(err, c) {
@@ -97,9 +105,6 @@ LEFT JOIN tmm.wx AS wx ON (wx.user_id = us.id)
 		}
 		info.ExchangeCount = info.ExchangeCount + count
 	}
-	info.CurrentTime = fmt.Sprintf("%s-%s", startTime, endTime)
-	info.Numbers = len(rows)
-	info.Title = `积分兑换UC数量排行榜`
 	c.JSON(http.StatusOK, admin.Response{
 		Code:    0,
 		Message: admin.API_OK,

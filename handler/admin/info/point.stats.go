@@ -89,6 +89,17 @@ ORDER BY points DESC %s`
 		return
 	}
 	var info PointStats
+	info.Numbers = len(rows)
+	info.CurrentTime = fmt.Sprintf("%s-%s", startTime, endTime)
+	info.Title = "积分排行榜"
+	if len(rows) == 0 {
+		c.JSON(http.StatusOK, admin.Response{
+			Code:    0,
+			Message: admin.Not_Found,
+			Data:    info,
+		})
+		return
+	}
 	for _, row := range rows {
 		Point, err := decimal.NewFromString(row.Str(res.Map(`points`)))
 		if CheckErr(err, c) {
@@ -105,9 +116,6 @@ ORDER BY points DESC %s`
 		}
 		info.Point = info.Point.Add(Point)
 	}
-	info.Numbers = len(rows)
-	info.CurrentTime = fmt.Sprintf("%s-%s", startTime, endTime)
-	info.Title = "积分排行榜"
 	c.JSON(http.StatusOK, admin.Response{
 		Code:    0,
 		Message: admin.API_OK,

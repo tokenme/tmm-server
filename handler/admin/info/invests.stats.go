@@ -51,10 +51,18 @@ ORDER BY point DESC %s`
 	if CheckErr(err, c) {
 		return
 	}
-	if Check(len(rows) == 0, `not found`, c) {
+	var info InvestsStats
+	info.CurrentTime = fmt.Sprintf("%s-%s", startTime, endTime)
+	info.Numbers = len(rows)
+	info.Title = "商品投资排行榜"
+	if len(rows) == 0 {
+		c.JSON(http.StatusOK, admin.Response{
+			Code:    0,
+			Message: admin.Not_Found,
+			Data:    info,
+		})
 		return
 	}
-	var info InvestsStats
 	for _, row := range rows {
 		point, err := decimal.NewFromString(row.Str(2))
 		if CheckErr(err, c) {
@@ -69,9 +77,6 @@ ORDER BY point DESC %s`
 		}
 		info.InvestsPoint = info.InvestsPoint.Add(point)
 	}
-	info.CurrentTime = fmt.Sprintf("%s-%s", startTime, endTime)
-	info.Numbers = len(rows)
-	info.Title = "商品投资排行榜"
 	c.JSON(http.StatusOK, admin.Response{
 		Code:    0,
 		Message: admin.API_OK,

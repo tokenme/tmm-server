@@ -92,10 +92,18 @@ AND NOT EXISTS
 	if CheckErr(err, c) {
 		return
 	}
-	if Check(len(rows) == 0, `not found`, c) {
+	var info TaskStats
+	info.CurrentTime = fmt.Sprintf("%s-%s", startTime, endTime)
+	info.Numbers = len(rows)
+	info.Title = "任务积分排行榜"
+	if len(rows) == 0 {
+		c.JSON(http.StatusOK, admin.Response{
+			Code:    0,
+			Message: admin.Not_Found,
+			Data:    info,
+		})
 		return
 	}
-	var info TaskStats
 	for _, row := range rows {
 		point, err := decimal.NewFromString(row.Str(res.Map(`point`)))
 		if CheckErr(err, c) {
@@ -115,9 +123,6 @@ AND NOT EXISTS
 		info.TaskCount = info.TaskCount + count
 		info.TotalPoint = info.TotalPoint.Add(point)
 	}
-	info.CurrentTime = fmt.Sprintf("%s-%s", startTime, endTime)
-	info.Numbers = len(rows)
-	info.Title = "任务积分排行榜"
 	c.JSON(http.StatusOK, admin.Response{
 		Code:    0,
 		Message: admin.API_OK,

@@ -67,9 +67,9 @@ GROUP BY l ORDER BY l
 		return
 	}
 	var indexName []string
-	var valueList []int
+	var valueList []string
 	for _, row := range rows {
-		valueList = append(valueList, row.Int(0))
+		valueList = append(valueList, row.Str(0))
 		name := fmt.Sprintf(`%d-%d`, row.Int(1), row.Int(1)+100)
 		indexName = append(indexName, name)
 	}
@@ -78,10 +78,12 @@ GROUP BY l ORDER BY l
 	data.Xaxis.Data = indexName
 	data.Xaxis.Name = "任务次数区间"
 	data.Yaxis.Name = "人数"
-	data.Series.Data = valueList
-	data.Series.Name = "用户人数"
-	data.LinkYaxis.Data = GetPercentList(valueList)
-	data.LinkYaxis.Name = `占比`
+	data.Series = append(data.Series, Series{Data: valueList, Name: "用户人数"})
+	data.Series = append(data.Series, Series{Data: GetPercentList(valueList), Name: "占比"})
+	//data.Series.Data = valueList
+	//data.Series.Name = "用户人数"
+	//data.LinkYaxis.Data = GetPercentList(valueList)
+	//data.LinkYaxis.Name = `占比`
 	bytes, err := json.Marshal(&data)
 	if CheckErr(err, c) {
 		return

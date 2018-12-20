@@ -4,6 +4,7 @@ import "github.com/shopspring/decimal"
 
 const (
 	API_OK = "OK"
+	Not_Found = "没有查找到数据"
 )
 
 type Response struct {
