@@ -81,6 +81,10 @@ func (this *Service) CheckTx(ctx context.Context) error {
 		log.Error(err.Error())
 		return err
 	}
+	if len(rows) == 0 {
+		log.Warn("no withdraw tx")
+		return nil
+	}
 	for _, row := range rows {
 		txHex := row.Str(0)
 		receipt, err := utils.TransactionReceipt(this.service.Geth, ctx, txHex)
@@ -113,6 +117,10 @@ func (this *Service) CheckExchangeRecords(ctx context.Context) error {
 	if err != nil {
 		log.Error(err.Error())
 		return err
+	}
+	if len(rows) == 0 {
+		log.Warn("no exchange records")
+		return nil
 	}
 	pointsPerTs, err := common.GetPointsPerTs(this.service)
 	if err != nil {
@@ -167,6 +175,7 @@ func (this *Service) WechatPay() error {
 		return err
 	}
 	if len(rows) == 0 {
+		log.Warn("Not payments")
 		return nil
 	}
 	log.Info("WechatPay %d Accounts", len(rows))

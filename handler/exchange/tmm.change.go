@@ -135,7 +135,7 @@ WHERE d.id='%s' AND d.user_id=%d`
 		if CheckErr(err, c) {
 			return
 		}
-		if CheckWithCode(amount.Cmp(tokenBalance) == 1, NOT_ENOUGH_TOKEN_ERROR, "not enough token", c) {
+		if CheckWithCode(amount.Cmp(tokenBalance) == 1, NOT_ENOUGH_TOKEN_IN_POOL_ERROR, "no enough token in pool, please wait", c) {
 			return
 		}
 		fromAddress = poolPubKey
