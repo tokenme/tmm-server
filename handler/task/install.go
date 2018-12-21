@@ -212,7 +212,7 @@ ORDER BY d.points DESC LIMIT 1) AS t2`
 			return
 		}
 		if ret.AffectedRows() > 0 {
-			_, _, err = db.Query(`DELETE FROM tmm.invite_bonus WHERE user_id IN (%s) AND task_type=2 AND task_id=%d`, strings.Join(inviterIds, ","), req.TaskId)
+			_, _, err = db.Query(`DELETE FROM tmm.invite_bonus WHERE user_id IN (%s) AND from_user_id=%d AND task_type=2 AND task_id=%d`, strings.Join(inviterIds, ","), user.Id, req.TaskId)
 			if CheckErr(err, c) {
 				return
 			}
