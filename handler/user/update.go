@@ -115,21 +115,24 @@ ORDER BY d.lastping_at DESC LIMIT 1`
 		if CheckWithCode(len(rows) == 0, NOTFOUND_ERROR, "not found", c) {
 			return
 		}
-		inviterCashBonus := decimal.New(int64(Config.InviterCashBonus), 0)
-		pointPrice := common.GetPointPrice(Service, Config)
-		forexRate := forex.Rate(Service, "USD", "CNY")
-		pointCnyPrice := pointPrice.Mul(forexRate)
-		inviterPointBonus := inviterCashBonus.Div(pointCnyPrice)
-		maxInviterBonus := decimal.New(Config.MaxInviteBonus, 0)
-		if inviterPointBonus.GreaterThanOrEqual(maxInviterBonus) {
-			inviterPointBonus = maxInviterBonus
-		}
+		/*
+			inviterCashBonus := decimal.New(int64(Config.InviterCashBonus), 0)
+			pointPrice := common.GetPointPrice(Service, Config)
+			forexRate := forex.Rate(Service, "USD", "CNY")
+			pointCnyPrice := pointPrice.Mul(forexRate)
+				inviterPointBonus := inviterCashBonus.Div(pointCnyPrice)
+				maxInviterBonus := decimal.New(Config.MaxInviteBonus, 0)
+				if inviterPointBonus.GreaterThanOrEqual(maxInviterBonus) {
+					inviterPointBonus = maxInviterBonus
+				}
+		*/
+		inviterPointBonus := decimal.New(int64(Config.InviterBonus), 0)
 
 		inviterDeviceId := rows[0].Str(0)
 		inviterUserId := rows[0].Uint64(1)
 		pointsPerTs, _ := common.GetPointsPerTs(Service)
 		inviterTs := inviterPointBonus.Div(pointsPerTs)
-
+		forexRate := forex.Rate(Service, "USD", "CNY")
 		tx, tmm, err := _transferToken(user.Id, forexRate, c)
 		if CheckErr(err, c) {
 			return

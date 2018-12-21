@@ -118,6 +118,7 @@ d.user_id
 FROM tmm.devices AS d
 LEFT JOIN tmm.invite_codes AS ic ON (ic.parent_id=d.user_id)
 WHERE ic.user_id = %d AND d.user_id > 0
+AND NOT EXISTS (SELECT 1 FROM tmm.invite_bonus AS ib WHERE ib.user_id=d.user_id AND ib.from_user_id=ic.user_id AND task_type=2 AND task_id=%d LIMIT 1)
 ORDER BY d.lastping_at DESC LIMIT 1) AS t1
 UNION
 SELECT id, user_id FROM
@@ -127,8 +128,9 @@ d.user_id
 FROM tmm.devices AS d
 LEFT JOIN tmm.invite_codes AS ic ON (ic.grand_id=d.user_id)
 WHERE ic.user_id = %d AND d.user_id > 0
+AND NOT EXISTS (SELECT 1 FROM tmm.invite_bonus AS ib WHERE ib.user_id=d.user_id AND ib.from_user_id=ic.user_id AND task_type=2 AND task_id=%d LIMIT 1)
 ORDER BY d.lastping_at DESC LIMIT 1) AS t2`
-		rows, _, err = db.Query(query, user.Id, user.Id)
+		rows, _, err = db.Query(query, user.Id, req.TaskId, user.Id, req.TaskId)
 		if CheckErr(err, c) {
 			return
 		}
@@ -219,7 +221,7 @@ ORDER BY d.points DESC LIMIT 1) AS t2`
                 return
             }
             if ret.AffectedRows() > 0 {
-                _, _, err = db.Query(`DELETE FROM tmm.invite_bonus WHERE user_id IN (%s) AND task_type=2 AND task_id=%d`, strings.Join(inviterIds, ","), req.TaskId)
+                _, _, err = db.Query(`DELETE FROM tmm.invite_bonus WHERE user_id IN (%s) AND from_user_id=%d AND task_type=2 AND task_id=%d`, strings.Join(inviterIds, ","), user.Id, req.TaskId)
                 if CheckErr(err, c) {
                     return
                 }
