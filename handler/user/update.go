@@ -91,7 +91,7 @@ func UpdateHandler(c *gin.Context) {
 		paymentPasswd := commonutils.Sha1(fmt.Sprintf("%s%s%s", user.Salt, req.PaymentPasswd, user.Salt))
 		updateFields = append(updateFields, fmt.Sprintf("payment_passwd='%s'", db.Escape(paymentPasswd)))
 	} else if req.InviterCode > 0 {
-		_, ret, err := db.Query(`UPDATE tmm.invite_codes AS t1, tmm.invite_codes AS t2 SET t1.parent_id=t2.user_id, t1.grand_id=t2.parent_id WHERE (t1.parent_id!=t2.user_id OR t1.grand_id!=t2.parent_id) AND t2.user_id!= t1.user_id AND t2.parent_id!= t1.user_id AND t2.id != t1.id AND t2.id=%d AND t1.user_id=%d`, req.InviterCode, user.Id)
+		_, ret, err := db.Query(`UPDATE tmm.invite_codes AS t1, tmm.invite_codes AS t2 SET t1.parent_id=t2.user_id, t1.grand_id=t2.parent_id WHERE (t1.parent_id!=t2.user_id OR t1.grand_id!=t2.parent_id) AND t2.user_id!=t1.user_id AND t2.parent_id!= t1.user_id AND t2.id != t1.id AND t2.id=%d AND t1.user_id=%d`, req.InviterCode, user.Id)
 		if CheckErr(err, c) {
 			log.Error(err.Error())
 			raven.CaptureError(err, nil)
@@ -135,6 +135,7 @@ ORDER BY d.lastping_at DESC LIMIT 1`
 		forexRate := forex.Rate(Service, "USD", "CNY")
 		tx, tmm, err := _transferToken(user.Id, forexRate, c)
 		if CheckErr(err, c) {
+			log.Error("Bonus Transfer failed")
 			return
 		}
 		//log.Warn("Inviter bonus: %s, inviter:%d", inviterPointBonus.String(), inviterUserId)
@@ -198,7 +199,7 @@ ORDER BY ul.id DESC LIMIT 1
 
 func _transferToken(userId uint64, forexRate decimal.Decimal, c *gin.Context) (receipt string, tokenAmount decimal.Decimal, err error) {
 	db := Service.Db
-	rows, _, err := db.Query(`SELECT u.wallet_addr FROM ucoin.users AS u LEFT JOIN tmm.user_settings AS us ON (us.user_id=u.id) WHERE id=%d AND (IFNULL(us.blocked, 0)=0 OR us.block_whitelist=1)`, userId)
+	rows, _, err := db.Query(`SELECT u.wallet_addr FROM ucoin.users AS u LEFT JOIN tmm.user_settings AS us ON (us.user_id=u.id) WHERE u.id=%d AND (IFNULL(us.blocked, 0)=0 OR us.block_whitelist=1)`, userId)
 	if err != nil {
 		return receipt, tokenAmount, err
 	}

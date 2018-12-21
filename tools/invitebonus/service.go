@@ -231,6 +231,61 @@ func (this *Service) transferToken(userWallet string, tokenAmount decimal.Decima
 	return receipt, nil
 }
 
+func (this *Service) FixBonus() {
+	db := this.service.Db
+	query := `SELECT DISTINCT ic.user_id, ic.parent_id, u.wallet_addr
+FROM tmm.invite_codes AS ic
+INNER JOIN ucoin.users AS u ON (u.id=ic.user_id)
+WHERE
+NOT EXISTS (SELECT 1 FROM tmm.invite_bonus AS ib WHERE ib.user_id=ic.user_id AND ib.user_id=ib.from_user_id AND ib.task_type=0 LIMIT 1)
+AND NOT EXISTS (SELECT 1 FROM tmm.invite_bonus AS ib2 WHERE ib2.user_id=ic.parent_id AND ib2.from_user_id=ic.user_id AND ib2.task_type=0 LIMIT 1)
+AND ic.parent_id>0
+AND NOT EXISTS (SELECT 1 FROM tmm.user_settings AS us WHERE us.user_id=ic.parent_id AND us.blocked=1 AND us.block_whitelist=0 LIMIT 1)
+AND NOT EXISTS (SELECT 1 FROM tmm.user_settings AS us2 WHERE us2.user_id=ic.user_id AND us2.blocked=1 AND us2.block_whitelist=0 LIMIT 1)
+AND NOT EXISTS (SELECT 1 FROM tmm.user_settings AS us3 WHERE us3.user_id=ic.grand_id AND us3.blocked=1 AND us3.block_whitelist=0 LIMIT 1)`
+	ctx := context.Background()
+	rows, _, err := db.Query(query)
+	if err != nil {
+		log.Error(err.Error())
+		return
+	}
+	for _, row := range rows {
+		userId := row.Uint64(0)
+		parentId := row.Uint64(1)
+		userWallet := row.Str(2)
+		log.Info("Transfer: %d", userId)
+		{
+			query := `SELECT d.id FROM tmm.devices AS d WHERE d.user_id=%d ORDER BY d.lastping_at DESC LIMIT 1`
+			rows, _, err := db.Query(query, parentId)
+			if err != nil {
+				log.Error(err.Error())
+				continue
+			}
+			if len(rows) == 0 {
+				continue
+			}
+			tokenAmount := decimal.New(543, 0)
+			receipt, err := this.transferToken(userWallet, tokenAmount, ctx)
+			if err != nil {
+				log.Error("Bonus Transfer failed")
+				continue
+			}
+			deviceId := rows[0].Str(0)
+			_, _, err = db.Query(`UPDATE tmm.devices AS d SET d.points = d.points + 188 WHERE id='%s'`, db.Escape(deviceId))
+			if err != nil {
+				log.Error(err.Error())
+				continue
+			}
+			_, _, err = db.Query(`INSERT INTO tmm.invite_bonus (user_id, from_user_id, bonus, tmm, tmm_tx) VALUES (%d, %d, 0, %s, '%s'), (%d, %d, 188, 0, '')`, userId, userId, tokenAmount.String(), db.Escape(receipt), parentId, userId)
+			if err != nil {
+				log.Error(err.Error())
+				continue
+			}
+			log.Info("Transferred: %d, %s", userId, receipt)
+		}
+	}
+}
+
 func (this *Service) PushMsg(userId uint64, bonus decimal.Decimal) {
 	db := this.service.Db
 	rows, _, err := db.Query(`SELECT d.push_token, d.language, d.platform FROM tmm.devices AS d WHERE d.user_id=%d ORDER BY lastping_at DESC LIMIT 1`, userId)

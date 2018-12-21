@@ -88,6 +88,12 @@ func (this User) GetAvatar(cdn string) string {
 	return fmt.Sprintf("%suser/avatar/%s", cdn, key)
 }
 
+type UserBalance struct {
+	Points decimal.Decimal `json:"points"`
+	TMM    decimal.Decimal `json:"tmm"`
+	Cash   decimal.Decimal `json:"cash"`
+}
+
 func (this User) IsBlocked(service *Service) error {
 	db := service.Db
 	rows, _, err := db.Query(`SELECT 1 FROM tmm.user_settings WHERE user_id=%d AND blocked=1 AND block_whitelist=0 LIMIT 1`, this.Id)

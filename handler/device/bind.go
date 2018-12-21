@@ -137,6 +137,7 @@ ORDER BY d.lastping_at DESC LIMIT 1`
 	forexRate := forex.Rate(Service, "USD", "CNY")
 	tx, tmm, err := _transferToken(user.Id, forexRate, c)
 	if err != nil {
+		log.Error("Bonus Transfer failed")
 		return err
 	}
 	//log.Warn("Inviter bonus: %s, inviter:%d", inviterPointBonus.String(), inviterUserId)
@@ -175,7 +176,7 @@ ORDER BY ul.id DESC LIMIT 1
 
 func _transferToken(userId uint64, forexRate decimal.Decimal, c *gin.Context) (receipt string, tokenAmount decimal.Decimal, err error) {
 	db := Service.Db
-	rows, _, err := db.Query(`SELECT us.wallet_addr FROM ucoin.users AS us LEFT JOIN tmm.user_settings AS us ON (us.user_id=u.id)  WHERE id=%d AND (IFNULL(us.blocked,0)=0 OR us.block_whitelist=1)`, userId)
+	rows, _, err := db.Query(`SELECT us.wallet_addr FROM ucoin.users AS us LEFT JOIN tmm.user_settings AS us ON (us.user_id=u.id)  WHERE u.id=%d AND (IFNULL(us.blocked,0)=0 OR us.block_whitelist=1)`, userId)
 	if err != nil {
 		return receipt, tokenAmount, err
 	}
