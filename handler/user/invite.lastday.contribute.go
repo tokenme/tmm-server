@@ -22,7 +22,7 @@ func InviteLastdayContributeHandler(c *gin.Context) {
 		return
 	}
 	db := Service.Db
-	rows, _, err := db.Query(`SELECT SUM(bonus) FROM tmm.invite_bonus WHERE user_id=%d AND inserted_at>=DATE_SUB(NOW(), INTERVAL 1 DAY)`, user.Id)
+	rows, _, err := db.Query(`SELECT SUM(bonus) FROM tmm.invite_bonus WHERE user_id=%d AND user_id!=from_user_id AND inserted_at>=DATE_SUB(NOW(), INTERVAL 1 DAY)`, user.Id)
 	if CheckErr(err, c) {
 		return
 	}
