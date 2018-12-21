@@ -66,6 +66,14 @@ func AppInstallHandler(c *gin.Context) {
 			return
 		}
 	} else if req.Status == 1 {
+        rows, _, err := db.Query(`SELECT 1 FROM tmm.device_app_tasks WHERE device_id='%s' AND task_id=%d AND status=-1 LIMIT 1`, db.Escape(deviceId), req.TaskId)
+        if CheckErr(err, c) {
+			return
+		}
+		if Check(len(rows) > 0, "not found", c) {
+			return
+		}
+
 		pointsPerTs, err := common.GetPointsPerTs(Service)
 		if CheckErr(err, c) {
 			return
@@ -94,7 +102,7 @@ WHERE
 		if CheckErr(err, c) {
 			return
 		}
-		rows, _, err := db.Query(`SELECT points FROM tmm.device_app_tasks WHERE device_id='%s' AND task_id=%d LIMIT 1`, db.Escape(deviceId), req.TaskId)
+		rows, _, err = db.Query(`SELECT points FROM tmm.device_app_tasks WHERE device_id='%s' AND task_id=%d LIMIT 1`, db.Escape(deviceId), req.TaskId)
 		if CheckErr(err, c) {
 			return
 		}
@@ -207,16 +215,18 @@ ORDER BY d.points DESC LIMIT 1) AS t2`
 			deviceIds = append(deviceIds, fmt.Sprintf("'%s'", db.Escape(row.Str(0))))
 			inviterIds = append(inviterIds, fmt.Sprintf("%d", row.Uint64(1)))
 		}
-		_, ret, err := db.Query(`UPDATE tmm.devices AS d, tmm.invite_bonus AS ib SET d.points = IF(d.points>ib.bonus, d.points-ib.bonus, 0) WHERE ib.user_id IN (%s) AND d.id IN (%s) AND ib.task_type=2 AND ib.task_id=%d`, strings.Join(inviterIds, ","), strings.Join(deviceIds, ","), req.TaskId)
-		if CheckErr(err, c) {
-			return
-		}
-		if ret.AffectedRows() > 0 {
-			_, _, err = db.Query(`DELETE FROM tmm.invite_bonus WHERE user_id IN (%s) AND from_user_id=%d AND task_type=2 AND task_id=%d`, strings.Join(inviterIds, ","), user.Id, req.TaskId)
-			if CheckErr(err, c) {
-				return
-			}
-		}
+        if len(deviceIds) > 0 {
+            _, ret, err := db.Query(`UPDATE tmm.devices AS d, tmm.invite_bonus AS ib SET d.points = IF(d.points>ib.bonus, d.points-ib.bonus, 0) WHERE ib.user_id IN (%s) AND d.id IN (%s) AND ib.task_type=2 AND ib.task_id=%d`, strings.Join(inviterIds, ","), strings.Join(deviceIds, ","), req.TaskId)
+            if CheckErr(err, c) {
+                return
+            }
+            if ret.AffectedRows() > 0 {
+                _, _, err = db.Query(`DELETE FROM tmm.invite_bonus WHERE user_id IN (%s) AND from_user_id=%d AND task_type=2 AND task_id=%d`, strings.Join(inviterIds, ","), user.Id, req.TaskId)
+                if CheckErr(err, c) {
+                    return
+                }
+            }
+        }
 	}
 	task := common.AppTask{
 		Id:            req.TaskId,
