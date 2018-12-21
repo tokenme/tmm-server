@@ -63,6 +63,7 @@ type Config struct {
 	InviterCashBonus       uint              `required:"true"`
 	InviteBonusRate        float64           `required:"true"`
 	MaxInviteBonus         int64             `required:"true"`
+	MaxDailWithdraw        int64             `required:"true"`
 	GoodCommissionPoints   int64             `required:"true"`
 	MaxBindDevice          int               `required:"true"`
 	Contact                ContactConfig     `required:"true"`
@@ -142,12 +143,12 @@ type ReCaptchaConfig struct {
 }
 
 type WechatConfig struct {
-	AppId       string `required:"true"`
-    AppSecret   string `required:"true"`
-	MchId       string `required:"true"`
-	Key         string `required:"true"`
-	CertCrt     string `required:"true"`
-	CertKey     string `required:"true"`
+	AppId     string `required:"true"`
+	AppSecret string `required:"true"`
+	MchId     string `required:"true"`
+	Key       string `required:"true"`
+	CertCrt   string `required:"true"`
+	CertKey   string `required:"true"`
 }
 
 type SlackConfig struct {

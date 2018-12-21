@@ -84,6 +84,7 @@ const (
 	WECHAT_OPENID_ERROR                  ErrorCode = 705
 	TOKEN_WITHDRAW_RATE_LIMIT_ERROR      ErrorCode = 707
 	TOKEN_CHANGE_RATE_LIMIT_ERROR        ErrorCode = 708
+	EXCEEDED_DAILY_WITHDRAW_LIMIT_ERROR  ErrorCode = 709
 	NOT_ENOUGH_ETH_ERROR                 ErrorCode = 800
 	INVALID_INVITE_CODE_ERROR            ErrorCode = 1000
 	MAX_BIND_DEVICE_ERROR                ErrorCode = 1100

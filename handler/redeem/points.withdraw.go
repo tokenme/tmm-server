@@ -140,6 +140,14 @@ WHERE (wx.user_id=%d OR wx.union_id='%s') AND wt.inserted_at >= DATE_SUB(NOW(), 
 		return
 	}
 
+	exceeded, _, err := common.ExceededDailyWithdraw(Service, Config)
+	if CheckErr(err, c) {
+		return
+	}
+	if CheckWithCode(exceeded, EXCEEDED_DAILY_WITHDRAW_LIMIT_ERROR, "超出系统今日提现额度，请明天再试", c) {
+		return
+	}
+
 	tradeNumToken, err := uuid.NewV4()
 	if CheckErr(err, c) {
 		log.Error(err.Error())

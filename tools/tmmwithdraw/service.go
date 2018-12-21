@@ -106,7 +106,7 @@ func (this *Service) CheckTx(ctx context.Context) error {
 
 func (this *Service) CheckExchangeRecords(ctx context.Context) error {
 	defer func() {
-		time.Sleep(10 * time.Second)
+		time.Sleep(12 * time.Second)
 		this.checkExchangeRecordsCh <- struct{}{}
 	}()
 	db := this.service.Db
@@ -127,6 +127,7 @@ func (this *Service) CheckExchangeRecords(ctx context.Context) error {
 		log.Error(err.Error())
 		return err
 	}
+	log.Info("Checking %d exchange records", len(rows))
 	for _, row := range rows {
 		tmm, _ := decimal.NewFromString(row.Str(3))
 		points, _ := decimal.NewFromString(row.Str(4))
@@ -158,6 +159,8 @@ func (this *Service) CheckExchangeRecords(ctx context.Context) error {
 					log.Error(err.Error())
 				}
 			}
+		} else {
+			log.Error("%s, %s", err.Error(), record.Tx)
 		}
 	}
 	return nil
@@ -165,7 +168,7 @@ func (this *Service) CheckExchangeRecords(ctx context.Context) error {
 
 func (this *Service) WechatPay() error {
 	defer func() {
-		time.Sleep(10 * time.Second)
+		time.Sleep(15 * time.Second)
 		this.checkWechatPayCh <- struct{}{}
 	}()
 	db := this.service.Db
