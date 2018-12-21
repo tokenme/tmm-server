@@ -82,13 +82,16 @@ type TotalTask struct {
 //其他类
 type Users struct {
 	Point              decimal.Decimal `json:"point,omitempty"`
-	InviteBonus        decimal.Decimal `json:"invite_bonus"`
+	InviteBonus        decimal.Decimal `json:"invite_bonus,omitempty"`
 	DrawCash           string          `json:"draw_cash,omitempty"`
 	InviteCount        int             `json:"invite_count,omitempty"`
 	Tmm                decimal.Decimal `json:"tmm,omitempty"`
 	ExchangeCount      int             `json:"exchange_count,omitempty"`
 	CompletedTaskCount int             `json:"completed_task_count,omitempty"`
-	Mobile             string          `json:"mobile"`
+	Mobile             string          `json:"mobile,omitempty"`
+	OnlineBFNumber     int             `json:"online_bf_number,omitempty"`
+	OffLineBFNumber    int             `json:"off_line_bf_number,omitempty"`
+
 	common.User
 }
 
