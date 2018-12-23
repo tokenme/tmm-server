@@ -96,7 +96,7 @@ ORDER BY cny DESC
 		}
 
 		if req.Top10 {
-			user := &Users{
+			user := &admin.Users{
 				DrawCash: fmt.Sprintf("%.2f", row.Float(res.Map(`cny`))),
 			}
 			user.Mobile = row.Str(res.Map(`mobile`))

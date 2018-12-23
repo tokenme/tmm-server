@@ -111,7 +111,7 @@ AND NOT EXISTS
 		}
 		count := row.Int(res.Map(`_count`))
 		if req.Top10 {
-			user := &Users{
+			user := &admin.Users{
 				Point:              point.Ceil(),
 				CompletedTaskCount: count,
 			}

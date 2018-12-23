@@ -82,7 +82,7 @@ func InviteStatsHandler(c *gin.Context) {
 		}
 		inviteCount := row.Int(2)
 		if req.Top10 {
-			user := &Users{
+			user := &admin.Users{
 				InviteCount: inviteCount,
 			}
 			user.InviteBonus = bouns.Ceil()

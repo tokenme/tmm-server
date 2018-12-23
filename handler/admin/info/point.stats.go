@@ -106,7 +106,7 @@ ORDER BY points DESC %s`
 			return
 		}
 		if req.Top10 {
-			user := &Users{
+			user := &admin.Users{
 				Point: Point.Ceil(),
 			}
 			user.Mobile = row.Str(res.Map(`mobile`))

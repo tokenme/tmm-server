@@ -2,9 +2,9 @@ package info
 
 import (
 	"github.com/shopspring/decimal"
-	"github.com/tokenme/tmm/common"
 	"fmt"
 	"strconv"
+	"github.com/tokenme/tmm/handler/admin"
 )
 
 const (
@@ -12,7 +12,7 @@ const (
 )
 
 type Stats struct {
-	Top10       []*Users `json:"top_10,omitempty"`
+	Top10       []*admin.Users `json:"top_10,omitempty"`
 	Numbers     int      `json:"numbers"`
 	CurrentTime string   `json:"current_time"`
 	Title       string   `json:"title"`
@@ -80,21 +80,6 @@ type TotalTask struct {
 }
 
 //其他类
-type Users struct {
-	Point              decimal.Decimal `json:"point,omitempty"`
-	InviteBonus        decimal.Decimal `json:"invite_bonus,omitempty"`
-	DrawCash           string          `json:"draw_cash,omitempty"`
-	InviteCount        int             `json:"invite_count,omitempty"`
-	Tmm                decimal.Decimal `json:"tmm,omitempty"`
-	ExchangeCount      int             `json:"exchange_count,omitempty"`
-	CompletedTaskCount int             `json:"completed_task_count,omitempty"`
-	Mobile             string          `json:"mobile,omitempty"`
-	OnlineBFNumber     int             `json:"online_bf_number,omitempty"`
-	OffLineBFNumber    int             `json:"off_line_bf_number,omitempty"`
-
-	common.User
-}
-
 type StatsRequest struct {
 	StartTime string `form:"start_date",json:"start_date"`
 	EndTime   string `form:"end_date",json:"end_date" `
