@@ -64,6 +64,9 @@ func SharesHandler(c *gin.Context) {
 	var taskIds []uint64
 	limitState := fmt.Sprintf("LIMIT %d, %d", (req.Page-1)*req.PageSize, req.PageSize)
 	onlineStatusConstrain := "st.points_left>0 AND st.online_status=1"
+	if req.Idfa != "" && req.Build == Config.App.SubmitBuild {
+		onlineStatusConstrain = "st.points_left>0 AND st.online_status=1 AND (st.is_crawled=1 OR st.is_video=1)"
+	}
 	var inCidConstrain string
 	orderBy := "st.bonus DESC, st.id DESC"
 	if req.MineOnly {
@@ -86,11 +89,6 @@ func SharesHandler(c *gin.Context) {
 		onlineStatusConstrain = fmt.Sprintf("st.id IN (%s)", strings.Join(tids, ","))
 		orderBy = "st.bonus DESC"
 		limitState = ""
-	}
-
-	showBonusHint := true
-	if req.Idfa != "" && req.Build == Config.App.SubmitBuild {
-		showBonusHint = true
 	}
 	db := Service.Db
 	query := `SELECT
@@ -123,10 +121,12 @@ ORDER BY %s %s`
 	buildVersionStr := c.GetString("tmm-build")
 	buildVersion, _ := strconv.ParseUint(buildVersionStr, 10, 64)
 	adsMap := make(map[int][]*common.Adgroup)
-	if !req.IsVideo && (platform == "ios" && buildVersion > 42 || platform == "android" && buildVersion > 211) {
-		adsMap, err = getCreatives(req.Cid, req.Page, platform)
-		if err != nil {
-			log.Error(err.Error())
+	if req.Idfa == "" || req.Build != Config.App.SubmitBuild {
+		if !req.IsVideo && (platform == "ios" && buildVersion > 42 || platform == "android" && buildVersion > 211) {
+			adsMap, err = getCreatives(req.Cid, req.Page, platform)
+			if err != nil {
+				log.Error(err.Error())
+			}
 		}
 	}
 	var tasks []*common.ShareTask
@@ -158,7 +158,7 @@ ORDER BY %s %s`
 			UpdatedAt:     row.ForceLocaltime(11).Format(time.RFC3339),
 			VideoLink:     row.Str(13),
 			IsVideo:       uint8(row.Uint(14)),
-			ShowBonusHint: showBonusHint,
+			ShowBonusHint: true,
 		}
 		if strings.HasPrefix(task.Link, "https://tmm.tokenmama.io/article/show") {
 			task.Link = strings.Replace(task.Link, "https://tmm.tokenmama.io/article/show", "https://static.tianxi100.com/article/show", -1)
