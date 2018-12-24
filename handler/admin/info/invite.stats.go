@@ -60,6 +60,8 @@ func InviteStatsHandler(c *gin.Context) {
 		return
 	}
 	var info InviteStats
+	info.Numbers = len(rows)
+	info.CurrentTime = fmt.Sprintf("%s-%s", startTime, endTime)
 	if req.Hours != 0 {
 		info.Title = "邀请排行榜(二小时)"
 	}else{
@@ -68,7 +70,7 @@ func InviteStatsHandler(c *gin.Context) {
 	if len(rows) == 0 {
 		c.JSON(http.StatusOK, admin.Response{
 			Code:    0,
-			Message: "没有查询到指定数据",
+			Message: admin.Not_Found,
 			Data:    info,
 		})
 		return
@@ -80,7 +82,7 @@ func InviteStatsHandler(c *gin.Context) {
 		}
 		inviteCount := row.Int(2)
 		if req.Top10 {
-			user := &Users{
+			user := &admin.Users{
 				InviteCount: inviteCount,
 			}
 			user.InviteBonus = bouns.Ceil()
@@ -92,8 +94,6 @@ func InviteStatsHandler(c *gin.Context) {
 		}
 		info.InviteCount = info.InviteCount + inviteCount
 	}
-	info.Numbers = len(rows)
-	info.CurrentTime = fmt.Sprintf("%s-%s", startTime, endTime)
 	c.JSON(http.StatusOK, admin.Response{
 		Code:    0,
 		Message: admin.API_OK,

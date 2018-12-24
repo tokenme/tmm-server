@@ -2,8 +2,9 @@ package info
 
 import (
 	"github.com/shopspring/decimal"
-	"github.com/tokenme/tmm/common"
 	"fmt"
+	"strconv"
+	"github.com/tokenme/tmm/handler/admin"
 )
 
 const (
@@ -11,7 +12,7 @@ const (
 )
 
 type Stats struct {
-	Top10       []*Users `json:"top_10,omitempty"`
+	Top10       []*admin.Users `json:"top_10,omitempty"`
 	Numbers     int      `json:"numbers"`
 	CurrentTime string   `json:"current_time"`
 	Title       string   `json:"title"`
@@ -79,21 +80,9 @@ type TotalTask struct {
 }
 
 //其他类
-type Users struct {
-	Point              decimal.Decimal `json:"point,omitempty"`
-	InviteBonus        decimal.Decimal `json:"invite_bonus"`
-	DrawCash           string          `json:"draw_cash,omitempty"`
-	InviteCount        int             `json:"invite_count,omitempty"`
-	Tmm                decimal.Decimal `json:"tmm,omitempty"`
-	ExchangeCount      int             `json:"exchange_count,omitempty"`
-	CompletedTaskCount int             `json:"completed_task_count,omitempty"`
-	Mobile             string          `json:"mobile"`
-	common.User
-}
-
 type StatsRequest struct {
-	StartTime string `form:"start_time",json:"start_time"`
-	EndTime   string `form:"end_time",json:"end_time" `
+	StartTime string `form:"start_date",json:"start_date"`
+	EndTime   string `form:"end_date",json:"end_date" `
 	Top10     bool   `form:"top_10",json:"top_10"`
 	Hours     int    `form:"hours" ,json:"hours"`
 }
@@ -105,11 +94,10 @@ type Good struct {
 }
 
 type Data struct {
-	Title     Title    `json:"title"`
-	Yaxis     Axis     `json:"yAxis"`
-	Xaxis     Axis     `json:"xAxis"`
-	Series    Series   `json:"series"`
-	LinkYaxis Axis     `json:"link_yaxis"`
+	Title  Title    `json:"title"`
+	Yaxis  Axis     `json:"yAxis"`
+	Xaxis  Axis     `json:"xAxis"`
+	Series []Series `json:"series"`
 }
 
 type Axis struct {
@@ -121,18 +109,38 @@ type Title struct {
 	Text string `json:"text"`
 }
 type Series struct {
-	Data []int  `json:"data"`
-	Name string `json:"name"`
+	Data []string `json:"data"`
+	Name string   `json:"name"`
 }
 
-func GetPercentList(valueList []int) (PercentList []string) {
+type StatsData struct {
+	PointExchangeNumber int             `json:"point_exchange_number"`
+	UcoinExchangeNumber int             `json:"ucoin_exchange_number"`
+	Cash                decimal.Decimal `json:"cash"`
+	PointSupply         decimal.Decimal `json:"point_supply"`
+	UcSupply            decimal.Decimal `json:"uc_supply"`
+	TotalTaskUser       int             `json:"total_task_user"`
+	TotalFinishTask     int             `json:"total_finish_task"`
+	InviteNumber        int             `json:"invite_number"`
+	Active              int             `json:"active"`
+}
+
+type StatsList struct {
+	Yesterday StatsData `json:"yesterday"`
+	Today     StatsData `json:"today"`
+}
+
+func GetPercentList(valueList []string) (PercentList []string) {
 	var total float64
 	for _, value := range valueList {
-		total += float64(value)
+		v, _ := strconv.Atoi(value)
+
+		total += float64(v)
 	}
 
 	for _, value := range valueList {
-		percent := float64(value) / total
+		v, _ := strconv.Atoi(value)
+		percent := float64(v) / total
 		PercentList = append(PercentList, fmt.Sprintf("%.2f", percent*100))
 	}
 

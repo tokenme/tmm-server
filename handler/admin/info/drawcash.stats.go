@@ -77,10 +77,18 @@ ORDER BY cny DESC
 	if CheckErr(err, c) {
 		return
 	}
-	if Check(len(rows) == 0, `not found`, c) {
+	var info DrawCashStats
+	info.CurrentTime = fmt.Sprintf("%s-%s", startTime, endTime)
+	info.Numbers = len(rows)
+	info.Title = `提现排行榜`
+	if len(rows) == 0 {
+		c.JSON(http.StatusOK, admin.Response{
+			Code:    0,
+			Message: admin.API_OK,
+			Data:    info,
+		})
 		return
 	}
-	var info DrawCashStats
 	for _, row := range rows {
 		cny, err := decimal.NewFromString(row.Str(res.Map(`cny`)))
 		if CheckErr(err, c) {
@@ -88,7 +96,7 @@ ORDER BY cny DESC
 		}
 
 		if req.Top10 {
-			user := &Users{
+			user := &admin.Users{
 				DrawCash: fmt.Sprintf("%.2f", row.Float(res.Map(`cny`))),
 			}
 			user.Mobile = row.Str(res.Map(`mobile`))

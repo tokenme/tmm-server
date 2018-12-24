@@ -32,6 +32,8 @@ type ShareTask struct {
 	ShowBonusHint bool            `json:"show_bonus_hint,omitempty"`
 	Creative      *Creative       `json:"creative,omitempty"`
 	Cid           []int           `json:"cid,omitempty"`
+	TotalReadUser int             `json:"total_read_user,omitempty"`
+	ReadDuration  int             `json:"read_duration,omitempty"`
 }
 
 func (this ShareTask) ShouldUseIframe() bool {

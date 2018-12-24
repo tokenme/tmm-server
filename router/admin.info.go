@@ -41,4 +41,7 @@ func InfoRouter(r *gin.Engine) {
 	{
 		InfoGroup.GET(`/user/total`,info.UserStatsHandler)
 	}
+	{
+		InfoGroup.GET(`/stats/stats`,info.StatsHandler)
+	}
 }
