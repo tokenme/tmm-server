@@ -30,25 +30,25 @@ const (
 )
 
 type SearchOptions struct {
-	WithdrawType            withdrawType `form:"withdraw_type"`
-	WithDrawNumberOfTimes   int          `form:"with_draw_number_of_times"`
-	WithDrawAmount          int          `form:"with_draw_amount"`
-	WithDrawInterval        int          `form:"with_draw_interval"`
-	ExchangePointToUc       int          `form:"exchange_point_to_uc"`
-	ExchangeUcToPoint       int          `form:"exchange_uc_to_point"`
-	ExchangePointToUcAmount int          `form:"exchange_point_to_uc_amount"`
-	ExchangeUcToPointAmount int          `form:"exchange_uc_to_point_amount"`
-	MakePointType           pointType    `form:"make_point_type"`
-	MakePointTimes          int          `form:"make_point_times"`
-	MakePointDay            int          `form:"make_point_day"`
-	OnlineBFNumber          int          `form:"online_bf_number"`
-	OffLineBfNumber         int          `form:"off_line_bf_number"`
-	InviteInterval          int          `form:"invite_interval"`
-	StartDate               string       `form:"start_date"`
-	EndDate                 string       `form:"end_date"`
-	StartHours              string       `form:"start_hours"`
-	EndHours                string       `form:"end_hours"`
-	IsWhiteList             int          `form:"is_white_list"`
+	WithdrawType          withdrawType `form:"withdraw_type"`
+	WithDrawNumberOfTimes int          `form:"with_draw_number_of_times"`
+	WithDrawAmount        int          `form:"with_draw_amount"`
+	//WithDrawInterval        int          `form:"with_draw_interval"`
+	ExchangePointToUc       int       `form:"exchange_point_to_uc"`
+	ExchangeUcToPoint       int       `form:"exchange_uc_to_point"`
+	ExchangePointToUcAmount int       `form:"exchange_point_to_uc_amount"`
+	ExchangeUcToPointAmount int       `form:"exchange_uc_to_point_amount"`
+	MakePointType           pointType `form:"make_point_type"`
+	MakePointTimes          int       `form:"make_point_times"`
+	MakePointDay            int       `form:"make_point_day"`
+	OnlineBFNumber          int       `form:"online_bf_number"`
+	OffLineBfNumber         int       `form:"off_line_bf_number"`
+	//InviteInterval          int          `form:"invite_interval"`
+	StartDate   string `form:"start_date"`
+	EndDate     string `form:"end_date"`
+	StartHours  string `form:"start_hours"`
+	EndHours    string `form:"end_hours"`
+	IsWhiteList bool   `form:"is_white_list"`
 }
 
 func GetAccountList(c *gin.Context) {
@@ -89,10 +89,12 @@ SELECT
 	ex.point_to_tmm AS point_to_tmm,
 	ex.tmm_to_point AS tmm_to_point,
 	IFNULL(inv.online,0) AS online,
-	IFNULL(inv.offline,0) AS offline
+	IFNULL(inv.offline,0) AS offline,
+	IFNULL(us_set.blocked,0) AS blocked
 FROM 
 	ucoin.users AS u
 LEFT JOIN tmm.wx AS wx ON (wx.user_id = u.id)
+LEFT JOIN tmm.user_settings AS us_set ON (us_set.user_id = u.id)
 LEFT JOIN (
 SELECT 
 	user_id,
@@ -353,6 +355,9 @@ LEFT JOIN (
 	if search.OffLineBfNumber != 0 {
 		where = append(where, fmt.Sprintf(` AND offline > %d`, search.OffLineBfNumber))
 	}
+	if search.IsWhiteList {
+		where = append(where,fmt.Sprintf(`  AND blocked = %d `,1))
+	}
 	rows, res, err := db.Query(query, strings.Join(when, " "),
 		strings.Join(leftJoin, " "), strings.Join(where, " "), limit, offset)
 	if CheckErr(err, c) {
@@ -390,11 +395,11 @@ LEFT JOIN (
 			OnlineBFNumber:       row.Int(res.Map(`online`)),
 			OffLineBFNumber:      row.Int(res.Map(`offline`)),
 			ExchangePointToUcoin: pointToUcoin.Ceil(),
+			Blocked:row.Int(res.Map(`blocked`)),
 		}
 		user.Nick = row.Str(res.Map(`nick`))
 		user.Id = row.Uint64(res.Map(`id`))
 		user.Mobile = row.Str(res.Map(`mobile`))
-
 		List = append(List, user)
 	}
 	c.JSON(http.StatusOK, admin.Response{

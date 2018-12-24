@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	API_OK = "OK"
+	API_OK    = "OK"
 	Not_Found = "没有查找到数据"
 )
 
@@ -40,6 +40,7 @@ type Users struct {
 	OnlineBFNumber       int             `json:"online_bf_number"`
 	OffLineBFNumber      int             `json:"off_line_bf_number"`
 
+	Blocked         int    `json:"blocked,omitempty"`
 	PointByShare    string `json:"point_by_share,omitempty"`
 	PointByReading  string `json:"point_by_reading,omitempty"`
 	PointByInvite   string `json:"point_by_invite,omitempty"`

@@ -19,10 +19,10 @@ func DrawMoneyByPointHandler(c *gin.Context) {
 	if CheckErr(err, c) {
 		return
 	}
+	limit:=10
 	var offset int
-	limit := 10
 	if page > 0 {
-		offset = limit * (page - 1)
+		offset = (page-1)*limit
 	}
 	query := `
 SELECT 
@@ -39,9 +39,17 @@ LIMIT %d OFFSET %d`
 	if CheckErr(err, c) {
 		return
 	}
-
 	var DrawMoneyList []*DrawMoney
-
+	if len(rows) == 0 {
+		c.JSON(http.StatusOK, admin.Response{
+			Code:    0,
+			Message: admin.Not_Found,
+			Data: gin.H{
+				"data":  DrawMoneyList,
+				"total": 0,
+			},
+		})
+	}
 	for _, row := range rows {
 		drawMoney := &DrawMoney{}
 		drawMoney.Type = DrawMoneyByPoint
@@ -51,10 +59,21 @@ LIMIT %d OFFSET %d`
 		drawMoney.Status = MsgMap[Success]
 		DrawMoneyList = append(DrawMoneyList, drawMoney)
 	}
-
+	rows, _, err = db.Query(`SELECT COUNT(1) FROM tmm.point_withdraws WHERE user_id = %d ORDER BY trade_num  `, id)
+	if CheckErr(err, c) {
+		return
+	}
+	var total = 0
+	if len(rows) != 0 {
+		total = rows[0].Int(0)
+	}
 	c.JSON(http.StatusOK, admin.Response{
 		Code:    0,
 		Message: admin.API_OK,
-		Data:    DrawMoneyList,
+		Data: gin.H{
+			"data":  DrawMoneyList,
+			"total": total,
+			"page":page,
+		},
 	})
 }

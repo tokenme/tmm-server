@@ -1,19 +1,28 @@
 package account_controller
 
-
 import (
 	"github.com/gin-gonic/gin"
-	."github.com/tokenme/tmm/handler"
+	. "github.com/tokenme/tmm/handler"
 	"strconv"
 	"fmt"
 	"net/http"
 	"github.com/tokenme/tmm/handler/admin"
 )
-func MakePointHandler(c *gin.Context){
+
+func MakePointHandler(c *gin.Context) {
 	db := Service.Db
 	id, err := strconv.Atoi(c.DefaultQuery(`id`, `-1`))
 	if CheckErr(err, c) {
 		return
+	}
+	page, err := strconv.Atoi(c.DefaultQuery(`page`, `-1`))
+	if CheckErr(err, c) {
+		return
+	}
+	limit := 10
+	var offset int
+	if page > 0 {
+		offset = (page - 1) * limit
 	}
 	query := `
 SELECT 
@@ -47,12 +56,13 @@ FROM(
 		tmm.device_share_tasks AS sha
 	INNER JOIN tmm.devices AS dev ON (dev.id = sha.device_id)
 	WHERE 
-		user_id = %d
+		dev.user_id = %d
 ) AS tmp
 ORDER BY tmp.inserted_at DESC
+LIMIT %d OFFSET %d
 	`
 
-	rows, _, err := db.Query(query, id, id, id)
+	rows, _, err := db.Query(query, id, id, id, limit, offset)
 	if CheckErr(err, c) {
 		return
 	}
@@ -66,10 +76,43 @@ ORDER BY tmp.inserted_at DESC
 		}
 		taskList = append(taskList, task)
 	}
+	var total int
+	rows, _, err = db.Query(`SELECT 
+	SUM(tmp.total) AS total
+FROM(
+	SELECT 
+		COUNT(1) AS total
+	FROM 
+  		tmm.invite_bonus
+	WHERE 
+		user_id = %d
+	UNION 
+	SELECT 
+		COUNT(1) AS total
+	FROM 
+ 		tmm.reading_logs
+ 	WHERE
+		user_id = %d
+	UNION 
+	SELECT 
+		COUNT(1) AS total
+	FROM 
+		tmm.device_share_tasks AS sha
+	INNER JOIN tmm.devices AS dev ON (dev.id = sha.device_id)
+	WHERE 
+		dev.user_id = %d
+) AS tmp
+`,id,id,id)
+	if len(rows) > 0 {
+		total = rows[0].Int(0)
+	}
 	c.JSON(http.StatusOK, admin.Response{
 		Code:    0,
 		Message: admin.API_OK,
-		Data:    taskList,
+		Data: gin.H{
+			"data":  taskList,
+			"total": total,
+			"page":  page,
+		},
 	})
 }
-
