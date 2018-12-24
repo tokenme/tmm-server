@@ -35,7 +35,11 @@ var AuthenticatorFunc = func(loginInfo jwt.Login, c *gin.Context) (string, int, 
 	var where string
 	mobile := strings.Replace(loginInfo.Mobile, " ", "", -1)
 	mobile = strings.Replace(mobile, "-", "", -1)
-	if loginInfo.CountryCode > 0 && mobile != "" && loginInfo.Password != "" && (loginInfo.Captcha != "" || loginInfo.AfsSession != "" && loginInfo.AfsToken == "" || loginInfo.AfsToken != "" && loginInfo.AfsSig != "" && loginInfo.AfsSession != "") {
+	captchaRequired := loginInfo.Captcha != "" || loginInfo.AfsSession != "" && loginInfo.AfsToken == "" || loginInfo.AfsToken != "" && loginInfo.AfsSig != "" && loginInfo.AfsSession != ""
+	platform := c.GetString("tmm-platform")
+	buildVersionStr := c.GetString("tmm-build")
+	buildVersion, _ := strconv.ParseUint(buildVersionStr, 10, 64)
+	if loginInfo.CountryCode > 0 && mobile != "" && loginInfo.Password != "" && (captchaRequired || platform == common.IOS && buildVersion == Config.App.SubmitBuild) {
 		where = fmt.Sprintf("u.country_code=%d AND u.mobile='%s'", loginInfo.CountryCode, db.Escape(mobile))
 	} else {
 		log.Error("missing params")
@@ -92,7 +96,7 @@ var AuthenticatorFunc = func(loginInfo jwt.Login, c *gin.Context) (string, int, 
 			return mobile, INVALID_CAPTCHA_ERROR, false
 		}
 		loginPasswd = loginInfo.Password
-	} else {
+	} else if loginInfo.AfsSession != "" && loginInfo.AfsToken != "" && loginInfo.AfsSig != "" {
 		afsClient, err := afs.NewClientWithAccessKey(Config.Aliyun.RegionId, Config.Aliyun.AK, Config.Aliyun.AS)
 		if err != nil {
 			log.Error(err.Error())
@@ -114,7 +118,10 @@ var AuthenticatorFunc = func(loginInfo jwt.Login, c *gin.Context) (string, int, 
 			return mobile, INVALID_CAPTCHA_ERROR, false
 		}
 		loginPasswd = loginInfo.Password
+	} else if platform == common.IOS && buildVersion == Config.App.SubmitBuild {
+		loginPasswd = loginInfo.Password
 	}
+
 	query := `SELECT
                 u.id,
                 u.country_code,

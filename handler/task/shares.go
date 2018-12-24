@@ -60,11 +60,14 @@ func SharesHandler(c *gin.Context) {
 	if Check(len(deviceId) == 0, "not found", c) {
 		return
 	}
+	platform := c.GetString("tmm-platform")
+	buildVersionStr := c.GetString("tmm-build")
+	buildVersion, _ := strconv.ParseUint(buildVersionStr, 10, 64)
 
 	var taskIds []uint64
 	limitState := fmt.Sprintf("LIMIT %d, %d", (req.Page-1)*req.PageSize, req.PageSize)
 	onlineStatusConstrain := "st.points_left>0 AND st.online_status=1"
-	if req.Idfa != "" && req.Build == Config.App.SubmitBuild {
+	if platform == common.IOS && buildVersion == Config.App.SubmitBuild {
 		onlineStatusConstrain = "st.points_left>0 AND st.online_status=1 AND (st.is_crawled=1 OR st.is_video=1)"
 	}
 	var inCidConstrain string
@@ -117,12 +120,9 @@ ORDER BY %s %s`
 		return
 	}
 
-	platform := c.GetString("tmm-platform")
-	buildVersionStr := c.GetString("tmm-build")
-	buildVersion, _ := strconv.ParseUint(buildVersionStr, 10, 64)
 	adsMap := make(map[int][]*common.Adgroup)
-	if req.Idfa == "" || req.Build != Config.App.SubmitBuild {
-		if !req.IsVideo && (platform == "ios" && buildVersion > 42 || platform == "android" && buildVersion > 211) {
+	if platform == common.IOS && buildVersion != Config.App.SubmitBuild {
+		if !req.IsVideo && (platform == common.IOS && buildVersion > 42 || platform == common.ANDROID && buildVersion > 211) {
 			adsMap, err = getCreatives(req.Cid, req.Page, platform)
 			if err != nil {
 				log.Error(err.Error())
@@ -181,7 +181,7 @@ func getCreatives(cid uint, page uint, platform string) (map[int][]*common.Adgro
 	adgroupsMap := make(map[uint64]*common.Adgroup)
 	db := Service.Db
 	var constraint string
-	if platform == "ios" {
+	if platform == common.IOS {
 		constraint = " AND c.platform IN (0, 1)"
 	} else {
 		constraint = " AND c.platform IN (0, 2)"

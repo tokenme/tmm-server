@@ -25,6 +25,8 @@ type Config struct {
 	TMMTokenAddress        string            `required:"true"`
 	TMMEscrowAddress       string            `required:"true"`
 	MinTMMExchange         uint              `required:"true"`
+	MinExchangeRate        float64           `required:"true"`
+	MaxExchangeRate        float64           `required:"true"`
 	MinTMMRedeem           uint              `required:"true"`
 	MinPointsRedeem        uint              `required:"true"`
 	DailyTMMInterestsRate  float64           `required:"true"`
@@ -159,7 +161,7 @@ type SlackConfig struct {
 }
 
 type AppConfig struct {
-	SubmitBuild uint   `required:"true"`
+	SubmitBuild uint64 `required:"true"`
 	IOSLink     string `required:"true"`
 	AndroidLink string `required:"true"`
 }

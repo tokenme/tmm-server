@@ -63,6 +63,14 @@ func GetExchangeRate(config Config, service *Service) (ExchangeRate, decimal.Dec
 		return exchRate, pointsPerTs, err
 	}
 	exchRate.Rate = tmmPerTs.Div(pointsPerTs)
+	minExchangeRate := decimal.NewFromFloat(config.MinExchangeRate)
+	maxExchangeRate := decimal.NewFromFloat(config.MaxExchangeRate)
+	if exchRate.Rate.LessThan(minExchangeRate) {
+		exchRate.Rate = minExchangeRate
+	}
+	if exchRate.Rate.GreaterThan(maxExchangeRate) {
+		exchRate.Rate = maxExchangeRate
+	}
 	minTMMExchange := decimal.New(int64(config.MinTMMExchange), 0)
 	exchRate.MinPoints = pointsPerTs.Div(tmmPerTs).Mul(minTMMExchange)
 	return exchRate, pointsPerTs, nil
