@@ -91,7 +91,7 @@ func (this *Crawler) GetGzhArticles(name string) (int, error) {
 	if len(ids) == 0 {
 		return 0, nil
 	}
-	rows, _, err := db.Query(`SELECT fileid FROM tmm.articles WHERE fileid IN (%s)`, strings.Join(ids, ","))
+	rows, _, err := db.Query(`SELECT fileid FROM tmm.articles WHERE fileid IN (%s) AND platform=0`, strings.Join(ids, ","))
 	if err != nil {
 		return 0, err
 	}
@@ -194,7 +194,7 @@ func (this *Crawler) uploadImage(src string) (string, error) {
 
 func (this *Crawler) Publish() error {
 	db := this.service.Db
-	rows, _, err := db.Query(`SELECT id, title, digest, cover FROM tmm.articles WHERE published=0 ORDER BY sortid LIMIT 1000`)
+	rows, _, err := db.Query(`SELECT id, title, digest, cover FROM tmm.articles WHERE published=0 AND platform=0 ORDER BY sortid LIMIT 1000`)
 	if err != nil {
 		return err
 	}

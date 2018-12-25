@@ -20,6 +20,7 @@ import (
 	//"github.com/tokenme/tmm/tools/transferwatcher"
 	"github.com/tokenme/tmm/tools/etherscanspider"
 	"github.com/tokenme/tmm/tools/invitebonus"
+	"github.com/tokenme/tmm/tools/toutiaospider"
 	"github.com/tokenme/tmm/tools/txaccelerate"
 	"github.com/tokenme/tmm/tools/videospider"
 	"github.com/tokenme/tmm/tools/wechatspider"
@@ -205,7 +206,8 @@ func main() {
 	}
 
 	if addArticlesFlag {
-		addArticlesCh := make(chan struct{}, 1)
+		addWxArticlesCh := make(chan struct{}, 1)
+		addToutiaoArticlesCh := make(chan struct{}, 1)
 		exitChan := make(chan struct{}, 1)
 		go func() {
 			ch := make(chan os.Signal, 1)
@@ -214,13 +216,17 @@ func main() {
 			exitChan <- struct{}{}
 			close(ch)
 		}()
-		addArticles(addArticlesCh, service, config)
+		go addToutiaoArticles(addToutiaoArticlesCh, service, config)
+		go addWxArticles(addWxArticlesCh, service, config)
 		for {
 			select {
-			case <-addArticlesCh:
-				go addArticles(addArticlesCh, service, config)
+			case <-addWxArticlesCh:
+				go addWxArticles(addWxArticlesCh, service, config)
+			case <-addToutiaoArticlesCh:
+				go addToutiaoArticles(addToutiaoArticlesCh, service, config)
 			case <-exitChan:
-				close(addArticlesCh)
+				close(addWxArticlesCh)
+				close(addToutiaoArticlesCh)
 				return
 			}
 		}
@@ -360,7 +366,7 @@ func main() {
 	//transferWatcher.Stop()
 }
 
-func addArticles(addArticlesCh chan<- struct{}, service *common.Service, config common.Config) {
+func addWxArticles(addWxArticlesCh chan<- struct{}, service *common.Service, config common.Config) {
 	crawler := wechatspider.NewCrawler(service, config)
 	crawler.Run()
 	err := crawler.Publish()
@@ -375,5 +381,23 @@ func addArticles(addArticlesCh chan<- struct{}, service *common.Service, config 
 	}
 	classifier.ClassifyDocs()
 	time.Sleep(6 * time.Hour)
-	addArticlesCh <- struct{}{}
+	addWxArticlesCh <- struct{}{}
+}
+
+func addToutiaoArticles(addToutiaoArticlesCh chan<- struct{}, service *common.Service, config common.Config) {
+	crawler := toutiaospider.NewCrawler(service, config)
+	crawler.Run()
+	err := crawler.Publish()
+	if err != nil {
+		log.Error(err.Error())
+	}
+	classifier := articleclassifier.NewClassifier(service, config)
+	err = classifier.LoadModel()
+	if err != nil {
+		log.Error(err.Error())
+		return
+	}
+	classifier.ClassifyDocs()
+	time.Sleep(5 * time.Minute)
+	addToutiaoArticlesCh <- struct{}{}
 }
