@@ -40,14 +40,14 @@ func AppInstallHandler(c *gin.Context) {
 		Mac:  req.Mac,
 	}
 	deviceId := device.DeviceId()
-	if CheckWithCode(len(deviceId) == 0, NOTFOUND_ERROR, "not found", c) {
+	if CheckWithCode(len(deviceId) == 0, NOTFOUND_ERROR, "invalid device", c) {
 		return
 	}
 	rows, _, err := db.Query(`SELECT 1 FROM tmm.devices WHERE user_id=%d AND id='%s' LIMIT 1`, user.Id, db.Escape(deviceId))
 	if CheckErr(err, c) {
 		return
 	}
-	if CheckWithCode(len(rows) == 0, NOTFOUND_ERROR, "not found", c) {
+	if CheckWithCode(len(rows) == 0, NOTFOUND_ERROR, "You have been finished the task", c) {
 		return
 	}
 	if req.Status != -1 {
@@ -55,7 +55,7 @@ func AppInstallHandler(c *gin.Context) {
 		if CheckErr(err, c) {
 			return
 		}
-		if Check(len(rows) == 0, "not found", c) {
+		if Check(len(rows) == 0, "Task not exists or you have been finished the task", c) {
 			return
 		}
 	}
@@ -66,11 +66,11 @@ func AppInstallHandler(c *gin.Context) {
 			return
 		}
 	} else if req.Status == 1 {
-        rows, _, err := db.Query(`SELECT 1 FROM tmm.device_app_tasks WHERE device_id='%s' AND task_id=%d AND status=-1 LIMIT 1`, db.Escape(deviceId), req.TaskId)
-        if CheckErr(err, c) {
+		rows, _, err := db.Query(`SELECT 1 FROM tmm.device_app_tasks WHERE device_id='%s' AND task_id=%d AND status=-1 LIMIT 1`, db.Escape(deviceId), req.TaskId)
+		if CheckErr(err, c) {
 			return
 		}
-		if Check(len(rows) > 0, "not found", c) {
+		if Check(len(rows) > 0, "You have been finished the task", c) {
 			return
 		}
 
@@ -106,7 +106,7 @@ WHERE
 		if CheckErr(err, c) {
 			return
 		}
-		if Check(len(rows) == 0, "not found", c) {
+		if Check(len(rows) == 0, "Task not finished", c) {
 			return
 		}
 		bonus, _ = decimal.NewFromString(rows[0].Str(0))
@@ -161,7 +161,7 @@ ORDER BY d.lastping_at DESC LIMIT 1) AS t2`
 		if CheckErr(err, c) {
 			return
 		}
-		if Check(len(rows) == 0, "not found", c) {
+		if Check(len(rows) == 0, "Task not finished", c) {
 			return
 		}
 		bonus, _ = decimal.NewFromString(rows[0].Str(0))
@@ -215,18 +215,18 @@ ORDER BY d.points DESC LIMIT 1) AS t2`
 			deviceIds = append(deviceIds, fmt.Sprintf("'%s'", db.Escape(row.Str(0))))
 			inviterIds = append(inviterIds, fmt.Sprintf("%d", row.Uint64(1)))
 		}
-        if len(deviceIds) > 0 {
-            _, ret, err := db.Query(`UPDATE tmm.devices AS d, tmm.invite_bonus AS ib SET d.points = IF(d.points>ib.bonus, d.points-ib.bonus, 0) WHERE ib.user_id IN (%s) AND d.id IN (%s) AND ib.task_type=2 AND ib.task_id=%d`, strings.Join(inviterIds, ","), strings.Join(deviceIds, ","), req.TaskId)
-            if CheckErr(err, c) {
-                return
-            }
-            if ret.AffectedRows() > 0 {
-                _, _, err = db.Query(`DELETE FROM tmm.invite_bonus WHERE user_id IN (%s) AND from_user_id=%d AND task_type=2 AND task_id=%d`, strings.Join(inviterIds, ","), user.Id, req.TaskId)
-                if CheckErr(err, c) {
-                    return
-                }
-            }
-        }
+		if len(deviceIds) > 0 {
+			_, ret, err := db.Query(`UPDATE tmm.devices AS d, tmm.invite_bonus AS ib SET d.points = IF(d.points>ib.bonus, d.points-ib.bonus, 0) WHERE ib.user_id IN (%s) AND d.id IN (%s) AND ib.task_type=2 AND ib.task_id=%d`, strings.Join(inviterIds, ","), strings.Join(deviceIds, ","), req.TaskId)
+			if CheckErr(err, c) {
+				return
+			}
+			if ret.AffectedRows() > 0 {
+				_, _, err = db.Query(`DELETE FROM tmm.invite_bonus WHERE user_id IN (%s) AND from_user_id=%d AND task_type=2 AND task_id=%d`, strings.Join(inviterIds, ","), user.Id, req.TaskId)
+				if CheckErr(err, c) {
+					return
+				}
+			}
+		}
 	}
 	task := common.AppTask{
 		Id:            req.TaskId,

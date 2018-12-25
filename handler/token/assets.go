@@ -132,30 +132,30 @@ func AssetsHandler(c *gin.Context) {
 		knownAddressMap[addr] = struct{}{}
 	}
 	var wg sync.WaitGroup
-	balancePool, _ := ants.NewPoolWithFunc(10000, func(req interface{}) error {
+	balancePool, _ := ants.NewPoolWithFunc(10000, func(req interface{}) {
 		defer wg.Done()
 		token := req.(*common.Token)
 		tokenABI, err := utils.NewToken(token.Address, Service.Geth)
 		if err != nil {
 			log.Error(err.Error())
-			return err
+			return
 		}
 		balance, err := utils.TokenBalanceOf(tokenABI, user.Wallet)
 		if err != nil {
 			log.Error(err.Error())
-			return err
+			return
 		}
 		balanceDecimal, err := decimal.NewFromString(balance.String())
 		if err != nil {
 			log.Error(err.Error())
-			return err
+			return
 		}
 		if token.Decimals > 0 {
 			token.Balance = balanceDecimal.Div(decimal.New(1, int32(token.Decimals)))
 		} else {
 			token.Balance = balanceDecimal
 		}
-		return nil
+		return
 	})
 	for _, token := range tokenMap {
 		wg.Add(1)

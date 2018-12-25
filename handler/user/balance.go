@@ -19,7 +19,7 @@ func BalanceHandler(c *gin.Context) {
 	}
 	user := userContext.(common.User)
 	db := Service.Db
-	query := `SELECT SUM(d.points) FROM devices AS d WHERE d.user_id=%d GROUP BY d.id`
+	query := `SELECT SUM(d.points) FROM devices AS d WHERE d.user_id=%d GROUP BY d.user_id`
 	rows, _, err := db.Query(query, user.Id)
 	if CheckErr(err, c) {
 		return

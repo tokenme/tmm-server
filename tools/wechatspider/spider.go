@@ -11,8 +11,8 @@ import (
 	"github.com/panjf2000/ants"
 	"github.com/tokenme/tmm/common"
 	"github.com/tokenme/tmm/tools/qiniu"
+	"github.com/tokenme/tmm/tools/wechatspider/spider"
 	"github.com/tokenme/tmm/utils"
-	"github.com/tokenme/wechat/spider"
 	"gopkg.in/russross/blackfriday.v2"
 	"io/ioutil"
 	"net/http"
@@ -29,7 +29,7 @@ type Crawler struct {
 
 func NewCrawler(service *common.Service, config common.Config) *Crawler {
 	slack := spider.NewSlack(config.Slack.Token, config.Slack.CaptchaChannel)
-	spiderClient := spider.New(slack, service.Redis.Master, config.ProxyApiKey)
+	spiderClient := spider.New(slack, service, config.ProxyApiKey)
 	return &Crawler{
 		spider:  spiderClient,
 		service: service,
@@ -138,16 +138,16 @@ func (this *Crawler) updateArticleImages(a spider.Article) (spider.Article, erro
 	}
 	var imageMap sync.Map
 	var wg sync.WaitGroup
-	uploadImagePool, _ := ants.NewPoolWithFunc(10, func(src interface{}) error {
+	uploadImagePool, _ := ants.NewPoolWithFunc(10, func(src interface{}) {
 		defer wg.Done()
 		ori := src.(string)
 		link, err := this.uploadImage(ori)
 		if err != nil {
 			log.Error(err.Error())
-			return err
+			return
 		}
 		imageMap.Store(ori, link)
-		return nil
+		return
 	})
 	doc.Find("img").Each(func(idx int, s *goquery.Selection) {
 		s.SetAttr("class", "image")

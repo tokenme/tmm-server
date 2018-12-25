@@ -367,6 +367,10 @@ func main() {
 }
 
 func addWxArticles(addWxArticlesCh chan<- struct{}, service *common.Service, config common.Config) {
+	defer func() {
+		time.Sleep(6 * time.Hour)
+		addWxArticlesCh <- struct{}{}
+	}()
 	crawler := wechatspider.NewCrawler(service, config)
 	crawler.Run()
 	err := crawler.Publish()
@@ -380,14 +384,23 @@ func addWxArticles(addWxArticlesCh chan<- struct{}, service *common.Service, con
 		return
 	}
 	classifier.ClassifyDocs()
-	time.Sleep(6 * time.Hour)
-	addWxArticlesCh <- struct{}{}
 }
 
 func addToutiaoArticles(addToutiaoArticlesCh chan<- struct{}, service *common.Service, config common.Config) {
+	defer func() {
+		time.Sleep(5 * time.Minute)
+		addToutiaoArticlesCh <- struct{}{}
+	}()
 	crawler := toutiaospider.NewCrawler(service, config)
-	crawler.Run()
-	err := crawler.Publish()
+	num, err := crawler.Run()
+	if err != nil {
+		log.Error(err.Error())
+		return
+	}
+	if num == 0 {
+		return
+	}
+	err = crawler.Publish()
 	if err != nil {
 		log.Error(err.Error())
 	}
@@ -398,6 +411,4 @@ func addToutiaoArticles(addToutiaoArticlesCh chan<- struct{}, service *common.Se
 		return
 	}
 	classifier.ClassifyDocs()
-	time.Sleep(5 * time.Minute)
-	addToutiaoArticlesCh <- struct{}{}
 }

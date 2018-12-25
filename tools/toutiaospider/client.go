@@ -53,11 +53,14 @@ type ArticleBaseInfo struct {
 }
 
 type ArticleInfo struct {
-	Title   string         `json:"title"`
-	Content string         `json:"content"`
-	Cover   string         `json:"coverImg"`
-	ItemId  string         `json:"itemId"`
-	SubInfo ArticleSubInfo `json:"subInfo"`
+	Title       string         `json:"title"`
+	Content     string         `json:"content"`
+	RichContent string         `json:"richContent"`
+	Cover       string         `json:"coverImg"`
+	Images      []string       `json:"images"`
+	ItemId      string         `json:"itemId"`
+	SubInfo     ArticleSubInfo `json:"subInfo"`
+	UgcInfo     ArticleUgcInfo `json:"ugcInfo"`
 }
 
 type ArticleSubInfo struct {
@@ -65,72 +68,72 @@ type ArticleSubInfo struct {
 	Time   string `json:"time"`
 }
 
+type ArticleUgcInfo struct {
+	Name string `json:"name"`
+	Time string `json:"publishTime"`
+}
+
 func (this ArticleInfo) ToArticle() Article {
 	imageUrl := this.Cover
 	if strings.HasPrefix(imageUrl, "http://") {
 		imageUrl = strings.Replace(imageUrl, "http://", "https://", -1)
 	}
+	var (
+		sourceName string
+		pubTime    string
+	)
+	if this.SubInfo.Source != "" {
+		sourceName = this.SubInfo.Source
+		pubTime = this.SubInfo.Time
+	} else if this.UgcInfo.Name != "" {
+		sourceName = this.UgcInfo.Name
+		pubTime = this.UgcInfo.Time
+	}
 	return Article{
 		GroupId:  this.ItemId,
 		ImageUrl: imageUrl,
+		Url:      fmt.Sprintf("https://m.toutiao.com/group/%s", this.ItemId),
 		Title:    this.Title,
-		Author:   this.SubInfo.Source,
-		DateTime: this.SubInfo.Time,
+		Author:   sourceName,
+		DateTime: pubTime,
 		Markdown: this.Content,
 	}
 }
 
 type Crawler struct {
-	proxy      *Proxy
-	service    *common.Service
-	config     common.Config
-	httpClient *grequests.Session
+	proxy   *Proxy
+	service *common.Service
+	config  common.Config
 }
 
 func NewCrawler(service *common.Service, config common.Config) *Crawler {
-	ro := &grequests.RequestOptions{
-		UserAgent:    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/34.0.1847.116 Safari/537.36",
-		UseCookieJar: true,
-	}
 	return &Crawler{
-		proxy:      NewProxy(service.Redis.Master, config.ProxyApiKey),
-		service:    service,
-		config:     config,
-		httpClient: grequests.NewSession(ro),
+		proxy:   NewProxy(service.Redis.Master, config.ProxyApiKey),
+		service: service,
+		config:  config,
 	}
 }
 
-func (this *Crawler) ReloadHttpClient() {
-	ro := &grequests.RequestOptions{
-		UserAgent:    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/34.0.1847.116 Safari/537.36",
-		UseCookieJar: true,
-	}
-	this.httpClient = grequests.NewSession(ro)
-}
-
-func (this *Crawler) Run() error {
+func (this *Crawler) Run() (int, error) {
 	log.Info("Toutiao Article Crawler start")
 	articles, err := this.SearchRealtimeNews()
 	if err != nil {
 		log.Error(err.Error())
 	}
 	log.Warn("Finished %d articles in toutiao.com", len(articles))
-	return nil
+	return len(articles), nil
 }
 
 func (this *Crawler) SearchRealtimeNews() (articles []Article, err error) {
-	log.Warn("SearchRealtimeNews")
+	log.Warn("Search toutiao Realtime News")
 	ro := &grequests.RequestOptions{
-		UserAgent:    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/34.0.1847.116 Safari/537.36",
-		UseCookieJar: true,
+		UserAgent: "Mozilla/5.0 (Linux; U; Android 4.3; en-us; SM-N900T Build/JSS15J) AppleWebKit/534.30 (KHTML, like Gecko) Version/4.0 Mobile Safari/534.30",
 	}
 	proxyUrl, _ := this.proxy.Get()
 	if proxyUrl != nil {
-		ro = &grequests.RequestOptions{
-			Proxies: map[string]*url.URL{"https": proxyUrl},
-		}
+		ro.Proxies = map[string]*url.URL{"https": proxyUrl}
 	}
-	resp, err := this.httpClient.Get(REALTIME_NEWS_URL, ro)
+	resp, err := grequests.Get(REALTIME_NEWS_URL, ro)
 	if err != nil {
 		log.Error(err.Error())
 		return nil, err
@@ -146,49 +149,60 @@ func (this *Crawler) SearchRealtimeNews() (articles []Article, err error) {
 		if a.GroupId == "" {
 			continue
 		}
-		link := fmt.Sprintf("https://m.toutiao.com%s", a.OpenUrl)
-		article, err := this.getArticle(link)
-		if err != nil || article.Markdown == "" {
-			continue
-		}
-		articles = append(articles, article)
 		ids = append(ids, a.GroupId)
 	}
 	if len(ids) == 0 {
+		log.Warn("NOT FOUND ANY toutiao ARTICLES")
 		return nil, nil
 	}
+	log.Info("Got %d toutiao search result", len(ids))
 	db := this.service.Db
 	rows, _, err := db.Query(`SELECT fileid FROM tmm.articles WHERE fileid IN (%s) AND platform=1`, strings.Join(ids, ","))
 	if err != nil {
+		log.Error(err.Error())
 		return nil, err
 	}
 	idMap := make(map[string]struct{})
 	for _, row := range rows {
 		idMap[row.Str(0)] = struct{}{}
 	}
+
 	var val []string
 	loc, _ := time.LoadLocation("Asia/Shanghai")
-	for _, a := range articles {
-		if _, found := idMap[a.GroupId]; found {
+	for _, a := range searchResp.Data {
+		if a.GroupId == "" {
 			continue
 		}
-		newA, err := this.updateArticleImages(a)
+		if _, found := idMap[a.GroupId]; found {
+			log.Warn("Found Article:%s ", a.GroupId)
+			continue
+		}
+		link := fmt.Sprintf("https://www.toutiao.com%s", a.OpenUrl)
+		article, err := this.getArticle(link)
+		if err != nil || article.Markdown == "" {
+			if err != nil {
+				log.Error(err.Error())
+			}
+			continue
+		}
+		articles = append(articles, article)
+		newA, err := this.updateArticleImages(article)
 		if err != nil {
 			log.Error(err.Error())
 			continue
 		}
 		publishTime := time.Now()
-		if a.DateTime != "" {
-			t, err := time.ParseInLocation("2006-01-02 15:04:05", a.DateTime, loc)
+		if article.DateTime != "" {
+			t, err := time.ParseInLocation("2006-01-02 15:04:05", article.DateTime, loc)
 			if err == nil {
 				publishTime = t
 			}
 		}
 		sortId := utils.RangeRandUint64(1, 1000000)
-		val = append(val, fmt.Sprintf("(%s, '%s', '%s', '%s', '%s', '%s', '%s', '%s', 1, %d)", newA.GroupId, db.Escape(newA.Author), db.Escape(newA.Title), db.Escape(newA.Url), db.Escape(newA.ImageUrl), publishTime.Format("2006-01-02 15:04:05"), db.Escape(newA.Digest), db.Escape(newA.Markdown), sortId))
+		val = append(val, fmt.Sprintf("(%s, '%s', '%s', '%s', '%s', '%s', '%s', 1, %d)", newA.GroupId, db.Escape(newA.Author), db.Escape(newA.Title), db.Escape(newA.Url), db.Escape(newA.ImageUrl), publishTime.Format("2006-01-02 15:04:05"), db.Escape(newA.Markdown), sortId))
 	}
 	if len(val) > 0 {
-		_, _, err := db.Query(`INSERT IGNORE INTO tmm.articles (fileid, author, title, link, cover, published_at, digest, content, platform, sortid) VALUES %s`, strings.Join(val, ","))
+		_, _, err := db.Query(`INSERT IGNORE INTO tmm.articles (fileid, author, title, link, cover, published_at, content, platform, sortid) VALUES %s`, strings.Join(val, ","))
 		if err != nil {
 			log.Error(err.Error())
 			return nil, err
@@ -198,18 +212,17 @@ func (this *Crawler) SearchRealtimeNews() (articles []Article, err error) {
 }
 
 func (this *Crawler) getArticle(link string) (article Article, err error) {
+	log.Info("Fetching toutiao article: %s", link)
 	ro := &grequests.RequestOptions{
-		UserAgent:    "Mozilla/5.0 (Linux; U; Android 4.3; en-us; SM-N900T Build/JSS15J) AppleWebKit/534.30 (KHTML, like Gecko) Version/4.0 Mobile Safari/534.30",
-		UseCookieJar: false,
+		UserAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/34.0.1847.116 Safari/537.36",
 	}
 	proxyUrl, _ := this.proxy.Get()
 	if proxyUrl != nil {
-		ro = &grequests.RequestOptions{
-			Proxies: map[string]*url.URL{"https": proxyUrl},
-		}
+		ro.Proxies = map[string]*url.URL{"https": proxyUrl}
 	}
-	resp, err := this.httpClient.Get(link, ro)
+	resp, err := grequests.Get(link, ro)
 	if err != nil {
+		log.Error(err.Error())
 		return article, err
 	}
 	reader := bytes.NewReader(resp.Bytes())
@@ -237,16 +250,27 @@ func (this *Crawler) getArticle(link string) (article Article, err error) {
 		return true
 	})
 	articleInfo.Article.Content = html.UnescapeString(articleInfo.Article.Content)
-	if articleInfo.Article.SubInfo.Source == "" || articleInfo.Article.ItemId == "" || articleInfo.Article.Title == "" || articleInfo.Article.Content == "" {
-		return article, errors.New("no content")
+	if (articleInfo.Article.SubInfo.Source == "" && articleInfo.Article.UgcInfo.Name == "") || articleInfo.Article.ItemId == "" || articleInfo.Article.Title == "" || articleInfo.Article.Content == "" {
+		//spew.Dump(articleInfo.Article)
+		//log.Error("%s", resp.String())
+		return article, errors.New(fmt.Sprintf("no content: %s", link))
 	}
-	a, err := wxarticle2md.ToAticle(articleInfo.Article.Content)
+	content := articleInfo.Article.Content
+	if articleInfo.Article.RichContent != "" {
+		content = articleInfo.Article.RichContent
+	}
+	if len(articleInfo.Article.Images) > 0 {
+		for _, img := range articleInfo.Article.Images {
+			content += fmt.Sprintf(`<img src="%s">`, img)
+		}
+	}
+	a, err := wxarticle2md.ToAticle(content)
 	if err != nil {
 		return article, err
 	}
 	articleInfo.Article.Content = wxarticle2md.Convert(a)
 	article = articleInfo.Article.ToArticle()
-	article.Url = link
+	log.Info("Fetched toutiao article: %s", link)
 	return article, nil
 }
 
@@ -258,16 +282,16 @@ func (this *Crawler) updateArticleImages(a Article) (Article, error) {
 	}
 	var imageMap sync.Map
 	var wg sync.WaitGroup
-	uploadImagePool, _ := ants.NewPoolWithFunc(10, func(src interface{}) error {
+	uploadImagePool, _ := ants.NewPoolWithFunc(10, func(src interface{}) {
 		defer wg.Done()
 		ori := src.(string)
 		link, err := this.uploadImage(ori)
 		if err != nil {
 			log.Error(err.Error())
-			return err
+			return
 		}
 		imageMap.Store(ori, link)
-		return nil
+		return
 	})
 	doc.Find("img").Each(func(idx int, s *goquery.Selection) {
 		s.SetAttr("class", "image")
