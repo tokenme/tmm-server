@@ -72,7 +72,8 @@ func (this *Spider) GetGzhArticles(wechatName string) ([]Article, error) {
 	r, _ := regexp.Compile("var msgList = {\"list\":\\[([\\s\\S]*?)\\]}")
 	result := r.FindAllSubmatch(resp.Bytes(), -1)
 	if len(result) == 0 {
-		return nil, errors.New("not found")
+		log.Warn("%s", resp.String())
+		return nil, errors.New(fmt.Sprintf("not found: %s", wechatName))
 	}
 	var buffer bytes.Buffer
 	buffer.Write([]byte("["))
@@ -179,7 +180,7 @@ func (this *Spider) GetGzhArticles(wechatName string) ([]Article, error) {
 }
 
 func (this *Spider) getProfile(name string) (string, error) {
-	resp, err := this.sogouOpenUnlock("http://weixin.sogou.com/weixin?type=1&query="+name+"&ie=utf8&_sug_=n&_sug_type_=", "http://weixin.sogou.com")
+	resp, err := this.sogouOpenUnlock("http://weixin.sogou.com/weixin?type=1&query="+url.QueryEscape(name)+"&ie=utf8&_sug_=n&_sug_type_=", "http://weixin.sogou.com")
 	if err != nil {
 		return "", err
 	}
@@ -244,16 +245,20 @@ func (this *Spider) sogouOpenUnlock(link, referrer string) (*grequests.Response,
 	}
 	proxyUrl, _ := this.proxy.Get()
 	if proxyUrl != nil {
-		ro.Proxies = map[string]*url.URL{"https": proxyUrl}
+		ro.Proxies = map[string]*url.URL{"https": proxyUrl, "http": proxyUrl}
 	}
 	resp, err := grequests.Get(link, ro)
 	if err != nil {
-		return nil, err
+		log.Error(err.Error())
+		time.Sleep(2 * time.Minute)
+		this.proxy.Update()
+		return this.sogouOpenUnlock(link, referrer)
 	}
 	body := resp.String()
 	respUrl := resp.RawResponse.Request.URL.String()
 	if strings.Contains(respUrl, "antispider") || strings.Contains(body, "请输入验证码") {
-		time.Sleep(5 * time.Minute)
+		log.Error("Sogou antispider")
+		time.Sleep(2 * time.Minute)
 		this.proxy.Update()
 		return this.sogouOpenUnlock(link, referrer)
 	}
@@ -266,7 +271,7 @@ func (this *Spider) tryUnlockSogou(referrer string) (string, error) {
 	}
 	proxyUrl, _ := this.proxy.Get()
 	if proxyUrl != nil {
-		ro.Proxies = map[string]*url.URL{"https": proxyUrl}
+		ro.Proxies = map[string]*url.URL{"https": proxyUrl, "http": proxyUrl}
 	}
 	resp, err := grequests.Get(fmt.Sprintf("http://weixin.sogou.com/antispider/util/seccode.php?tc=%d", time.Now().UnixNano()), ro)
 	if err != nil {
@@ -341,24 +346,24 @@ func (this *Spider) wxOpenUnlock(link string, referrer string) (*grequests.Respo
 	}
 	proxyUrl, _ := this.proxy.Get()
 	if proxyUrl != nil {
-		ro.Proxies = map[string]*url.URL{"https": proxyUrl}
+		ro.Proxies = map[string]*url.URL{"https": proxyUrl, "http": proxyUrl}
 	}
 	resp, err := grequests.Get(link, ro)
 	if err != nil {
-		return nil, err
+		log.Error(err.Error())
+		time.Sleep(2 * time.Minute)
+		this.proxy.Update()
+		return this.wxOpenUnlock(link, referrer)
 	}
 	body := resp.String()
 	if strings.Contains(body, "请输入验证码") {
-		log.Warn("请输入验证码")
-		err := this.tryUnlockWx(link, referrer)
-		if err != nil {
-			return nil, err
-		} else {
-			return this.wxOpenUnlock(link, referrer)
-		}
+		log.Warn("Wechat请输入验证码")
+		time.Sleep(2 * time.Minute)
+		this.proxy.Update()
+		return this.wxOpenUnlock(link, referrer)
 	} else if strings.Contains(body, "你的访问过于频繁，需要从微信打开验证身份，是否需要继续访问当前页面") {
-		log.Error("访问过于频繁")
-		time.Sleep(5 * time.Minute)
+		log.Error("Wechat访问过于频繁")
+		time.Sleep(2 * time.Minute)
 		this.proxy.Update()
 		return this.wxOpenUnlock(link, referrer)
 	}
@@ -371,7 +376,7 @@ func (this *Spider) tryUnlockWx(link string, referrer string) error {
 	}
 	proxyUrl, _ := this.proxy.Get()
 	if proxyUrl != nil {
-		ro.Proxies = map[string]*url.URL{"https": proxyUrl}
+		ro.Proxies = map[string]*url.URL{"https": proxyUrl, "http": proxyUrl}
 	}
 	resp, err := grequests.Get(fmt.Sprintf("https://mp.weixin.qq.com/mp/verifycode?cert=%d", time.Now().UnixNano()), ro)
 	if err != nil {

@@ -55,7 +55,7 @@ func AppInstallHandler(c *gin.Context) {
 		if CheckErr(err, c) {
 			return
 		}
-		if Check(len(rows) == 0, "Task not exists or you have been finished the task", c) {
+		if Check(len(rows) == 0, "Task not avaliable", c) {
 			return
 		}
 	}
