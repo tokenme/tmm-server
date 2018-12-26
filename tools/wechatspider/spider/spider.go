@@ -64,7 +64,7 @@ func (this *Spider) GetGzhArticles(wechatName string) ([]Article, error) {
 	if profile == "" {
 		return nil, fmt.Errorf("%s", "公众号 "+wechatName+" 不存在或代理失效!")
 	}
-	resp, err := this.wxOpenUnlock(profile, "http://weixin.sogou.com/weixin?type=1&query="+wechatName+"&ie=utf8&_sug_=n&_sug_type_=")
+	resp, err := this.wxOpenUnlock(profile, "http://weixin.sogou.com/weixin?type=1&query="+wechatName+"&ie=utf8&_sug_=n&_sug_type_=", 0)
 	if err != nil {
 		return nil, err
 	}
@@ -180,7 +180,7 @@ func (this *Spider) GetGzhArticles(wechatName string) ([]Article, error) {
 }
 
 func (this *Spider) getProfile(name string) (string, error) {
-	resp, err := this.sogouOpenUnlock("http://weixin.sogou.com/weixin?type=1&query="+url.QueryEscape(name)+"&ie=utf8&_sug_=n&_sug_type_=", "http://weixin.sogou.com")
+	resp, err := this.sogouOpenUnlock("http://weixin.sogou.com/weixin?type=1&query="+url.QueryEscape(name)+"&ie=utf8&_sug_=n&_sug_type_=", "http://weixin.sogou.com", 0)
 	if err != nil {
 		return "", err
 	}
@@ -211,7 +211,7 @@ func (this *Spider) getProfile(name string) (string, error) {
 }
 
 func (this *Spider) getArticle(link string, referrer string) (string, error) {
-	resp, err := this.wxOpenUnlock(link, referrer)
+	resp, err := this.wxOpenUnlock(link, referrer, 0)
 	if err != nil {
 		return "", err
 	}
@@ -236,7 +236,7 @@ func (this *Spider) getArticle(link string, referrer string) (string, error) {
 	return strings.TrimSpace(mk), err
 }
 
-func (this *Spider) sogouOpenUnlock(link, referrer string) (*grequests.Response, error) {
+func (this *Spider) sogouOpenUnlock(link, referrer string, retry uint) (*grequests.Response, error) {
 	ro := &grequests.RequestOptions{
 		Headers: map[string]string{
 			"Referer": referrer,
@@ -250,17 +250,20 @@ func (this *Spider) sogouOpenUnlock(link, referrer string) (*grequests.Response,
 	resp, err := grequests.Get(link, ro)
 	if err != nil {
 		log.Error(err.Error())
-		time.Sleep(2 * time.Minute)
+		if retry > 2 {
+			return nil, err
+		}
+		time.Sleep(30 * time.Second)
 		this.proxy.Update()
-		return this.sogouOpenUnlock(link, referrer)
+		return this.sogouOpenUnlock(link, referrer, retry+1)
 	}
 	body := resp.String()
 	respUrl := resp.RawResponse.Request.URL.String()
 	if strings.Contains(respUrl, "antispider") || strings.Contains(body, "请输入验证码") {
 		log.Error("Sogou antispider")
-		time.Sleep(2 * time.Minute)
+		time.Sleep(30 * time.Second)
 		this.proxy.Update()
-		return this.sogouOpenUnlock(link, referrer)
+		return this.sogouOpenUnlock(link, referrer, retry)
 	}
 	return resp, nil
 }
@@ -337,7 +340,7 @@ func (this *Spider) unlockSogouVerify(referrer string, image []byte) (snuid stri
 	return "", nil
 }
 
-func (this *Spider) wxOpenUnlock(link string, referrer string) (*grequests.Response, error) {
+func (this *Spider) wxOpenUnlock(link string, referrer string, retry uint) (*grequests.Response, error) {
 	ro := &grequests.RequestOptions{
 		Headers: map[string]string{
 			"Referer": referrer,
@@ -351,21 +354,24 @@ func (this *Spider) wxOpenUnlock(link string, referrer string) (*grequests.Respo
 	resp, err := grequests.Get(link, ro)
 	if err != nil {
 		log.Error(err.Error())
-		time.Sleep(2 * time.Minute)
+		if retry > 2 {
+			return nil, err
+		}
+		time.Sleep(30 * time.Second)
 		this.proxy.Update()
-		return this.wxOpenUnlock(link, referrer)
+		return this.wxOpenUnlock(link, referrer, retry+1)
 	}
 	body := resp.String()
 	if strings.Contains(body, "请输入验证码") {
 		log.Warn("Wechat请输入验证码")
-		time.Sleep(2 * time.Minute)
+		time.Sleep(50 * time.Second)
 		this.proxy.Update()
-		return this.wxOpenUnlock(link, referrer)
+		return this.wxOpenUnlock(link, referrer, retry)
 	} else if strings.Contains(body, "你的访问过于频繁，需要从微信打开验证身份，是否需要继续访问当前页面") {
 		log.Error("Wechat访问过于频繁")
-		time.Sleep(2 * time.Minute)
+		time.Sleep(50 * time.Second)
 		this.proxy.Update()
-		return this.wxOpenUnlock(link, referrer)
+		return this.wxOpenUnlock(link, referrer, retry)
 	}
 	return resp, nil
 }
