@@ -11,7 +11,7 @@ func AccountRouter(r *gin.Engine) {
 	AccountGroup.Use(AuthMiddleware.MiddlewareFunc(), verify.VerifyAdminFunc())
 	{
 		AccountGroup.GET(`/list`, account_controller.GetAccountList)
-		AccountGroup.PUT(`/user`, account_controller.EditAccountHandler)
+		AccountGroup.POST(`/user`, account_controller.EditAccountHandler)
 		AccountGroup.GET(`/user`, account_controller.UserInfoHandler)
 		AccountGroup.GET(`/user/friend`, account_controller.FriendsHandler)
 		AccountGroup.GET(`/user/point`, account_controller.MakePointHandler)

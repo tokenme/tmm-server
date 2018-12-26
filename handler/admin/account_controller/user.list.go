@@ -30,25 +30,25 @@ const (
 )
 
 type SearchOptions struct {
-	WithdrawType            withdrawType `form:"withdraw_type"`
-	WithDrawNumberOfTimes   int          `form:"with_draw_number_of_times"`
-	WithDrawAmount          int          `form:"with_draw_amount"`
-	WithDrawInterval        int          `form:"with_draw_interval"`
-	ExchangePointToUc       int          `form:"exchange_point_to_uc"`
-	ExchangeUcToPoint       int          `form:"exchange_uc_to_point"`
-	ExchangePointToUcAmount int          `form:"exchange_point_to_uc_amount"`
-	ExchangeUcToPointAmount int          `form:"exchange_uc_to_point_amount"`
-	MakePointType           pointType    `form:"make_point_type"`
-	MakePointTimes          int          `form:"make_point_times"`
-	MakePointDay            int          `form:"make_point_day"`
-	OnlineBFNumber          int          `form:"online_bf_number"`
-	OffLineBfNumber         int          `form:"off_line_bf_number"`
-	InviteInterval          int          `form:"invite_interval"`
-	StartDate               string       `form:"start_date"`
-	EndDate                 string       `form:"end_date"`
-	StartHours              string       `form:"start_hours"`
-	EndHours                string       `form:"end_hours"`
-	IsWhiteList             int          `form:"is_white_list"`
+	WithdrawType          withdrawType `form:"withdraw_type"`
+	WithDrawNumberOfTimes int          `form:"with_draw_number_of_times"`
+	WithDrawAmount        int          `form:"with_draw_amount"`
+	ExchangePointToUc       int       `form:"exchange_point_to_uc"`
+	ExchangeUcToPoint       int       `form:"exchange_uc_to_point"`
+	ExchangePointToUcAmount int       `form:"exchange_point_to_uc_amount"`
+	ExchangeUcToPointAmount int       `form:"exchange_uc_to_point_amount"`
+	MakePointType           pointType `form:"make_point_type"`
+	MakePointTimes          int       `form:"make_point_times"`
+	MakePointDay            int       `form:"make_point_day"`
+	OnlineBFNumber          int       `form:"online_bf_number"`
+	OffLineBfNumber         int       `form:"off_line_bf_number"`
+	StartDate   string `form:"start_date"`
+	EndDate     string `form:"end_date"`
+	StartHours  string `form:"start_hours"`
+	EndHours    string `form:"end_hours"`
+	IsWhiteList bool   `form:"is_white_list"`
+	Id          int    `form:"id"`
+	Mobile      string `form:"mobile"`
 }
 
 func GetAccountList(c *gin.Context) {
@@ -66,7 +66,7 @@ func GetAccountList(c *gin.Context) {
 		return
 	}
 	var offset int
-	if limit <= 0 {
+	if limit < 1 {
 		limit = 10
 	}
 	if page > 0 {
@@ -89,10 +89,12 @@ SELECT
 	ex.point_to_tmm AS point_to_tmm,
 	ex.tmm_to_point AS tmm_to_point,
 	IFNULL(inv.online,0) AS online,
-	IFNULL(inv.offline,0) AS offline
+	IFNULL(inv.offline,0) AS offline,
+	IFNULL(us_set.blocked,0) AS blocked
 FROM 
 	ucoin.users AS u
 LEFT JOIN tmm.wx AS wx ON (wx.user_id = u.id)
+LEFT JOIN tmm.user_settings AS us_set ON (us_set.user_id = u.id)
 LEFT JOIN (
 SELECT 
 	user_id,
@@ -323,8 +325,14 @@ LEFT JOIN (
 		})
 		return
 	}
+	if search.Id != 0 {
+		where = append(where, fmt.Sprintf(`AND u.id = %d`, search.Id))
+	}
+	if search.Mobile != "" {
+		where = append(where, fmt.Sprintf(` AND u.mobile = '%s'`, search.Mobile))
+	}
 	if search.WithDrawNumberOfTimes != 0 {
-		where = append(where, fmt.Sprintf(" AND cny_total > %d", search.WithDrawNumberOfTimes))
+		where = append(where, fmt.Sprintf(" AND cny.total > %d", search.WithDrawNumberOfTimes))
 	}
 	if search.WithDrawAmount != 0 {
 		where = append(where, fmt.Sprintf(" AND cny > %d", search.WithDrawAmount))
@@ -342,7 +350,7 @@ LEFT JOIN (
 		where = append(where, fmt.Sprintf(` AND tmm_to_point > %d`, search.ExchangeUcToPointAmount))
 	}
 	if search.MakePointTimes != 0 {
-		where = append(where, fmt.Sprintf(` AND point_total > %d`, search.MakePointTimes))
+		where = append(where, fmt.Sprintf(` AND point.total > %d`, search.MakePointTimes))
 	}
 	if search.MakePointDay != 0 {
 		where = append(where, fmt.Sprintf(` AND IFNULL(point.point,1) / IFNULL(point._day,1) > %d`, search.MakePointDay))
@@ -352,6 +360,9 @@ LEFT JOIN (
 	}
 	if search.OffLineBfNumber != 0 {
 		where = append(where, fmt.Sprintf(` AND offline > %d`, search.OffLineBfNumber))
+	}
+	if search.IsWhiteList {
+		where = append(where, fmt.Sprintf(`  AND blocked = %d `, 1))
 	}
 	rows, res, err := db.Query(query, strings.Join(when, " "),
 		strings.Join(leftJoin, " "), strings.Join(where, " "), limit, offset)
@@ -365,7 +376,11 @@ LEFT JOIN (
 		c.JSON(http.StatusOK, admin.Response{
 			Code:    0,
 			Message: admin.Not_Found,
-			Data:    List,
+			Data: gin.H{
+				"data":  List,
+				"page":  page,
+				"total": 100,
+			},
 		})
 		return
 	}
@@ -390,16 +405,25 @@ LEFT JOIN (
 			OnlineBFNumber:       row.Int(res.Map(`online`)),
 			OffLineBFNumber:      row.Int(res.Map(`offline`)),
 			ExchangePointToUcoin: pointToUcoin.Ceil(),
+			Blocked:              row.Int(res.Map(`blocked`)),
 		}
 		user.Nick = row.Str(res.Map(`nick`))
 		user.Id = row.Uint64(res.Map(`id`))
 		user.Mobile = row.Str(res.Map(`mobile`))
-
 		List = append(List, user)
+	}
+	total := 100
+	rows, _, err = db.Query(`SELECT COUNT(id) FROM  ucoin.users`)
+	if err == nil || len(rows) != 0 {
+		total = rows[0].Int(0)
 	}
 	c.JSON(http.StatusOK, admin.Response{
 		Code:    0,
 		Message: admin.API_OK,
-		Data:    List,
+		Data: gin.H{
+			"data":  List,
+			"page":  page,
+			"total": total,
+		},
 	})
 }

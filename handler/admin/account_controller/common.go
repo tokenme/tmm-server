@@ -1,8 +1,8 @@
 package account_controller
 
 const (
-	ExchangeUc       = "兑换UC"
-	ExchangePoint    = "兑换积分"
+	ExchangeUc       = "UC兑换"
+	ExchangePoint    = "积分兑换"
 	DrawMoneyByPoint = "提现_By_积分"
 	DrawMoneyByUc    = "提现_By_UC"
 )
@@ -19,6 +19,7 @@ const (
 	Reading = iota
 	Invite
 	Share
+	BfBouns
 )
 
 var MsgMap = map[int]string{
@@ -31,9 +32,11 @@ var typeMap = map[int]string{
 	Reading: "阅读",
 	Invite:  "拉新好友",
 	Share:   "分享任务",
+	BfBouns: "好友贡献",
 }
 
-type Exchange struct {
+
+type Task struct {
 	Type   string `json:"type"`
 	Pay    string `json:"pay"`
 	Get    string `json:"get"`
@@ -41,13 +44,9 @@ type Exchange struct {
 	Status string `json:"status"`
 }
 
-type Task struct {
-	Point  string `json:"point"`
-	Type   string `json:"type"`
-	When   string `json:"when"`
-	Status string `json:"status"`
-}
-
-type DrawMoney struct {
-	Exchange
+type PageOptions struct {
+	Id    int `form:"id"`
+	Page  int `form:"page"`
+	Limit int `form:"limit"`
+	Types int `form:"type"`
 }
