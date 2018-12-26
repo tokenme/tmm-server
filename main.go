@@ -50,6 +50,7 @@ func main() {
 		accelerateGasFlag          int64
 		ucoinHoldersFlag           bool
 		activeBonusFlag            bool
+		fixInviteBonusFlag         bool
 	)
 
 	os.Setenv("CONFIGOR_ENV_PREFIX", "-")
@@ -75,6 +76,7 @@ func main() {
 	flag.BoolVar(&addArticlesFlag, "add-articles", false, "enable add articles")
 	flag.BoolVar(&ucoinHoldersFlag, "update-holders", false, "enable update ucoin holders")
 	flag.BoolVar(&activeBonusFlag, "active-bonus", false, "enable check active bonus")
+	flag.BoolVar(&fixInviteBonusFlag, "fix-invite-bonus", false, "enable fix invite bonus")
 	flag.Parse()
 
 	configor.New(&configor.Config{Verbose: configFlag.Debug, ErrorOnUnmatchedKeys: true, Environment: "production"}).Load(&config, configPath)
@@ -312,6 +314,10 @@ func main() {
 			gin.SetMode(gin.ReleaseMode)
 		}
 		activeBonusService := invitebonus.NewService(service, config, handler.GlobalLock)
+		if fixInviteBonusFlag {
+			activeBonusService.FixBonus()
+			return
+		}
 		if activeBonusFlag {
 			go activeBonusService.Start()
 		}

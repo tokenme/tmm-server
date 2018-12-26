@@ -3,6 +3,7 @@ package device
 import (
 	//"github.com/davecgh/go-spew/spew"
 	"errors"
+	"github.com/getsentry/raven-go"
 	"github.com/gin-gonic/gin"
 	"github.com/mkideal/log"
 	"github.com/shopspring/decimal"
@@ -90,6 +91,7 @@ func inviteBonus(user common.User, deviceId string, c *gin.Context) error {
 	_, ret, err := db.Query(`UPDATE tmm.invite_codes AS t1, tmm.invite_codes AS t2, tmm.invite_submissions AS iss, ucoin.users AS u SET t1.parent_id=t2.user_id, t1.grand_id=t2.parent_id WHERE (t1.parent_id!=t2.user_id OR t1.grand_id!=t2.parent_id) AND t2.user_id!=t1.user_id AND t2.parent_id!=t1.user_id AND t2.id != t1.id AND t2.id=iss.code AND t1.user_id=u.id AND iss.completed=0 AND u.country_code=86 AND iss.tel=u.mobile AND u.mobile='%s'`, db.Escape(user.Mobile))
 	if err != nil {
 		log.Error(err.Error())
+		raven.CaptureError(err, nil)
 		return err
 	}
 	if ret.AffectedRows() == 0 {
@@ -99,6 +101,7 @@ func inviteBonus(user common.User, deviceId string, c *gin.Context) error {
 	_, _, err = db.Query(`UPDATE tmm.invite_submissions iss, ucoin.users AS u SET iss.completed=1 WHERE iss.tel=u.mobile AND u.country_code=86 AND u.mobile='%s'`, db.Escape(user.Mobile))
 	if err != nil {
 		log.Error(err.Error())
+		raven.CaptureError(err, nil)
 		return err
 	}
 
@@ -113,6 +116,7 @@ ORDER BY d.lastping_at DESC LIMIT 1`
 	rows, _, err := db.Query(query, user.Id)
 	if err != nil {
 		log.Error(err.Error())
+		raven.CaptureError(err, nil)
 		return err
 	}
 	if len(rows) == 0 {
@@ -138,22 +142,26 @@ ORDER BY d.lastping_at DESC LIMIT 1`
 	tx, tmm, err := _transferToken(user.Id, forexRate, c)
 	if err != nil {
 		log.Error("Bonus Transfer failed")
+		raven.CaptureError(err, nil)
 		return err
 	}
 	//log.Warn("Inviter bonus: %s, inviter:%d", inviterPointBonus.String(), inviterUserId)
 	_, _, err = db.Query(`UPDATE tmm.devices AS d2 SET d2.points = d2.points + %s, d2.total_ts = d2.total_ts + %d WHERE d2.id='%s'`, inviterPointBonus.String(), inviterTs.IntPart(), db.Escape(inviterDeviceId))
 	if err != nil {
 		log.Error(err.Error())
+		raven.CaptureError(err, nil)
 		return err
 	}
 	_, _, err = db.Query(`INSERT INTO tmm.invite_bonus (user_id, from_user_id, bonus, tmm, tmm_tx) VALUES (%d, %d, 0, %s, '%s'), (%d, %d, %s, 0, '')`, user.Id, user.Id, tmm.String(), db.Escape(tx), inviterUserId, user.Id, inviterPointBonus.String())
 	if err != nil {
 		log.Error(err.Error())
+		raven.CaptureError(err, nil)
 		return err
 	}
 	_, _, err = db.Query(`UPDATE tmm.invite_codes AS t1, tmm.invite_codes AS t2 SET t1.grand_id=t2.parent_id WHERE t2.user_id=t1.parent_id AND t2.parent_id!=t1.user_id AND t2.user_id=%d`, user.Id)
 	if err != nil {
 		log.Error(err.Error())
+		raven.CaptureError(err, nil)
 	}
 	_, _, err = db.Query(`INSERT INTO user_settings (user_id, level)
 (
@@ -170,6 +178,7 @@ ORDER BY ul.id DESC LIMIT 1
 ) ON DUPLICATE KEY UPDATE level=VALUES(level)`, inviterUserId)
 	if err != nil {
 		log.Error(err.Error())
+		raven.CaptureError(err, nil)
 	}
 	return err
 }
