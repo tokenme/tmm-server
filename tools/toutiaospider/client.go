@@ -257,12 +257,14 @@ func (this *Crawler) getArticle(link string) (article Article, err error) {
 	}
 	content := articleInfo.Article.Content
 	if articleInfo.Article.RichContent != "" {
-		content = articleInfo.Article.RichContent
+		content = html.UnescapeString(articleInfo.Article.RichContent)
 	}
 	if len(articleInfo.Article.Images) > 0 {
+		var images []string
 		for _, img := range articleInfo.Article.Images {
-			content += fmt.Sprintf(`<img src="%s">`, img)
+			images = append(images, fmt.Sprintf(`<img src="%s">`, img))
 		}
+		content = fmt.Sprintf("<div>%s</div>%s", content, strings.Join(images, "\n"))
 	}
 	a, err := wxarticle2md.ToAticle(content)
 	if err != nil {

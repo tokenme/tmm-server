@@ -56,6 +56,7 @@ func (this *Client) Get(link string) (info Video, err error) {
 		if resolver.MatchUrl(link) {
 			info, err = resolver.Get(link)
 			if err != nil {
+				log.Error(err.Error())
 				return info, err
 			}
 			var files []VideoLink
@@ -214,7 +215,7 @@ func (this *Client) GetHtml(link string, ro *grequests.RequestOptions) (string, 
 	if proxyUrl != nil {
 		if ro == nil {
 			ro = &grequests.RequestOptions{
-				Proxies:             map[string]*url.URL{"https": proxyUrl},
+				//Proxies:             map[string]*url.URL{"https": proxyUrl},
 				TLSHandshakeTimeout: this.TLSHandshakeTimeout,
 				DialTimeout:         this.DialTimeout,
 				UserAgent:           "Mozilla/5.0 (Linux; U; Android 4.3; en-us; SM-N900T Build/JSS15J) AppleWebKit/534.30 (KHTML, like Gecko) Version/4.0 Mobile Safari/534.30",
@@ -225,12 +226,26 @@ func (this *Client) GetHtml(link string, ro *grequests.RequestOptions) (string, 
 			ro.DialTimeout = this.DialTimeout
 		}
 	}
-	resp, err := grequests.Get(link, ro)
-	if err != nil {
-		this.proxy.Update()
-		return "", err
+	var (
+		retry   uint
+		content string
+	)
+	for {
+		resp, err := grequests.Get(link, ro)
+		if err != nil {
+			if retry > 2 {
+				return "", err
+			}
+			retry += 1
+			this.proxy.Update()
+			time.Sleep(30 * time.Second)
+			continue
+		}
+		content = resp.String()
+		break
 	}
-	return resp.String(), nil
+
+	return content, nil
 }
 
 func (this *Client) GetBytes(link string, ro *grequests.RequestOptions) ([]byte, error) {
@@ -244,7 +259,7 @@ func (this *Client) GetBytes(link string, ro *grequests.RequestOptions) ([]byte,
 				UserAgent:           "Mozilla/5.0 (Linux; U; Android 4.3; en-us; SM-N900T Build/JSS15J) AppleWebKit/534.30 (KHTML, like Gecko) Version/4.0 Mobile Safari/534.30",
 			}
 		} else {
-			ro.Proxies = map[string]*url.URL{"https": proxyUrl}
+			//ro.Proxies = map[string]*url.URL{"https": proxyUrl}
 			ro.TLSHandshakeTimeout = this.TLSHandshakeTimeout
 			ro.DialTimeout = this.DialTimeout
 		}
