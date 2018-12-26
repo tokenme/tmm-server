@@ -2,64 +2,134 @@ package account_controller
 
 import (
 	"github.com/gin-gonic/gin"
-	"strconv"
 	. "github.com/tokenme/tmm/handler"
 	"net/http"
 	"github.com/tokenme/tmm/handler/admin"
+	"fmt"
 )
 
+type types int
+
 const (
-	Direct   = `inv.parent_id`
-	Indirect = `inv.grand_id`
+	Direct types = iota
+	Indirect
+	Online
+	Active
 )
 
 func FriendsHandler(c *gin.Context) {
 	db := Service.Db
-	id, err := strconv.Atoi(c.DefaultQuery(`id`, `-1`))
+	var req PageOptions
+	if CheckErr(c.Bind(&req), c) {
+		return
+	}
+	if Check(req.Id < 0, admin.Not_Found, c) {
+		return
+	}
+	var offset int
+	if req.Limit < 1 {
+		req.Limit = 10
+	}
+	if req.Page > 0 {
+		offset = (req.Page - 1) * offset
+	}
+	var totalquery, query string
+	query = `
+	SELECT
+		inv.user_id,
+		u.mobile,
+		wx.nick
+	FROM 
+		tmm.invite_codes AS inv
+	INNER JOIN 
+		ucoin.users AS u ON u.id = inv.user_id 
+	INNER JOIN 
+		tmm.devices AS dev ON dev.user_id = inv.user_id
+	LEFT JOIN 
+		tmm.wx AS wx ON wx.user_id = inv.user_id 
+	WHERE %s
+	LIMIT %d OFFSET %d`
+	totalquery = `
+	SELECT
+		COUNT(1)
+	FROM 
+		tmm.invite_codes AS inv
+	INNER JOIN 
+		ucoin.users AS u ON u.id = inv.user_id 
+	INNER JOIN 
+		tmm.devices AS dev ON dev.user_id = inv.user_id
+	LEFT JOIN 
+		tmm.wx AS wx ON wx.user_id = inv.user_id 
+	WHERE 
+		 %s`
+	switch types(req.Types) {
+	case Direct:
+		direct := fmt.Sprintf(" inv.parent_id = %d", req.Id)
+		query = fmt.Sprintf(query, direct, req.Limit, offset)
+		totalquery = fmt.Sprintf(totalquery, direct)
+	case Indirect:
+		indirect := fmt.Sprintf(" inv.grand_id = %d", req.Id)
+		query = fmt.Sprintf(query, indirect, req.Limit, offset)
+		totalquery = fmt.Sprintf(totalquery, indirect)
+	case Online:
+		online := fmt.Sprintf(" inv.parent_id = %d AND dev.lastping_at > DATE_SUB(NOW(),INTERVAL 1 DAY) ", req.Id)
+		query = fmt.Sprintf(query, online, req.Limit, offset)
+		totalquery = fmt.Sprintf(totalquery, online)
+
+	case Active:
+		active := fmt.Sprintf(" inv.parent_id = %d AND dev.lastping_at > DATE_SUB(NOW(),INTERVAL 3 DAY) ", req.Id)
+		query = fmt.Sprintf(query, active, req.Limit, offset)
+		totalquery = fmt.Sprintf(totalquery, active)
+	default:
+		c.JSON(http.StatusOK, admin.Response{
+			Code:    0,
+			Message: admin.API_OK,
+			Data: gin.H{
+				"data":  nil,
+				"total": nil,
+			},
+		})
+		return
+	}
+
+	var List []*admin.Users
+	rows, _, err := db.Query(query)
 	if CheckErr(err, c) {
 		return
 	}
-	query := `
-SELECT
-	inv.user_id,
-	u.mobile,
-	wx.nick
-FROM 
-	 tmm.invite_codes AS inv
-INNER JOIN ucoin.users AS u ON u.id = inv.user_id 
-LEFT JOIN tmm.wx AS wx ON wx.user_id = inv.user_id 
-WHERE %s = %d`
-	var directList []*admin.Users
-	var indirectList []*admin.Users
-	if id > 0 {
-		rows, _, err := db.Query(query, db.Escape(Direct), id)
-		if CheckErr(err, c) {
-			return
-		}
-		for _, row := range rows {
-			user := &admin.Users{}
-			user.Id = row.Uint64(0)
-			user.Mobile = row.Str(1)
-			user.Nick = row.Str(2)
-			directList = append(directList, user)
-		}
-
-		rows, _, err = db.Query(query, db.Escape(Indirect), id)
-		for _, row := range rows {
-			user := &admin.Users{}
-			user.Id = row.Uint64(0)
-			user.Mobile = row.Str(1)
-			user.Nick = row.Str(2)
-			indirectList = append(indirectList, user)
-		}
+	if len(rows) == 0 {
+		c.JSON(http.StatusOK, admin.Response{
+			Code:    0,
+			Message: admin.API_OK,
+			Data: gin.H{
+				"data":  List,
+				"total": 0,
+			},
+		})
+		return
+	}
+	for _, row := range rows {
+		user := &admin.Users{}
+		user.Id = row.Uint64(0)
+		user.Mobile = row.Str(1)
+		user.Nick = row.Str(2)
+		List = append(List, user)
 	}
 
+	var total int
+	rows, _, err = db.Query(totalquery)
+	if CheckErr(err, c) {
+		return
+	}
+	if len(rows) > 0 {
+		total = rows[0].Int(0)
+	}
 	c.JSON(http.StatusOK, admin.Response{
 		Code:    0,
 		Message: admin.API_OK,
 		Data: gin.H{
-			"direct":   directList,
-			"indirect": indirectList,
+			"data":  List,
+			"total": total,
 		},
 	})
 }

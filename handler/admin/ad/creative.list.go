@@ -189,6 +189,7 @@ OFFSET %d `
 		Data: gin.H{
 			"total": total,
 			"data":  list,
+			"page":  req.Page,
 		},
 	})
 

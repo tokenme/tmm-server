@@ -3,7 +3,6 @@ package account_controller
 import (
 	"github.com/gin-gonic/gin"
 	. "github.com/tokenme/tmm/handler"
-	"strconv"
 	"fmt"
 	"net/http"
 	"github.com/tokenme/tmm/handler/admin"
@@ -11,18 +10,18 @@ import (
 
 func DrawMoneyByUcHandler(c *gin.Context) {
 	db := Service.Db
-	id, err := strconv.Atoi(c.DefaultQuery(`id`, `-1`))
-	if CheckErr(err, c) {
-		return
-	}
-	page, err := strconv.Atoi(c.DefaultQuery(`page`, `-1`))
-	if CheckErr(err, c) {
+	var req PageOptions
+	if CheckErr(c.Bind(&req), c) {
 		return
 	}
 	var offset int
-	limit := 10
-	if page > 0 {
-		offset = limit * (page - 1)
+	if req.Limit < 1 {
+		req.Limit = 10
+	}
+	if req.Page > 0 {
+		offset = (req.Page - 1) * req.Limit
+	} else {
+		offset = 0
 	}
 	query := `
 SELECT 
@@ -36,11 +35,11 @@ WHERE
 	user_id = %d
 ORDER BY inserted_at DESC
 LIMIT %d OFFSET %d`
-	rows, _, err := db.Query(query, id, limit, offset)
+	rows, _, err := db.Query(query, req.Id, req.Limit, offset)
 	if CheckErr(err, c) {
 		return
 	}
-	var DrawMoneyList []*DrawMoney
+	var DrawMoneyList []*Task
 	if len(rows) == 0 {
 		c.JSON(http.StatusOK, admin.Response{
 			Code:    0,
@@ -52,15 +51,15 @@ LIMIT %d OFFSET %d`
 		})
 	}
 	for _, row := range rows {
-		drawMoney := &DrawMoney{}
+		drawMoney := &Task{}
 		drawMoney.Type = DrawMoneyByUc
-		drawMoney.Pay = fmt.Sprintf("%.2f", row.Float(0))
-		drawMoney.Get = fmt.Sprintf("%.2f", row.Float(1))
+		drawMoney.Pay = fmt.Sprintf("-%.2f UC", row.Float(0))
+		drawMoney.Get = fmt.Sprintf("+%.2f CNY", row.Float(1))
 		drawMoney.When = row.Str(2)
 		drawMoney.Status = MsgMap[row.Int(3)]
 		DrawMoneyList = append(DrawMoneyList, drawMoney)
 	}
-	rows, _, err = db.Query(`SELECT COUNT(1) FROM tmm.withdraw_txs WHERE user_id = %d  `, id)
+	rows, _, err = db.Query(`SELECT COUNT(1) FROM tmm.withdraw_txs WHERE user_id = %d  `, req.Id)
 	if CheckErr(err, c) {
 		return
 	}
@@ -74,7 +73,7 @@ LIMIT %d OFFSET %d`
 		Data: gin.H{
 			"data":  DrawMoneyList,
 			"total": total,
-			"page":page,
+			"page":req.Page,
 		},
 	})
 }
