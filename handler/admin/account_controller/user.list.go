@@ -86,7 +86,7 @@ SELECT
 	ex.exchange_total AS exchange_total,
 	ex.point_to_tmm_times AS point_to_tmm_times,
 	ex.tmm_to_point_times AS tmm_to_point_times,
-	ex.point_to_tmm AS point_to_tmm,
+	IFNULL(ex.point_to_tmm,0) AS point_to_tmm,
 	ex.tmm_to_point AS tmm_to_point,
 	IFNULL(inv.online,0) AS online,
 	IFNULL(inv.offline,0) AS offline,

@@ -44,20 +44,30 @@ SELECT
     l,
 	SUM(tmp.total_points)
 FROM (
-    SELECT
-	 	d.id,
+   SELECT
+		d.user_id,
 	 	IF (d.total_points=0,0,
 		IF(d.total_points  >= 10000,
-	FLOOR(d.total_points/10000)*10000+1,
-	FLOOR(d.total_points/1000)*1000+1) ) AS l,
-	d.total_points
-  FROM tmm.top_points_users AS d
-WHERE NOT EXISTS
+		FLOOR(d.total_points/10000)*10000+1,
+		FLOOR(d.total_points/1000)*1000+1) ) AS l,
+		d.total_points
+	FROM (
+		SELECT 
+			dev.user_id AS user_id,
+			SUM(dev.points) AS total_points
+		FROM 
+			tmm.devices AS dev 
+		GROUP BY 
+			dev.user_id
+		)AS d 
+	WHERE NOT EXISTS
 	(SELECT 1 FROM tmm.user_settings AS us  
-	WHERE us.blocked= 1 AND us.user_id=d.id AND us.block_whitelist=0  LIMIT 1)
+	WHERE us.blocked= 1 AND us.user_id=d.user_id AND us.block_whitelist=0  LIMIT 1)
 ) AS tmp
 GROUP BY l 
 ORDER BY l
+
+
 `
 	rows, _, err := db.Query(query)
 	if CheckErr(err, c) {
