@@ -30,25 +30,25 @@ const (
 )
 
 type SearchOptions struct {
-	WithdrawType          withdrawType `form:"withdraw_type"`
-	WithDrawNumberOfTimes int          `form:"with_draw_number_of_times"`
-	WithDrawAmount        int          `form:"with_draw_amount"`
-	ExchangePointToUc       int       `form:"exchange_point_to_uc"`
-	ExchangeUcToPoint       int       `form:"exchange_uc_to_point"`
-	ExchangePointToUcAmount int       `form:"exchange_point_to_uc_amount"`
-	ExchangeUcToPointAmount int       `form:"exchange_uc_to_point_amount"`
-	MakePointType           pointType `form:"make_point_type"`
-	MakePointTimes          int       `form:"make_point_times"`
-	MakePointDay            int       `form:"make_point_day"`
-	OnlineBFNumber          int       `form:"online_bf_number"`
-	OffLineBfNumber         int       `form:"off_line_bf_number"`
-	StartDate   string `form:"start_date"`
-	EndDate     string `form:"end_date"`
-	StartHours  string `form:"start_hours"`
-	EndHours    string `form:"end_hours"`
-	IsWhiteList bool   `form:"is_white_list"`
-	Id          int    `form:"id"`
-	Mobile      string `form:"mobile"`
+	WithdrawType            withdrawType `form:"withdraw_type"`
+	WithDrawNumberOfTimes   int          `form:"with_draw_number_of_times"`
+	WithDrawAmount          int          `form:"with_draw_amount"`
+	ExchangePointToUc       int          `form:"exchange_point_to_uc"`
+	ExchangeUcToPoint       int          `form:"exchange_uc_to_point"`
+	ExchangePointToUcAmount int          `form:"exchange_point_to_uc_amount"`
+	ExchangeUcToPointAmount int          `form:"exchange_uc_to_point_amount"`
+	MakePointType           pointType    `form:"make_point_type"`
+	MakePointTimes          int          `form:"make_point_times"`
+	MakePointDay            int          `form:"make_point_day"`
+	OnlineBFNumber          int          `form:"online_bf_number"`
+	OffLineBfNumber         int          `form:"off_line_bf_number"`
+	StartDate               string       `form:"start_date"`
+	EndDate                 string       `form:"end_date"`
+	StartHours              string       `form:"start_hours"`
+	EndHours                string       `form:"end_hours"`
+	IsWhiteList             bool         `form:"is_white_list"`
+	Id                      int          `form:"id"`
+	Mobile                  string       `form:"mobile"`
 }
 
 func GetAccountList(c *gin.Context) {
@@ -154,7 +154,7 @@ LEFT JOIN (
 FROM (
 	SELECT
 		user_id, 
-		SUM( cny ) AS cny,
+		SUM(IFNULL(cny,0)) AS cny,
 		COUNT(1) AS total
 	FROM
 		tmm.withdraw_txs
@@ -164,7 +164,7 @@ FROM (
 		user_id UNION ALL
 	SELECT
 		user_id, 
-		SUM( cny ) AS cny,
+		SUM(IFNULL(cny,0)) AS cny,
 		COUNT(1) AS total 
 	FROM
 		tmm.point_withdraws 
@@ -218,8 +218,8 @@ LEFT JOIN (
 LEFT JOIN (
 	SELECT 
 		dev.user_id AS id,
-		SUM(tmp.points)+inv.bonus AS point,
-		SUM(tmp.total)+inv.total AS  total,
+		 SUM(IFNULL(tmp.points,0)) + IFNULL(inv.bonus,0) + IFNULL(read_.point,0) AS point,
+		SUM(IFNULL(tmp.total,0)) + IFNULL(inv.total,0) + IFNULL(read_.total,0) AS  total,
 		COUNT(distinct tmp.date) AS _day
 	FROM 
 		tmm.devices AS dev 
@@ -258,11 +258,23 @@ LEFT JOIN (
 			1 = 1 %s
 		GROUP BY 
 			user_id
-	)AS inv ON (inv.user_id = dev.user_id )  
+	)AS inv ON (inv.user_id = dev.user_id ) 
+	LEFT JOIN (
+		SELECT
+			SUM(point) AS point,
+			user_id AS user_id,
+			COUNT(1) AS total 
+		FROM
+			tmm.reading_logs 
+		WHERE 
+			1 = 1 %s
+		GROUP BY
+			user_id
+	) AS read_ ON (read_.user_id = dev.user_id)
 	GROUP BY 
 		dev.user_id
 ) AS point ON (point.id = u.id)`, TimeFormat, strings.Join(when, ` `),
-			TimeFormat, strings.Join(when, ` `), strings.Join(when, ` `)))
+			TimeFormat, strings.Join(when, ` `), strings.Join(when, ` `),strings.Join(when,` `)))
 	case invite:
 		leftJoin = append(leftJoin, fmt.Sprintf(` 
 LEFT JOIN (
@@ -364,6 +376,8 @@ LEFT JOIN (
 	if search.IsWhiteList {
 		where = append(where, fmt.Sprintf(`  AND blocked = %d `, 1))
 	}
+	fmt.Printf(query, strings.Join(when, " "),
+		strings.Join(leftJoin, " "), strings.Join(where, " "), limit, offset)
 	rows, res, err := db.Query(query, strings.Join(when, " "),
 		strings.Join(leftJoin, " "), strings.Join(where, " "), limit, offset)
 	if CheckErr(err, c) {

@@ -20,6 +20,7 @@ const (
 	Invite
 	Share
 	BfBouns
+	AppTask
 )
 
 var MsgMap = map[int]string{
@@ -33,8 +34,8 @@ var typeMap = map[int]string{
 	Invite:  "拉新好友",
 	Share:   "分享任务",
 	BfBouns: "好友贡献",
+	AppTask: "安装app",
 }
-
 
 type Task struct {
 	Type   string `json:"type"`

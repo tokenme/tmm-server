@@ -64,13 +64,23 @@ FROM(
 		tmm.device_share_tasks AS sha
 	INNER JOIN tmm.devices AS dev ON (dev.id = sha.device_id)
 	WHERE 
-		dev.user_id = %d
+		dev.user_id = %d  
+	UNION
+	SELECT 
+		app.points AS point,
+		app.inserted_at AS inserted_at,
+		4 AS type	
+	FROM
+		tmm.device_app_tasks AS app
+	INNER JOIN tmm.devices AS dev ON (dev.id = app.device_id)
+	WHERE 
+		dev.user_id = %d 
 ) AS tmp
 ORDER BY tmp.inserted_at DESC
 LIMIT %d OFFSET %d
 	`
 
-	rows, _, err := db.Query(query, req.Id, req.Id, req.Id,req.Id, req.Limit, offset)
+	rows, _, err := db.Query(query, req.Id, req.Id, req.Id,req.Id,req.Id ,req.Limit, offset)
 	if CheckErr(err, c) {
 		return
 	}
