@@ -36,12 +36,14 @@ type Client struct {
 
 func NewClient(service *common.Service, config common.Config) *Client {
 	c := &Client{
-		service:   service,
-		config:    config,
-		proxy:     NewProxy(service.Redis.Master, config.ProxyApiKey),
-		resolvers: make(map[string]Resolver),
-		exitCh:    make(chan struct{}, 1),
-		canExitCh: make(chan struct{}, 1),
+		service:             service,
+		config:              config,
+		proxy:               NewProxy(service.Redis.Master, config.ProxyApiKey),
+		TLSHandshakeTimeout: 10 * time.Second,
+		DialTimeout:         30 * time.Second,
+		resolvers:           make(map[string]Resolver),
+		exitCh:              make(chan struct{}, 1),
+		canExitCh:           make(chan struct{}, 1),
 	}
 	c.RegisterAll()
 	return c
@@ -261,15 +263,15 @@ func (this *Client) GetBytes(link string, ro *grequests.RequestOptions) ([]byte,
 	if proxyUrl != nil {
 		if ro == nil {
 			ro = &grequests.RequestOptions{
-				Proxies: map[string]*url.URL{"https": proxyUrl, "http": proxyUrl},
-				//TLSHandshakeTimeout: this.TLSHandshakeTimeout,
-				//DialTimeout:         this.DialTimeout,
-				UserAgent: "Mozilla/5.0 (Linux; U; Android 4.3; en-us; SM-N900T Build/JSS15J) AppleWebKit/534.30 (KHTML, like Gecko) Version/4.0 Mobile Safari/534.30",
+				Proxies:             map[string]*url.URL{"https": proxyUrl, "http": proxyUrl},
+				TLSHandshakeTimeout: this.TLSHandshakeTimeout,
+				DialTimeout:         this.DialTimeout,
+				UserAgent:           "Mozilla/5.0 (Linux; U; Android 4.3; en-us; SM-N900T Build/JSS15J) AppleWebKit/534.30 (KHTML, like Gecko) Version/4.0 Mobile Safari/534.30",
 			}
 		} else {
 			ro.Proxies = map[string]*url.URL{"https": proxyUrl, "http": proxyUrl}
-			//ro.TLSHandshakeTimeout = this.TLSHandshakeTimeout
-			//ro.DialTimeout = this.DialTimeout
+			ro.TLSHandshakeTimeout = this.TLSHandshakeTimeout
+			ro.DialTimeout = this.DialTimeout
 		}
 	} else if ro == nil {
 		ro = &grequests.RequestOptions{

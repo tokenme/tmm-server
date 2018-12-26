@@ -107,7 +107,7 @@ WHERE
     AND d.user_id>0
 ON DUPLICATE KEY UPDATE blocked=VALUES(blocked)`
 	_, _, err = db.Query(query)
-	query = `SELECT d.user_id, 1
+	query = `INSERT INTO tmm.user_settings (user_id, blocked) SELECT d.user_id, 1
 FROM tmm.device_apps AS da
 INNER JOIN tmm.apps AS a ON (a.id=da.app_id)
 INNER JOIN tmm.devices AS d ON (d.id=da.device_id)
