@@ -172,7 +172,6 @@ ORDER BY %s %s`
 			task.OnlineStatus = int8(row.Int(15))
 		}
 		task.ShareLink, _ = task.GetShareLink(deviceId, Config)
-		task.ShareLink, _ = task.TrackLink(task.ShareLink, 0, Config)
 		tasks = append(tasks, task)
 	}
 	c.JSON(http.StatusOK, tasks)

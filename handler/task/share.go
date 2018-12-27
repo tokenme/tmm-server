@@ -8,12 +8,12 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/tokenme/tmm/common"
 	. "github.com/tokenme/tmm/handler"
+	"github.com/tokenme/tmm/tools/wechatmp"
 	tokenUtils "github.com/tokenme/tmm/utils/token"
-    "github.com/tokenme/tmm/tools/wechatmp"
 	"github.com/ua-parser/uap-go/uaparser"
 	"net/http"
 	"strings"
-    "time"
+	"time"
 )
 
 const (
@@ -22,20 +22,20 @@ const (
 )
 
 type ShareData struct {
-    AppId      string
-    JSConfig   wechatmp.JSConfig
+	AppId      string
+	JSConfig   wechatmp.JSConfig
 	Task       common.ShareTask
 	TrackId    string
 	IsIOS      bool
 	InviteLink string
 	ImpLink    string
-    ShareLink  string
+	ShareLink  string
 	ValidTrack bool
 }
 
 func ShareHandler(c *gin.Context) {
-    var trackId string
-    code := c.DefaultQuery("code", "null")
+	var trackId string
+	code := c.DefaultQuery("code", "null")
 	taskId, deviceId, err := common.DecryptShareTaskLink(c.Param("encryptedTaskId"), c.Param("encryptedDeviceId"), Config)
 	if CheckErr(err, c) {
 		return
@@ -43,30 +43,30 @@ func ShareHandler(c *gin.Context) {
 	if Check(taskId == 0 || deviceId == "", "not found", c) {
 		return
 	}
-    mpClient := wechatmp.NewClient(Config.Wechat.AppId, Config.Wechat.AppSecret, Service, c)
+	mpClient := wechatmp.NewClient(Config.Wechat.AppId, Config.Wechat.AppSecret, Service, c)
 	isWx := strings.Contains(strings.ToLower(c.Request.UserAgent()), "micromessenger")
 	if isWx {
-        if len(code) > 0 && code != "null" {
-            oauthAccessToken, err := mpClient.GetOAuthAccessToken(code)
-            if err != nil {
-                log.Error(err.Error())
-            } else if len(oauthAccessToken.Openid) > 0 {
-                now := time.Now()
-                cryptOpenid := common.CryptOpenid{
-                    Openid: oauthAccessToken.Openid,
-                    Ts: now.Unix(),
-                }
-                trackId, err = cryptOpenid.Encode([]byte(Config.YktApiSecret))
-                if err != nil {
-                    log.Error(err.Error())
-                }
-            }
-        } else if code == "null" {
-            shareUri := c.Request.URL.String()
-            redirectUrl := fmt.Sprintf("%s%s", Config.ShareBaseUrl, shareUri)
-            mpClient.AuthRedirect(redirectUrl, "snsapi_base", "tmm-share")
-            return
-        }
+		if len(code) > 0 && code != "null" {
+			oauthAccessToken, err := mpClient.GetOAuthAccessToken(code)
+			if err != nil {
+				log.Error(err.Error())
+			} else if len(oauthAccessToken.Openid) > 0 {
+				now := time.Now()
+				cryptOpenid := common.CryptOpenid{
+					Openid: oauthAccessToken.Openid,
+					Ts:     now.Unix(),
+				}
+				trackId, err = cryptOpenid.Encode([]byte(Config.YktApiSecret))
+				if err != nil {
+					log.Error(err.Error())
+				}
+			}
+		} else if code == "null" {
+			shareUri := c.Request.URL.String()
+			redirectUrl := fmt.Sprintf("%s%s", Config.ShareBaseUrl, shareUri)
+			mpClient.AuthRedirect(redirectUrl, "snsapi_base", "tmm-share")
+			return
+		}
 	}
 
 	db := Service.Db
@@ -135,20 +135,27 @@ LIMIT 1`
 		}
 	}
 
-    currentUrl := fmt.Sprintf("%s%s", Config.ShareBaseUrl, c.Request.URL.String())
-    jsConfig, err := mpClient.GetJSConfig(currentUrl)
-    if err != nil {
-        log.Error(err.Error())
-    }
-
+	currentUrl := fmt.Sprintf("%s%s", Config.ShareBaseUrl, c.Request.URL.String())
+	jsConfig, err := mpClient.GetJSConfig(currentUrl)
+	if err != nil {
+		log.Error(err.Error())
+	}
+	trackSource := common.TrackFromUnknown
+	if isWx {
+		trackSource = common.TrackFromWechat
+	}
+	_, _, err = db.Query(`INSERT INTO tmm.share_task_stats (task_id, record_on, source) VALUES (%d, NOW(), %d) ON DUPLICATE KEY UPDATE pv=pv+1`, task.Id, trackSource)
+	if err != nil {
+		log.Error(err.Error())
+	}
 	c.HTML(http.StatusOK, "share.tmpl", ShareData{
-        AppId:      Config.Wechat.AppId,
-        JSConfig:   jsConfig,
+		AppId:      Config.Wechat.AppId,
+		JSConfig:   jsConfig,
 		Task:       task,
 		TrackId:    trackId,
 		IsIOS:      isIOS,
 		ValidTrack: validTrack,
 		InviteLink: fmt.Sprintf("https://tmm.tokenmama.io/invite/%s", inviteCode.Encode()),
-        ShareLink:  currentUrl,
+		ShareLink:  currentUrl,
 		ImpLink:    impLink})
 }

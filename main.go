@@ -374,7 +374,7 @@ func main() {
 
 func addWxArticles(addWxArticlesCh chan<- struct{}, service *common.Service, config common.Config) {
 	defer func() {
-		time.Sleep(6 * time.Hour)
+		time.Sleep(3 * time.Hour)
 		addWxArticlesCh <- struct{}{}
 	}()
 	crawler := wechatspider.NewCrawler(service, config)
