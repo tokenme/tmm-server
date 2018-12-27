@@ -78,7 +78,7 @@ LEFT JOIN
 		SUM(sha.points) AS points 
 	FROM(
 		SELECT
-			SUM(IFNULL(sha.points,0)) AS points
+			IFNULL(SUM(sha.points),0) AS points
 		FROM
 			tmm.device_share_tasks AS sha
 		INNER JOIN
@@ -86,7 +86,7 @@ LEFT JOIN
 		WHERE
 			 dev.user_id = %d UNION ALL
    		SELECT
-			SUM(IFNULL(app.points,0)) AS points
+			IFNULL(SUM(app.points),0) AS points
 		FROM
 			tmm.device_app_tasks AS app
 		INNER JOIN
@@ -97,7 +97,7 @@ LEFT JOIN
 ) AS sha,
 (
 	SELECT
-		SUM(IFNULL(bonus,0)) AS inv_bonus
+		IFNULL(SUM(bonus),0) AS inv_bonus
 	FROM 
 		tmm.invite_bonus 
 	WHERE 
@@ -105,7 +105,7 @@ LEFT JOIN
 ) AS bonus,
 (
 	SELECT 
-		SUM(IFNULL(point,0)) AS point
+		IFNULL(SUM(point),0) AS point
 	FROM
 		tmm.reading_logs
 	WHERE user_id = %d

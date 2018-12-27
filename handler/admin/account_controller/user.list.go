@@ -154,7 +154,7 @@ LEFT JOIN (
 FROM (
 	SELECT
 		user_id, 
-		SUM(IFNULL(cny,0)) AS cny,
+		IFNULL(SUM(cny),0) AS cny,
 		COUNT(1) AS total
 	FROM
 		tmm.withdraw_txs
@@ -164,7 +164,7 @@ FROM (
 		user_id UNION ALL
 	SELECT
 		user_id, 
-		SUM(IFNULL(cny,0)) AS cny,
+		IFNULL(SUM(cny),0) AS cny,
 		COUNT(1) AS total 
 	FROM
 		tmm.point_withdraws 
@@ -218,8 +218,8 @@ LEFT JOIN (
 LEFT JOIN (
 	SELECT 
 		dev.user_id AS id,
-		 SUM(IFNULL(tmp.points,0)) + IFNULL(inv.bonus,0) + IFNULL(read_.point,0) AS point,
-		SUM(IFNULL(tmp.total,0)) + IFNULL(inv.total,0) + IFNULL(read_.total,0) AS  total,
+		 IFNULL(SUM(tmp.points),0) + IFNULL(inv.bonus,0) + IFNULL(read_.point,0) AS point,
+		 IFNULL(SUM(tmp.total),0) + IFNULL(inv.total,0) + IFNULL(read_.total,0) AS  total,
 		COUNT(distinct tmp.date) AS _day
 	FROM 
 		tmm.devices AS dev 
