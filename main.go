@@ -20,6 +20,7 @@ import (
 	//"github.com/tokenme/tmm/tools/transferwatcher"
 	"github.com/tokenme/tmm/tools/etherscanspider"
 	"github.com/tokenme/tmm/tools/invitebonus"
+	"github.com/tokenme/tmm/tools/qutoutiaospider"
 	"github.com/tokenme/tmm/tools/toutiaospider"
 	"github.com/tokenme/tmm/tools/txaccelerate"
 	"github.com/tokenme/tmm/tools/videospider"
@@ -210,6 +211,7 @@ func main() {
 	if addArticlesFlag {
 		addWxArticlesCh := make(chan struct{}, 1)
 		addToutiaoArticlesCh := make(chan struct{}, 1)
+		addQutoutiaoArticlesCh := make(chan struct{}, 1)
 		exitChan := make(chan struct{}, 1)
 		go func() {
 			ch := make(chan os.Signal, 1)
@@ -218,8 +220,9 @@ func main() {
 			exitChan <- struct{}{}
 			close(ch)
 		}()
+		go addQutoutiaoArticles(addQutoutiaoArticlesCh, service, config)
 		go addToutiaoArticles(addToutiaoArticlesCh, service, config)
-		//go addWxArticles(addWxArticlesCh, service, config)
+		go addWxArticles(addWxArticlesCh, service, config)
 		for {
 			select {
 			case <-addWxArticlesCh:
@@ -398,6 +401,33 @@ func addToutiaoArticles(addToutiaoArticlesCh chan<- struct{}, service *common.Se
 		addToutiaoArticlesCh <- struct{}{}
 	}()
 	crawler := toutiaospider.NewCrawler(service, config)
+	num, err := crawler.Run()
+	if err != nil {
+		log.Error(err.Error())
+		return
+	}
+	if num == 0 {
+		return
+	}
+	err = crawler.Publish()
+	if err != nil {
+		log.Error(err.Error())
+	}
+	classifier := articleclassifier.NewClassifier(service, config)
+	err = classifier.LoadModel()
+	if err != nil {
+		log.Error(err.Error())
+		return
+	}
+	classifier.ClassifyDocs()
+}
+
+func addQutoutiaoArticles(addQutoutiaoArticlesCh chan<- struct{}, service *common.Service, config common.Config) {
+	defer func() {
+		time.Sleep(2 * time.Minute)
+		addQutoutiaoArticlesCh <- struct{}{}
+	}()
+	crawler := qutoutiaospider.NewCrawler(service, config)
 	num, err := crawler.Run()
 	if err != nil {
 		log.Error(err.Error())
