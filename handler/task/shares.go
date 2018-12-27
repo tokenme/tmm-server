@@ -165,12 +165,14 @@ ORDER BY %s %s`
 		} else {
 			task.IsTask = true
 		}
+		task.Link, _ = task.TrackLink(task.Link, user.Id, Config)
 		if creator == user.Id {
 			task.Viewers = row.Uint(9)
 			task.Creator = creator
 			task.OnlineStatus = int8(row.Int(15))
 		}
 		task.ShareLink, _ = task.GetShareLink(deviceId, Config)
+		task.ShareLink, _ = task.TrackLink(task.ShareLink, 0, Config)
 		tasks = append(tasks, task)
 	}
 	c.JSON(http.StatusOK, tasks)

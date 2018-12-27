@@ -11,6 +11,7 @@ type Config struct {
 	GethWSS                string            `required:"true"`
 	ShareBaseUrl           string            `required:"true"`
 	ShareUrl               string            `required:"true"`
+	ShareTrackUrl          string            `required:"true"`
 	ShareImpUrl            string            `required:"true"`
 	AdImpUrl               string            `required:"true"`
 	AdClkUrl               string            `required:"true"`
