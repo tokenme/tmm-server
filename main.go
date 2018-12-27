@@ -229,6 +229,8 @@ func main() {
 				go addWxArticles(addWxArticlesCh, service, config)
 			case <-addToutiaoArticlesCh:
 				go addToutiaoArticles(addToutiaoArticlesCh, service, config)
+			case <-addQutoutiaoArticlesCh:
+				go addQutoutiaoArticles(addQutoutiaoArticlesCh, service, config)
 			case <-exitChan:
 				close(addWxArticlesCh)
 				close(addToutiaoArticlesCh)
