@@ -120,7 +120,7 @@ func InviteSummaryHandler(c *gin.Context) {
 		FriendsContribute: friendsContribute,
 		Users:             users,
 		NextLevelInvites:  nextLevelInvites,
-		InviteBonusRate:   decimal.NewFromFloat(Config.InviteBonusRate),
+		InviteBonusRate:   decimal.NewFromFloat(Config.InviteBonusRate * 100),
 		InviteBonus:       decimal.New(int64(Config.InviteBonus), 0),
 		InviterBonus:      decimal.New(int64(Config.InviterBonus), 0),
 		InviteCashBonus:   decimal.New(int64(Config.InviteCashBonus), 0),

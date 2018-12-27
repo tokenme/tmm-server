@@ -60,10 +60,16 @@ func SharesHandler(c *gin.Context) {
 	if Check(len(deviceId) == 0, "not found", c) {
 		return
 	}
+	platform := c.GetString("tmm-platform")
+	buildVersionStr := c.GetString("tmm-build")
+	buildVersion, _ := strconv.ParseUint(buildVersionStr, 10, 64)
 
 	var taskIds []uint64
 	limitState := fmt.Sprintf("LIMIT %d, %d", (req.Page-1)*req.PageSize, req.PageSize)
 	onlineStatusConstrain := "st.points_left>0 AND st.online_status=1"
+	if platform == common.IOS && buildVersion == Config.App.SubmitBuild {
+		onlineStatusConstrain = "st.points_left>0 AND st.online_status=1 AND (st.is_crawled=1 OR st.is_video=1)"
+	}
 	var inCidConstrain string
 	orderBy := "st.bonus DESC, st.id DESC"
 	if req.MineOnly {
@@ -76,7 +82,7 @@ func SharesHandler(c *gin.Context) {
 	if req.Cid > 0 {
 		inCidConstrain = fmt.Sprintf("INNER JOIN tmm.share_task_categories AS stc ON (stc.task_id=st.id AND stc.cid=%d)", req.Cid)
 	} else if !req.MineOnly && !req.IsVideo {
-		taskIds = SuggestEngine.Match(user.Id, req.Page, req.PageSize)
+		//taskIds = SuggestEngine.Match(user.Id, req.Page, req.PageSize)
 	}
 	if len(taskIds) > 0 {
 		var tids []string
@@ -86,11 +92,6 @@ func SharesHandler(c *gin.Context) {
 		onlineStatusConstrain = fmt.Sprintf("st.id IN (%s)", strings.Join(tids, ","))
 		orderBy = "st.bonus DESC"
 		limitState = ""
-	}
-
-	showBonusHint := true
-	if req.Idfa != "" && req.Build == Config.App.SubmitBuild {
-		showBonusHint = true
 	}
 	db := Service.Db
 	query := `SELECT
@@ -119,14 +120,13 @@ ORDER BY %s %s`
 		return
 	}
 
-	platform := c.GetString("tmm-platform")
-	buildVersionStr := c.GetString("tmm-build")
-	buildVersion, _ := strconv.ParseUint(buildVersionStr, 10, 64)
 	adsMap := make(map[int][]*common.Adgroup)
-	if !req.IsVideo && (platform == "ios" && buildVersion > 42 || platform == "android" && buildVersion > 211) {
-		adsMap, err = getCreatives(req.Cid, req.Page, platform)
-		if err != nil {
-			log.Error(err.Error())
+	if platform == common.IOS && buildVersion != Config.App.SubmitBuild {
+		if !req.IsVideo && (platform == common.IOS && buildVersion > 42 || platform == common.ANDROID && buildVersion > 211) {
+			adsMap, err = getCreatives(req.Cid, req.Page, platform)
+			if err != nil {
+				log.Error(err.Error())
+			}
 		}
 	}
 	var tasks []*common.ShareTask
@@ -158,10 +158,12 @@ ORDER BY %s %s`
 			UpdatedAt:     row.ForceLocaltime(11).Format(time.RFC3339),
 			VideoLink:     row.Str(13),
 			IsVideo:       uint8(row.Uint(14)),
-			ShowBonusHint: showBonusHint,
+			ShowBonusHint: true,
 		}
 		if strings.HasPrefix(task.Link, "https://tmm.tokenmama.io/article/show") {
 			task.Link = strings.Replace(task.Link, "https://tmm.tokenmama.io/article/show", "https://static.tianxi100.com/article/show", -1)
+		} else {
+			task.IsTask = true
 		}
 		if creator == user.Id {
 			task.Viewers = row.Uint(9)
@@ -179,7 +181,7 @@ func getCreatives(cid uint, page uint, platform string) (map[int][]*common.Adgro
 	adgroupsMap := make(map[uint64]*common.Adgroup)
 	db := Service.Db
 	var constraint string
-	if platform == "ios" {
+	if platform == common.IOS {
 		constraint = " AND c.platform IN (0, 1)"
 	} else {
 		constraint = " AND c.platform IN (0, 2)"
@@ -191,7 +193,9 @@ func getCreatives(cid uint, page uint, platform string) (map[int][]*common.Adgro
         c.link,
         c.width,
         c.height,
-        z.idx
+        z.idx,
+        c.share_image,
+        c.title
     FROM tmm.creatives AS c
     INNER JOIN tmm.adgroups AS a ON (a.id=c.adgroup_id)
     INNER JOIN tmm.adzones AS z ON (z.id=a.adzone_id)
@@ -204,12 +208,14 @@ func getCreatives(cid uint, page uint, platform string) (map[int][]*common.Adgro
 			adgroupId := row.Uint64(1)
 			adzoneIdx := row.Int(6)
 			creative := &common.Creative{
-				Id:        row.Uint64(0),
-				AdgroupId: adgroupId,
-				Image:     row.Str(2),
-				Link:      row.Str(3),
-				Width:     row.Uint(4),
-				Height:    row.Uint(5),
+				Id:         row.Uint64(0),
+				AdgroupId:  adgroupId,
+				Image:      row.Str(2),
+				Link:       row.Str(3),
+				Width:      row.Uint(4),
+				Height:     row.Uint(5),
+				ShareImage: row.Str(7),
+				Title:      row.Str(8),
 			}
 			creativeCode, err := creative.Code([]byte(Config.LinkSalt))
 			if err != nil {

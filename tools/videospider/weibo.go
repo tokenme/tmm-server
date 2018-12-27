@@ -1,6 +1,7 @@
 package videospider
 
 import (
+	//"github.com/davecgh/go-spew/spew"
 	//"github.com/mkideal/log"
 	"strconv"
 )
@@ -24,6 +25,7 @@ func (this *Weibo) Get(link string) (info Video, err error) {
 	if err != nil {
 		return info, err
 	}
+	//log.Warn("%s", html)
 	info.Link = SafeUrl(link)
 	info.Title = R1(`"title":\ "(.+)"`, html)
 	if info.Title == "" {
@@ -61,6 +63,5 @@ func (this *Weibo) Get(link string) (info Video, err error) {
 			Link:       SafeUrl(streamUrlHd),
 		})
 	}
-
 	return
 }

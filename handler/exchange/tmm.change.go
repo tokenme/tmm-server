@@ -42,11 +42,16 @@ func TMMChangeHandler(c *gin.Context) {
 		return
 	}
 
+	if CheckErr(user.IsBlocked(Service), c) {
+		log.Error("Blocked User:%d", user.Id)
+		return
+	}
+
 	redisConn := Service.Redis.Master.Get()
 	defer redisConn.Close()
 	changeRateKey := fmt.Sprintf(TMMChangeRateKey, req.Direction, user.Id)
 	changeTime, err := redis.String(redisConn.Do("GET", changeRateKey))
-	if CheckWithCode(err == nil, TOKEN_CHANGE_RATE_LIMIT_ERROR, "每次兑换时间间隔不能少于2小时", c) {
+	if CheckWithCode(err == nil, TOKEN_CHANGE_RATE_LIMIT_ERROR, "每次兑换时间间隔不能少于6小时", c) {
 		log.Warn("TokenChangeRateLimit: %d, direction: %d, time: %s", user.Id, req.Direction, changeTime)
 		return
 	}
@@ -55,7 +60,11 @@ func TMMChangeHandler(c *gin.Context) {
 	if CheckErr(err, c) {
 		return
 	}
-
+	minChangePointRate := decimal.New(3, -1)
+	if Check(req.Direction == common.TMMExchangeOut && exchangeRate.Rate.LessThan(minChangePointRate), "Service not available", c) {
+		return
+		exchangeRate.Rate = minChangePointRate
+	}
 	if req.Points.LessThan(exchangeRate.MinPoints) {
 		c.JSON(INVALID_MIN_POINTS_ERROR, exchangeRate)
 		return
@@ -87,10 +96,21 @@ func TMMChangeHandler(c *gin.Context) {
 		return
 	}
 
+	agentPrivKey, err := commonutils.AddressDecrypt(Config.TMMAgentWallet.Data, Config.TMMAgentWallet.Salt, Config.TMMAgentWallet.Key)
+	if CheckErr(err, c) {
+		return
+	}
+	agentPubKey, err := eth.AddressFromHexPrivateKey(agentPrivKey)
+	if CheckErr(err, c) {
+		return
+	}
+
 	var (
+		gasPrice    *big.Int
 		fromAddress string
 		toAddress   string
 	)
+
 	db := Service.Db
 	if req.Direction == common.TMMExchangeIn {
 		query := `SELECT
@@ -111,7 +131,13 @@ WHERE d.id='%s' AND d.user_id=%d`
 		if CheckWithCode(points.LessThan(req.Points), NOT_ENOUGH_POINTS_ERROR, "not enough points", c) {
 			return
 		}
-
+		tokenBalance, err := utils.TokenBalanceOf(token, poolPubKey)
+		if CheckErr(err, c) {
+			return
+		}
+		if CheckWithCode(amount.Cmp(tokenBalance) == 1, NOT_ENOUGH_TOKEN_IN_POOL_ERROR, "no enough token in pool, please wait", c) {
+			return
+		}
 		fromAddress = poolPubKey
 		toAddress = user.Wallet
 	} else {
@@ -123,16 +149,7 @@ WHERE d.id='%s' AND d.user_id=%d`
 			return
 		}
 		fromAddress = user.Wallet
-		toAddress = poolPubKey
-	}
-
-	agentPrivKey, err := commonutils.AddressDecrypt(Config.TMMAgentWallet.Data, Config.TMMAgentWallet.Salt, Config.TMMAgentWallet.Key)
-	if CheckErr(err, c) {
-		return
-	}
-	agentPubKey, err := eth.AddressFromHexPrivateKey(agentPrivKey)
-	if CheckErr(err, c) {
-		return
+		toAddress = agentPubKey
 	}
 
 	transactor := eth.TransactorAccount(agentPrivKey)
@@ -142,13 +159,7 @@ WHERE d.id='%s' AND d.user_id=%d`
 	if CheckErr(err, c) {
 		return
 	}
-	var gasPrice *big.Int
-	/*gas, err := ethgasstation.Gas()
-		if err != nil {
-			gasPrice = nil
-		} else {
-	       gasPrice = new(big.Int).Mul(big.NewInt(gas.SafeLow.Div(decimal.New(10, 0)).IntPart()), big.NewInt(params.GWei))
-		}*/
+
 	transactorOpts := eth.TransactorOptions{
 		Nonce:    nonce,
 		GasPrice: gasPrice,
@@ -169,6 +180,7 @@ WHERE d.id='%s' AND d.user_id=%d`
 		Status:     2,
 		InsertedAt: time.Now().Format(time.RFC3339),
 	}
+
 	_, _, err = db.Query(`INSERT INTO tmm.exchange_records (tx, status, user_id, device_id, tmm, points, direction) VALUES ('%s', %d, %d, '%s', '%s', '%s', %d)`, db.Escape(receipt.Receipt), receipt.Status, user.Id, db.Escape(req.DeviceId), receipt.Value.String(), req.Points.String(), req.Direction)
 	if CheckErr(err, c) {
 		return
@@ -185,7 +197,7 @@ WHERE d.id='%s' AND d.user_id=%d`
 		return
 	}
 
-	_, err = redisConn.Do("SETEX", changeRateKey, 60*60*2, time.Now().Format("2006-01-02 15:04:05"))
+	_, err = redisConn.Do("SETEX", changeRateKey, 60*60*6, time.Now().Format("2006-01-02 15:04:05"))
 	if err != nil {
 		log.Error(err.Error())
 	}

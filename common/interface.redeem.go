@@ -44,3 +44,21 @@ type TMMWithdrawRecord struct {
 	WithdrawStatus uint            `json:"withdraw_status"`
 	InsertedAt     string          `json:"inserted_at"`
 }
+
+func ExceededDailyWithdraw(service *Service, config Config) (exceeded bool, total decimal.Decimal, err error) {
+	db := service.Db
+	rows, _, err := db.Query(`SELECT SUM(cny) FROM
+(
+SELECT IFNULL(SUM(cny), 0) AS cny FROM tmm.withdraw_txs AS wt WHERE tx_status!=0 AND inserted_at>=DATE(NOW())
+UNION ALL
+SELECT IFNULL(SUM(cny), 0) AS cny FROM tmm.point_withdraws AS pw WHERE inserted_at>=DATE(NOW())
+) AS t`)
+	if err != nil {
+		return exceeded, total, err
+	}
+	if len(rows) == 0 {
+		return exceeded, total, nil
+	}
+	maxDailyWithdraw := decimal.New(config.MaxDailWithdraw, 0)
+	return total.GreaterThan(maxDailyWithdraw), total, nil
+}

@@ -9,7 +9,9 @@ type Config struct {
 	Port                   int               `default:"8008"`
 	Geth                   string            `default:"geth.xibao100.com"`
 	GethWSS                string            `required:"true"`
+	ShareBaseUrl           string            `required:"true"`
 	ShareUrl               string            `required:"true"`
+	ShareImpUrl            string            `required:"true"`
 	AdImpUrl               string            `required:"true"`
 	AdClkUrl               string            `required:"true"`
 	Template               string            `required:"true"`
@@ -23,6 +25,8 @@ type Config struct {
 	TMMTokenAddress        string            `required:"true"`
 	TMMEscrowAddress       string            `required:"true"`
 	MinTMMExchange         uint              `required:"true"`
+	MinExchangeRate        float64           `required:"true"`
+	MaxExchangeRate        float64           `required:"true"`
 	MinTMMRedeem           uint              `required:"true"`
 	MinPointsRedeem        uint              `required:"true"`
 	DailyTMMInterestsRate  float64           `required:"true"`
@@ -42,12 +46,14 @@ type Config struct {
 	Wechat                 WechatConfig      `required:"true"`
 	IOSXinge               XingeConfig       `required:"true"`
 	AndroidXinge           XingeConfig       `required:"true"`
+	ZZ253                  ZZ253Config       `required:"true"`
 	TwilioToken            string            `required:"true"`
 	EthplorerAPIKey        string            `required:"true"`
 	EtherscanAPIKey        string            `required:"true"`
 	Slack                  SlackConfig       `required:"true"`
 	CoinbaseAPI            CoinbaseAPIConfig `required:"true"`
 	GeoIP                  string            `required:"true"`
+	Ip2Region              string            `required:"true"`
 	ProxyApiKey            string            `required:"true"`
 	YktApiSecret           string            `required:"true"`
 	UAParserPath           string            `required:"true"`
@@ -58,10 +64,14 @@ type Config struct {
 	InviteCashBonus        uint              `required:"true"`
 	InviterCashBonus       uint              `required:"true"`
 	InviteBonusRate        float64           `required:"true"`
+	MaxInviteBonus         int64             `required:"true"`
+	MaxDailWithdraw        int64             `required:"true"`
 	GoodCommissionPoints   int64             `required:"true"`
 	MaxBindDevice          int               `required:"true"`
 	Contact                ContactConfig     `required:"true"`
 	App                    AppConfig         `required:"true"`
+	AndroidSig             SigConfig         `required:"true"`
+	IOSSig                 SigConfig         `required:"true"`
 	Debug                  bool              `default:"false"`
 	EnableWeb              bool              `default:"false"`
 	EnableGC               bool              `default:"false"`
@@ -135,11 +145,12 @@ type ReCaptchaConfig struct {
 }
 
 type WechatConfig struct {
-	AppId   string `required:"true"`
-	MchId   string `required:"true"`
-	Key     string `required:"true"`
-	CertCrt string `required:"true"`
-	CertKey string `required:"true"`
+	AppId     string `required:"true"`
+	AppSecret string `required:"true"`
+	MchId     string `required:"true"`
+	Key       string `required:"true"`
+	CertCrt   string `required:"true"`
+	CertKey   string `required:"true"`
 }
 
 type SlackConfig struct {
@@ -150,7 +161,7 @@ type SlackConfig struct {
 }
 
 type AppConfig struct {
-	SubmitBuild uint   `required:"true"`
+	SubmitBuild uint64 `required:"true"`
 	IOSLink     string `required:"true"`
 	AndroidLink string `required:"true"`
 }
@@ -160,4 +171,14 @@ type XingeConfig struct {
 	SecretKey string `required:"true"`
 	AccessId  string `required:"true"`
 	AccessKey string `required:"true"`
+}
+
+type ZZ253Config struct {
+	Account  string `required:"true"`
+	Password string `required:"true"`
+}
+
+type SigConfig struct {
+	Key    string `required:"true"`
+	Secret string `required:"true"`
 }

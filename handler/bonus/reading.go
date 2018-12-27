@@ -29,6 +29,11 @@ type ReadingBonus struct {
 }
 
 func ReadingHandler(c *gin.Context) {
+	userContext, exists := c.Get("USER")
+	if CheckWithCode(!exists, UNAUTHORIZED_ERROR, "need login", c) {
+		return
+	}
+	user := userContext.(common.User)
 	var req ReadingRequest
 	if CheckErr(c.Bind(&req), c) {
 		return
@@ -51,6 +56,11 @@ func ReadingHandler(c *gin.Context) {
 	if Check(payload.Ts < time.Now().Add(-10 * time.Minute).Unix() || payload.Ts > time.Now().Add(10 * time.Minute).Unix(), "expired request", c) {
 		return
 	}
+	db := Service.Db
+	_, _, err = db.Query(`INSERT INTO tmm.reading_logs (user_id, task_id, ts) VALUES (%d, %d, %d) ON DUPLICATE KEY UPDATE ts=ts+VALUES(ts)`, user.Id, payload.TaskId, payload.Duration)
+	if err != nil {
+		log.Error(err.Error())
+	}
 	device := common.DeviceRequest{
 		Idfa: req.Idfa,
 		Imei: req.Imei,
@@ -60,13 +70,6 @@ func ReadingHandler(c *gin.Context) {
 	if Check(len(deviceId) == 0, "not found", c) {
 		return
 	}
-
-	userContext, exists := c.Get("USER")
-	if CheckWithCode(!exists, UNAUTHORIZED_ERROR, "need login", c) {
-		return
-	}
-	user := userContext.(common.User)
-	db := Service.Db
 	rows, _, err := db.Query(`SELECT 1 FROM tmm.share_tasks WHERE id=%d LIMIT 1`, payload.TaskId)
 	if CheckErr(err, c) {
 		return
@@ -74,7 +77,16 @@ func ReadingHandler(c *gin.Context) {
 	if Check(len(rows) == 0, "not found", c) {
 		return
 	}
-	_, _, err = db.Query(`UPDATE tmm.devices SET total_ts=total_ts+%d, points=points+%s WHERE id='%s' AND user_id=%d`, payload.Duration, payload.Points.String(), db.Escape(deviceId), user.Id)
+	maxPoints := decimal.New(1, 2)
+	if payload.Points.GreaterThan(maxPoints) {
+		payload.Points = maxPoints
+	}
+	pointsPerTs, err := common.GetPointsPerTs(Service)
+	if CheckErr(err, c) {
+		return
+	}
+	ts := payload.Points.Div(pointsPerTs)
+	_, _, err = db.Query(`UPDATE tmm.devices SET total_ts=total_ts+%d, points=points+%s WHERE id='%s' AND user_id=%d`, ts.IntPart(), payload.Points.String(), db.Escape(deviceId), user.Id)
 	if CheckErr(err, c) {
 		return
 	}

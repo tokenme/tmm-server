@@ -3,32 +3,70 @@ package task
 import (
 	"fmt"
 	//"github.com/davecgh/go-spew/spew"
-	"github.com/garyburd/redigo/redis"
 	"github.com/gin-gonic/gin"
 	"github.com/mkideal/log"
 	"github.com/shopspring/decimal"
 	"github.com/tokenme/tmm/common"
 	. "github.com/tokenme/tmm/handler"
 	tokenUtils "github.com/tokenme/tmm/utils/token"
+    "github.com/tokenme/tmm/tools/wechatmp"
 	"github.com/ua-parser/uap-go/uaparser"
 	"net/http"
 	"strings"
-	"time"
+    "time"
+)
+
+const (
+	WX_AUTH_GATEWAY = "https://open.weixin.qq.com/connect/oauth2/authorize?appid=%s&redirect_uri=%s&response_type=code&scope=snsapi_base&state=%s#wechat_redirect"
+	WX_AUTH_URL     = "https://jkgj-isv.isvjcloud.com/rest/m/u/weauth"
 )
 
 type ShareData struct {
+    AppId      string
+    JSConfig   wechatmp.JSConfig
 	Task       common.ShareTask
+	TrackId    string
 	IsIOS      bool
 	InviteLink string
+	ImpLink    string
+    ShareLink  string
+	ValidTrack bool
 }
 
 func ShareHandler(c *gin.Context) {
+    var trackId string
+    code := c.DefaultQuery("code", "null")
 	taskId, deviceId, err := common.DecryptShareTaskLink(c.Param("encryptedTaskId"), c.Param("encryptedDeviceId"), Config)
 	if CheckErr(err, c) {
 		return
 	}
 	if Check(taskId == 0 || deviceId == "", "not found", c) {
 		return
+	}
+    mpClient := wechatmp.NewClient(Config.Wechat.AppId, Config.Wechat.AppSecret, Service, c)
+	isWx := strings.Contains(strings.ToLower(c.Request.UserAgent()), "micromessenger")
+	if isWx {
+        if len(code) > 0 && code != "null" {
+            oauthAccessToken, err := mpClient.GetOAuthAccessToken(code)
+            if err != nil {
+                log.Error(err.Error())
+            } else if len(oauthAccessToken.Openid) > 0 {
+                now := time.Now()
+                cryptOpenid := common.CryptOpenid{
+                    Openid: oauthAccessToken.Openid,
+                    Ts: now.Unix(),
+                }
+                trackId, err = cryptOpenid.Encode([]byte(Config.YktApiSecret))
+                if err != nil {
+                    log.Error(err.Error())
+                }
+            }
+        } else if code == "null" {
+            shareUri := c.Request.URL.String()
+            redirectUrl := fmt.Sprintf("%s%s", Config.ShareBaseUrl, shareUri)
+            mpClient.AuthRedirect(redirectUrl, "snsapi_base", "tmm-share")
+            return
+        }
 	}
 
 	db := Service.Db
@@ -75,123 +113,17 @@ LIMIT 1`
 	}
 	if strings.HasPrefix(task.Link, "https://tmm.tokenmama.io/article/show") {
 		task.Link = strings.Replace(task.Link, "https://tmm.tokenmama.io/article/show", "https://static.tianxi100.com/article/show", -1)
+		task.TimelineOnly = true
+	}
+	validTrack := true
+	wxFrom := c.Query("from")
+	if task.TimelineOnly && (!isWx || wxFrom != "timeline" && wxFrom != "singlemessage" && wxFrom != "groupmessage") {
+		validTrack = false
 	}
 	task.InIframe = task.ShouldUseIframe()
-
-	userViewers := row.Uint(9)
 	inviteCode := tokenUtils.Token(row.Uint64(10))
+	impLink, _ := task.GetShareImpLink(deviceId, Config)
 
-	var (
-		cookieFound = false
-		ipFound     = false
-	)
-	if _, err := c.Cookie(task.CookieKey()); err == nil {
-		log.Warn("Cookie Found")
-		cookieFound = true
-	}
-	ipInfo := ClientIP(c)
-	ipKey := task.IpKey(ipInfo)
-	go func() {
-		redisConn := Service.Redis.Master.Get()
-		defer redisConn.Close()
-		ipV, err := redis.String(redisConn.Do("GET", ipKey))
-		if err == nil {
-			log.Warn("IP Found: %s, time: %s", ipKey, ipV)
-			ipFound = true
-		}
-		if !cookieFound && !ipFound && (task.PointsLeft.GreaterThanOrEqual(bonus) && task.MaxViewers > userViewers) {
-			_, _, err := db.Query(`INSERT IGNORE INTO tmm.device_share_tasks (device_id, task_id) VALUES ('%s', %d)`, db.Escape(deviceId), taskId)
-			if err == nil {
-				pointsPerTs, err := common.GetPointsPerTs(Service)
-				if err != nil {
-					return
-				}
-				var bonusRate float64 = 1
-				rows, _, err := db.Query(`SELECT ul.task_bonus_rate FROM tmm.user_settings AS us INNER JOIN tmm.user_levels AS ul ON (ul.id=us.level) INNER JOIN tmm.devices AS d ON (d.user_id=us.user_id) WHERE d.id='%s' LIMIT 1`, db.Escape(deviceId))
-				if err != nil {
-					log.Error(err.Error())
-				} else if len(rows) > 0 {
-					bonusRate = rows[0].ForceFloat(0) / 100
-				}
-
-				query := `UPDATE tmm.devices AS d, tmm.device_share_tasks AS dst, tmm.share_tasks AS st
-            SET
-                d.points = d.points + IF(st.points_left > st.bonus, st.bonus, st.points_left) * %.2f,
-                d.total_ts = d.total_ts + CEIL(IF(st.points_left > st.bonus, st.bonus, st.points_left) / %s),
-                dst.points = dst.points + IF(st.points_left > st.bonus, st.bonus, st.points_left) * %.2f,
-                dst.viewers = dst.viewers + 1,
-                st.points_left = IF(st.points_left > st.bonus, st.points_left - st.bonus, 0),
-                st.viewers = st.viewers + 1
-            WHERE
-                d.id='%s'
-            AND dst.device_id = d.id
-            AND dst.task_id = %d
-            AND st.id = dst.task_id`
-				_, _, err = db.Query(query, bonusRate, pointsPerTs.String(), bonusRate, db.Escape(deviceId), task.Id)
-				if err != nil {
-					log.Error(query, bonusRate, pointsPerTs.String(), bonusRate, db.Escape(deviceId), task.Id)
-					log.Error(err.Error())
-				}
-				c.SetCookie(task.CookieKey(), "1", 60*60*24*30, "/", Config.Domain, true, true)
-				_, err = redisConn.Do("SETEX", ipKey, 600, time.Now().Format("2006-01-02 15:04:05"))
-				if err != nil {
-					log.Error(err.Error())
-				}
-				query = `SELECT id, inviter_id, user_id FROM
-(SELECT
-d.id,
-ic.parent_id AS inviter_id,
-ic.user_id
-FROM tmm.invite_codes AS ic
-LEFT JOIN tmm.devices AS d ON (d.user_id=ic.parent_id)
-LEFT JOIN tmm.devices AS d2 ON (d2.user_id=ic.user_id)
-WHERE d2.id='%s' AND ic.parent_id > 0
-ORDER BY d.lastping_at DESC LIMIT 1) AS t1
-UNION
-SELECT id, inviter_id, user_id FROM
-(SELECT
-d.id,
-ic.grand_id AS inviter_id,
-ic.user_id
-FROM tmm.invite_codes AS ic
-LEFT JOIN tmm.devices AS d ON (d.user_id=ic.grand_id)
-LEFT JOIN tmm.devices AS d2 ON (d2.user_id=ic.user_id)
-WHERE d2.id='%s' AND ic.grand_id > 0
-ORDER BY d.lastping_at DESC LIMIT 1) AS t2`
-				rows, _, err = db.Query(query, db.Escape(deviceId), db.Escape(deviceId))
-				if err != nil {
-					log.Error(err.Error())
-				}
-				var (
-					inviterBonus = bonus.Mul(decimal.NewFromFloat(Config.InviteBonusRate))
-					deviceIds    []string
-					insertLogs   []string
-					userId       uint64
-				)
-				for _, row := range rows {
-					deviceIds = append(deviceIds, fmt.Sprintf("'%s'", db.Escape(row.Str(0))))
-					if userId == 0 {
-						userId = row.Uint64(2)
-					}
-					insertLogs = append(insertLogs, fmt.Sprintf("(%d, %d, %s, 1, %d)", row.Uint64(1), userId, inviterBonus.String(), task.Id))
-				}
-				if len(deviceIds) > 0 {
-					_, ret, err := db.Query(`UPDATE tmm.devices SET points = points + %s, total_ts = total_ts + %d WHERE id IN (%s)`, inviterBonus.String(), inviterBonus.Div(pointsPerTs).IntPart(), strings.Join(deviceIds, ","))
-					if err != nil {
-						return
-					}
-					if ret.AffectedRows() > 0 {
-						_, _, err = db.Query(`INSERT INTO tmm.invite_bonus (user_id, from_user_id, bonus, task_type, task_id) VALUES %s`, strings.Join(insertLogs, ","))
-						if err != nil {
-							return
-						}
-					}
-				}
-			} else {
-				log.Error(err.Error())
-			}
-		}
-	}()
 	parser, err := uaparser.New(Config.UAParserPath)
 	var isIOS bool
 	if err != nil {
@@ -202,5 +134,21 @@ ORDER BY d.lastping_at DESC LIMIT 1) AS t2`
 			isIOS = true
 		}
 	}
-	c.HTML(http.StatusOK, "share.tmpl", ShareData{Task: task, IsIOS: isIOS, InviteLink: fmt.Sprintf("https://tmm.tokenmama.io/invite/%s", inviteCode.Encode())})
+
+    currentUrl := fmt.Sprintf("%s%s", Config.ShareBaseUrl, c.Request.URL.String())
+    jsConfig, err := mpClient.GetJSConfig(currentUrl)
+    if err != nil {
+        log.Error(err.Error())
+    }
+
+	c.HTML(http.StatusOK, "share.tmpl", ShareData{
+        AppId:      Config.Wechat.AppId,
+        JSConfig:   jsConfig,
+		Task:       task,
+		TrackId:    trackId,
+		IsIOS:      isIOS,
+		ValidTrack: validTrack,
+		InviteLink: fmt.Sprintf("https://tmm.tokenmama.io/invite/%s", inviteCode.Encode()),
+        ShareLink:  currentUrl,
+		ImpLink:    impLink})
 }

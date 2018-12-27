@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/shopspring/decimal"
 	"github.com/tokenme/tmm/utils"
+	"github.com/tokenme/tmm/utils/binary"
 	"strings"
 )
 
@@ -25,7 +26,9 @@ type ShareTask struct {
 	UpdatedAt     string          `json:"updated_at,omitempty"`
 	OnlineStatus  int8            `json:"online_status,omitempty"`
 	IsVideo       uint8           `json:"is_video,omitempty"`
+	IsTask        bool            `json:"is_task,omitempty"`
 	InIframe      bool            `json:"-"`
+	TimelineOnly  bool            `json:"-"`
 	ShowBonusHint bool            `json:"show_bonus_hint,omitempty"`
 	Creative      *Creative       `json:"creative,omitempty"`
 	Cid           []int           `json:"cid,omitempty"`
@@ -49,6 +52,18 @@ func (this ShareTask) GetShareLink(deviceId string, config Config) (string, erro
 	return fmt.Sprintf("%s/%s/%s", config.ShareUrl, encrypted, encryptedDeviceId), nil
 }
 
+func (this ShareTask) GetShareImpLink(deviceId string, config Config) (string, error) {
+	encrypted, err := utils.EncryptUint64(this.Id, []byte(config.LinkSalt))
+	if err != nil {
+		return "", err
+	}
+	encryptedDeviceId, err := utils.AESEncrypt([]byte(config.LinkSalt), deviceId)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%s/%s/%s", config.ShareImpUrl, encrypted, encryptedDeviceId), nil
+}
+
 func DecryptShareTaskLink(encryptedTaskId string, encryptedDeviceId string, config Config) (taskId uint64, deviceId string, err error) {
 	taskId, err = utils.DecryptUint64(encryptedTaskId, []byte(config.LinkSalt))
 	if err != nil {
@@ -67,6 +82,10 @@ func (this ShareTask) CookieKey() string {
 
 func (this ShareTask) IpKey(ip string) string {
 	return fmt.Sprintf("share-task-%d-ip-%s", this.Id, ip)
+}
+
+func (this ShareTask) OpenidKey(openId string) string {
+	return fmt.Sprintf("share-task-%d-openid-%s", this.Id, openId)
 }
 
 type AppTask struct {
@@ -103,4 +122,26 @@ type TaskRecord struct {
 	Image     string          `json:"image,omitempty"`
 	Viewers   uint            `json:"viewers,omitempty"`
 	UpdatedAt string          `json:"updated_at,omitempty"`
+}
+
+type CryptOpenid struct {
+	Openid string `json:"openid"`
+	Ts     int64  `json:"ts"`
+}
+
+func (this CryptOpenid) Encode(key []byte) (string, error) {
+	enc := binary.NewEncoder()
+	enc.Encode(this)
+	return utils.AESEncryptBytes(key, enc.Buffer())
+}
+
+func DecodeCryptOpenid(key []byte, cryptoText string) (openid CryptOpenid, err error) {
+	data, err := utils.AESDecryptBytes(key, cryptoText)
+	if err != nil {
+		return openid, err
+	}
+	dec := binary.NewDecoder()
+	dec.SetBuffer(data)
+	dec.Decode(&openid)
+	return openid, nil
 }

@@ -14,10 +14,13 @@ import (
 	"github.com/tokenme/tmm/router"
 	"github.com/tokenme/tmm/tools/articleclassifier"
 	"github.com/tokenme/tmm/tools/gc"
-	"github.com/tokenme/tmm/tools/orderbook-server"
+	//"github.com/tokenme/tmm/tools/orderbook-server"
 	"github.com/tokenme/tmm/tools/tmmwithdraw"
 	"github.com/tokenme/tmm/tools/tokenprofile"
-	"github.com/tokenme/tmm/tools/transferwatcher"
+	//"github.com/tokenme/tmm/tools/transferwatcher"
+	"github.com/tokenme/tmm/tools/etherscanspider"
+	"github.com/tokenme/tmm/tools/invitebonus"
+	"github.com/tokenme/tmm/tools/toutiaospider"
 	"github.com/tokenme/tmm/tools/txaccelerate"
 	"github.com/tokenme/tmm/tools/videospider"
 	"github.com/tokenme/tmm/tools/wechatspider"
@@ -45,6 +48,8 @@ func main() {
 		updateVideoFlag            bool
 		accelerateTxFlag           string
 		accelerateGasFlag          int64
+		ucoinHoldersFlag           bool
+		activeBonusFlag            bool
 	)
 
 	os.Setenv("CONFIGOR_ENV_PREFIX", "-")
@@ -68,6 +73,8 @@ func main() {
 	flag.BoolVar(&updateVideoFlag, "update-videos", false, "enable update videos")
 	flag.StringVar(&addVideoFlag, "add-video", "", "add video")
 	flag.BoolVar(&addArticlesFlag, "add-articles", false, "enable add articles")
+	flag.BoolVar(&ucoinHoldersFlag, "update-holders", false, "enable update ucoin holders")
+	flag.BoolVar(&activeBonusFlag, "active-bonus", false, "enable check active bonus")
 	flag.Parse()
 
 	configor.New(&configor.Config{Verbose: configFlag.Debug, ErrorOnUnmatchedKeys: true, Environment: "production"}).Load(&config, configPath)
@@ -199,7 +206,8 @@ func main() {
 	}
 
 	if addArticlesFlag {
-		addArticlesCh := make(chan struct{}, 1)
+		addWxArticlesCh := make(chan struct{}, 1)
+		addToutiaoArticlesCh := make(chan struct{}, 1)
 		exitChan := make(chan struct{}, 1)
 		go func() {
 			ch := make(chan os.Signal, 1)
@@ -208,44 +216,77 @@ func main() {
 			exitChan <- struct{}{}
 			close(ch)
 		}()
-		addArticles(addArticlesCh, service, config)
+		go addToutiaoArticles(addToutiaoArticlesCh, service, config)
+		go addWxArticles(addWxArticlesCh, service, config)
 		for {
 			select {
-			case <-addArticlesCh:
-				go addArticles(addArticlesCh, service, config)
+			case <-addWxArticlesCh:
+				go addWxArticles(addWxArticlesCh, service, config)
+			case <-addToutiaoArticlesCh:
+				go addToutiaoArticles(addToutiaoArticlesCh, service, config)
 			case <-exitChan:
-				close(addArticlesCh)
+				close(addWxArticlesCh)
+				close(addToutiaoArticlesCh)
 				return
 			}
 		}
 	}
-	handler.InitHandler(service, config)
-	handler.Start()
+
+	if ucoinHoldersFlag {
+		updateHoldersCh := make(chan struct{}, 1)
+		exitChan := make(chan struct{}, 1)
+		go func() {
+			ch := make(chan os.Signal, 1)
+			signal.Notify(ch, syscall.SIGINT, syscall.SIGKILL, syscall.SIGQUIT, syscall.SIGSTOP, syscall.SIGTERM)
+			<-ch
+			exitChan <- struct{}{}
+			close(ch)
+		}()
+		updateHoldersCh <- struct{}{}
+		for {
+			select {
+			case <-updateHoldersCh:
+				go func() {
+					etherscanspider.GetHolders(service)
+					time.Sleep(1 * time.Hour)
+					updateHoldersCh <- struct{}{}
+				}()
+			case <-exitChan:
+				close(updateHoldersCh)
+				return
+			}
+		}
+		return
+	}
 
 	gcHandler := gc.New(service, config)
 	if config.EnableGC {
 		go gcHandler.Start()
 	}
-	orderbookServer, err := obs.NewServer(service, config, handler.GlobalLock)
-	if config.EnableOrderBook {
+	/*
+		orderbookServer, err := obs.NewServer(service, config, handler.GlobalLock)
+		if config.EnableOrderBook {
+			if err != nil {
+				log.Error(err.Error())
+				return
+			}
+			go orderbookServer.Start()
+		}
+	*/
+	/*
+		transferWatcher, err := transferwatcher.NewWatcher(config.TMMTokenAddress, service, config)
 		if err != nil {
 			log.Error(err.Error())
 			return
 		}
-		go orderbookServer.Start()
-	}
-	transferWatcher, err := transferwatcher.NewWatcher(config.TMMTokenAddress, service, config)
-	if err != nil {
-		log.Error(err.Error())
-		return
-	}
-	go func() {
-		err = transferWatcher.Start()
-		if err != nil {
-			log.Error(err.Error())
-			//return
-		}
-	}()
+		go func() {
+			err = transferWatcher.Start()
+			if err != nil {
+				log.Error(err.Error())
+				//return
+			}
+		}()
+	*/
 	tokenWithdraw := tmmwithdraw.NewService(service, config)
 	if config.EnableTokenWithdraw {
 		go tokenWithdraw.Start()
@@ -263,10 +304,16 @@ func main() {
 	//}
 
 	if config.EnableWeb {
+		handler.InitHandler(service, config)
+		handler.Start()
 		if config.Debug {
 			gin.SetMode(gin.DebugMode)
 		} else {
 			gin.SetMode(gin.ReleaseMode)
+		}
+		activeBonusService := invitebonus.NewService(service, config, handler.GlobalLock)
+		if activeBonusFlag {
+			go activeBonusService.Start()
 		}
 		//gin.DisableBindValidation()
 		templatePath := path.Join(config.Template, "./*")
@@ -285,6 +332,9 @@ func main() {
 			log.Error(err.Error())
 			return
 		}
+		if activeBonusFlag {
+			activeBonusService.Stop()
+		}
 	} else {
 		exitChan := make(chan struct{}, 1)
 		go func() {
@@ -301,18 +351,26 @@ func main() {
 	//		queue.Stop()
 	//	}
 	//}
-	handler.Close()
+	if config.EnableWeb {
+		handler.Close()
+	}
 	gcHandler.Stop()
-	if config.EnableOrderBook {
-		orderbookServer.Stop()
-	}
+	/*
+		if config.EnableOrderBook {
+			orderbookServer.Stop()
+		}
+	*/
 	if config.EnableTokenWithdraw {
-		go tokenWithdraw.Stop()
+		tokenWithdraw.Stop()
 	}
-	transferWatcher.Stop()
+	//transferWatcher.Stop()
 }
 
-func addArticles(addArticlesCh chan<- struct{}, service *common.Service, config common.Config) {
+func addWxArticles(addWxArticlesCh chan<- struct{}, service *common.Service, config common.Config) {
+	defer func() {
+		time.Sleep(6 * time.Hour)
+		addWxArticlesCh <- struct{}{}
+	}()
 	crawler := wechatspider.NewCrawler(service, config)
 	crawler.Run()
 	err := crawler.Publish()
@@ -326,6 +384,31 @@ func addArticles(addArticlesCh chan<- struct{}, service *common.Service, config 
 		return
 	}
 	classifier.ClassifyDocs()
-	time.Sleep(12 * time.Hour)
-	addArticlesCh <- struct{}{}
+}
+
+func addToutiaoArticles(addToutiaoArticlesCh chan<- struct{}, service *common.Service, config common.Config) {
+	defer func() {
+		time.Sleep(5 * time.Minute)
+		addToutiaoArticlesCh <- struct{}{}
+	}()
+	crawler := toutiaospider.NewCrawler(service, config)
+	num, err := crawler.Run()
+	if err != nil {
+		log.Error(err.Error())
+		return
+	}
+	if num == 0 {
+		return
+	}
+	err = crawler.Publish()
+	if err != nil {
+		log.Error(err.Error())
+	}
+	classifier := articleclassifier.NewClassifier(service, config)
+	err = classifier.LoadModel()
+	if err != nil {
+		log.Error(err.Error())
+		return
+	}
+	classifier.ClassifyDocs()
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/getsentry/raven-go"
 	"github.com/gin-gonic/gin"
+	"github.com/mkideal/log"
 	"github.com/o1egl/govatar"
 	//"github.com/tokenme/tmm/tools/recaptcha"
 	"image/png"
@@ -13,6 +14,7 @@ import (
 	"github.com/tokenme/tmm/coins/eth"
 	. "github.com/tokenme/tmm/handler"
 	"github.com/tokenme/tmm/tools/afs"
+	"github.com/tokenme/tmm/tools/mobilecode"
 	"github.com/tokenme/tmm/tools/qiniu"
 	"github.com/tokenme/tmm/utils"
 	tokenUtils "github.com/tokenme/tmm/utils/token"
@@ -45,7 +47,9 @@ func CreateHandler(c *gin.Context) {
 }
 
 func createByMobile(c *gin.Context, req CreateRequest) {
-	if Check(req.Mobile == "" || req.CountryCode == 0 || req.VerifyCode == "" || req.Password == "" || req.RePassword == "" || !(req.Captcha != "" || req.AfsSession != "" && req.AfsToken == "" || req.AfsToken != "" && req.AfsSig != "" && req.AfsSession != ""), "missing params", c) {
+	mobile := strings.Replace(req.Mobile, " ", "", -1)
+	mobile = strings.Replace(mobile, "-", "", -1)
+	if Check(mobile == "" || req.CountryCode == 0 || req.VerifyCode == "" || req.Password == "" || req.RePassword == "" || !(req.Captcha != "" || req.AfsSession != "" && req.AfsToken == "" || req.AfsToken != "" && req.AfsSig != "" && req.AfsSession != ""), "missing params", c) {
 		return
 	}
 	if Check(req.Password != req.RePassword, "repassword!=password", c) {
@@ -61,16 +65,6 @@ func createByMobile(c *gin.Context, req CreateRequest) {
 	}
 	salt := utils.Sha1(token.String())
 	passwd := utils.Sha1(fmt.Sprintf("%s%s%s", salt, req.Password, salt))
-	mobile := strings.Replace(req.Mobile, " ", "", -1)
-
-	ret, err := twilio.AuthVerification(Config.TwilioToken, mobile, req.CountryCode, req.VerifyCode)
-	if CheckErr(err, c) {
-		raven.CaptureError(err, nil)
-		return
-	}
-	if Check(!ret.Success, ret.Message, c) {
-		return
-	}
 	if req.AfsSession != "" && req.AfsToken == "" {
 		afsClient, err := afs.NewClientWithAccessKey(Config.Aliyun.RegionId, Config.Aliyun.AK, Config.Aliyun.AS)
 		if CheckWithCode(err != nil, INVALID_CAPTCHA_ERROR, "Invalid captcha", c) {
@@ -99,6 +93,25 @@ func createByMobile(c *gin.Context, req CreateRequest) {
 			return
 		}
 	}
+
+	if req.CountryCode == 86 {
+		authClient := mobilecode.NewClient(Service, Config)
+		ret := authClient.Verify(mobile, req.VerifyCode)
+		if Check(!ret.Success, ret.Message, c) {
+			log.Error("Auth Send Failed: %s", ret.Message)
+			return
+		}
+	} else {
+		ret, err := twilio.AuthVerification(Config.TwilioToken, mobile, req.CountryCode, req.VerifyCode)
+		if CheckErr(err, c) {
+			raven.CaptureError(err, nil)
+			return
+		}
+		if Check(!ret.Success, ret.Message, c) {
+			return
+		}
+	}
+
 	/*
 		captchaRes := recaptcha.Verify(Config.ReCaptcha.Secret, Config.ReCaptcha.Hostname, req.Captcha)
 		if CheckWithCode(!captchaRes.Success, INVALID_CAPTCHA_ERROR, "Invalid captcha", c) {

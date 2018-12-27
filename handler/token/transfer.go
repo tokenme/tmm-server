@@ -36,6 +36,17 @@ func TransferHandler(c *gin.Context) {
 	if CheckErr(c.Bind(&req), c) {
 		return
 	}
+	db := Service.Db
+	{
+		rows, _, err := db.Query(`SELECT 1 FROM tmm.user_settings WHERE user_id=%d AND blocked=1 AND block_whitelist=0`, user.Id)
+		if CheckErr(err, c) {
+			return
+		}
+		if Check(len(rows) > 0, "您的账户存在异常操作，疑似恶意邀请用户行为，不能执行兑换操作。如有疑问请联系客服。", c) {
+			return
+		}
+	}
+
 	var gasPrice *big.Int
 	gas, err := ethgasstation.Gas()
 	if err != nil {
@@ -131,6 +142,10 @@ func TransferHandler(c *gin.Context) {
 	}
 
 	if strings.ToLower(req.Token) == Config.TMMTokenAddress {
+		minTransferRequired := decimal.New(1, 3)
+		if Check(req.Amount.LessThan(minTransferRequired), fmt.Sprintf("最低转账要求%s", minTransferRequired.String()), c) {
+			return
+		}
 		agentPrivKey, err := commonutils.AddressDecrypt(Config.TMMAgentWallet.Data, Config.TMMAgentWallet.Salt, Config.TMMAgentWallet.Key)
 		if CheckErr(err, c) {
 			return
@@ -180,8 +195,6 @@ func TransferHandler(c *gin.Context) {
 			c.JSON(NOT_ENOUGH_ETH_ERROR, gin.H{"eth": minRequiredDecimal})
 			return
 		}
-
-		db := Service.Db
 		rows, _, err := db.Query(`SELECT wallet, wallet_salt FROM ucoin.users WHERE id=%d`, user.Id)
 		if CheckErr(err, c) {
 			return

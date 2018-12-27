@@ -27,6 +27,9 @@ func HookHandler(c *gin.Context) {
 		PointsDistHandler(c)
 	case "/withdraw.dist":
 		WithdrawDistHandler(c)
+	case "/daily.withdraw":
+		num, _ := strconv.ParseInt(txt, 10, 64)
+		DailyWithdrawHandler(c, num)
 	case "/token.withdraw.dist":
 		TokenWithdrawDistHandler(c)
 	case "/point.withdraw.dist":
@@ -48,5 +51,7 @@ func HookHandler(c *gin.Context) {
 	case "/top.invites.users":
 		num, _ := strconv.ParseInt(txt, 10, 64)
 		TopInvitesUsersHandler(c, num)
+	case "/block.reason":
+		BlockReasonHandler(c, txt)
 	}
 }

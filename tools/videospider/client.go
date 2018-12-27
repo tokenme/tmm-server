@@ -11,6 +11,7 @@ import (
 	"github.com/tokenme/tmm/common"
 	"net/url"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -26,7 +27,6 @@ type Client struct {
 	service             *common.Service
 	config              common.Config
 	proxy               *Proxy
-	httpClient          *grequests.Session
 	resolvers           map[string]Resolver
 	TLSHandshakeTimeout time.Duration
 	DialTimeout         time.Duration
@@ -35,18 +35,13 @@ type Client struct {
 }
 
 func NewClient(service *common.Service, config common.Config) *Client {
-	ro := &grequests.RequestOptions{
-		UserAgent:    "Mozilla/5.0 (Linux; U; Android 4.3; en-us; SM-N900T Build/JSS15J) AppleWebKit/534.30 (KHTML, like Gecko) Version/4.0 Mobile Safari/534.30",
-		UseCookieJar: false,
-	}
 	c := &Client{
-		service:    service,
-		config:     config,
-		proxy:      NewProxy(service.Redis.Master, config.ProxyApiKey),
-		httpClient: grequests.NewSession(ro),
-		resolvers:  make(map[string]Resolver),
-		exitCh:     make(chan struct{}, 1),
-		canExitCh:  make(chan struct{}, 1),
+		service:   service,
+		config:    config,
+		proxy:     NewProxy(service.Redis.Master, config.ProxyApiKey),
+		resolvers: make(map[string]Resolver),
+		exitCh:    make(chan struct{}, 1),
+		canExitCh: make(chan struct{}, 1),
 	}
 	c.RegisterAll()
 	return c
@@ -61,6 +56,7 @@ func (this *Client) Get(link string) (info Video, err error) {
 		if resolver.MatchUrl(link) {
 			info, err = resolver.Get(link)
 			if err != nil {
+				log.Error(err.Error())
 				return info, err
 			}
 			var files []VideoLink
@@ -121,24 +117,23 @@ func (this *Client) UpdateVideos(updateCh chan<- struct{}) error {
 	}()
 	db := this.service.Db
 	var wg sync.WaitGroup
-	videoFetchPool, _ := ants.NewPoolWithFunc(10, func(req interface{}) error {
+	videoFetchPool, _ := ants.NewPoolWithFunc(10, func(req interface{}) {
 		defer wg.Done()
 		task := req.(*TaskVideo)
 		//log.Info("Updating:%s", task.Link)
 		video, err := this.Get(task.Link)
 		if err != nil {
 			log.Error("Update:%s, Failed:%s", task.Link, err.Error())
-			return err
+			return
 		}
 		if len(video.Files) == 0 {
 			log.Error("Update:%s, Failed: no video found", task.Link)
-			return errors.New("invalid video")
+			return
 		}
 		sorter := NewVideoSorter(video.Files)
 		sort.Sort(sort.Reverse(sorter))
 		task.VideoLink = sorter[0].Link
 		//log.Info("Updated:%s, Video:%s", task.Link, task.VideoLink)
-		return nil
 	})
 	var (
 		startId uint64
@@ -150,7 +145,7 @@ func (this *Client) UpdateVideos(updateCh chan<- struct{}) error {
 			where = fmt.Sprintf(" AND id<%d", startId)
 		}
 		endId = startId
-		rows, _, err := db.Query(`SELECT id, link FROM tmm.share_tasks WHERE is_video=1 AND video_updated_at<DATE_SUB(NOW(), INTERVAL 30 MINUTE)%s ORDER BY id DESC LIMIT 1000`, where)
+		rows, _, err := db.Query(`SELECT id, link FROM tmm.share_tasks WHERE online_status=1 AND is_video=1 AND video_updated_at<DATE_SUB(NOW(), INTERVAL 30 MINUTE)%s ORDER BY id DESC LIMIT 1000`, where)
 		if err != nil {
 			return err
 		}
@@ -169,15 +164,27 @@ func (this *Client) UpdateVideos(updateCh chan<- struct{}) error {
 			tasks = append(tasks, task)
 		}
 		wg.Wait()
-		var val []string
+		var (
+			val        []string
+			offlineIds []string
+		)
 		for _, task := range tasks {
 			if task.VideoLink != "" {
 				val = append(val, fmt.Sprintf("(%d, '%s', NOW())", task.Id, db.Escape(task.VideoLink)))
+			} else {
+				offlineIds = append(offlineIds, strconv.FormatUint(task.Id, 10))
 			}
 		}
 		if len(val) > 0 {
 			log.Warn("Saving:%d Videos", len(val))
 			_, _, err := db.Query(`INSERT INTO tmm.share_tasks (id, video_link, video_updated_at) VALUES %s ON DUPLICATE KEY UPDATE video_link=VALUES(video_link), video_updated_at=VALUES(video_updated_at)`, strings.Join(val, ","))
+			if err != nil {
+				log.Error(err.Error())
+			}
+		}
+		if len(offlineIds) > 0 {
+			log.Warn("Offline:%d Videos", len(val))
+			_, _, err := db.Query(`UPDATE tmm.share_tasks SET online_status=-1 WHERE id IN (%s)`, strings.Join(offlineIds, ","))
 			if err != nil {
 				log.Error(err.Error())
 			}
@@ -208,9 +215,10 @@ func (this *Client) GetHtml(link string, ro *grequests.RequestOptions) (string, 
 	if proxyUrl != nil {
 		if ro == nil {
 			ro = &grequests.RequestOptions{
-				Proxies:             map[string]*url.URL{"https": proxyUrl},
+				//Proxies:             map[string]*url.URL{"https": proxyUrl},
 				TLSHandshakeTimeout: this.TLSHandshakeTimeout,
 				DialTimeout:         this.DialTimeout,
+				UserAgent:           "Mozilla/5.0 (Linux; U; Android 4.3; en-us; SM-N900T Build/JSS15J) AppleWebKit/534.30 (KHTML, like Gecko) Version/4.0 Mobile Safari/534.30",
 			}
 		} else {
 			ro.Proxies = map[string]*url.URL{"https": proxyUrl}
@@ -218,12 +226,26 @@ func (this *Client) GetHtml(link string, ro *grequests.RequestOptions) (string, 
 			ro.DialTimeout = this.DialTimeout
 		}
 	}
-	resp, err := this.httpClient.Get(link, ro)
-	if err != nil {
-		this.proxy.Update()
-		return "", err
+	var (
+		retry   uint
+		content string
+	)
+	for {
+		resp, err := grequests.Get(link, ro)
+		if err != nil {
+			if retry > 2 {
+				return "", err
+			}
+			retry += 1
+			this.proxy.Update()
+			time.Sleep(30 * time.Second)
+			continue
+		}
+		content = resp.String()
+		break
 	}
-	return resp.String(), nil
+
+	return content, nil
 }
 
 func (this *Client) GetBytes(link string, ro *grequests.RequestOptions) ([]byte, error) {
@@ -234,14 +256,15 @@ func (this *Client) GetBytes(link string, ro *grequests.RequestOptions) ([]byte,
 				Proxies:             map[string]*url.URL{"https": proxyUrl},
 				TLSHandshakeTimeout: this.TLSHandshakeTimeout,
 				DialTimeout:         this.DialTimeout,
+				UserAgent:           "Mozilla/5.0 (Linux; U; Android 4.3; en-us; SM-N900T Build/JSS15J) AppleWebKit/534.30 (KHTML, like Gecko) Version/4.0 Mobile Safari/534.30",
 			}
 		} else {
-			ro.Proxies = map[string]*url.URL{"https": proxyUrl}
+			//ro.Proxies = map[string]*url.URL{"https": proxyUrl}
 			ro.TLSHandshakeTimeout = this.TLSHandshakeTimeout
 			ro.DialTimeout = this.DialTimeout
 		}
 	}
-	resp, err := this.httpClient.Get(link, ro)
+	resp, err := grequests.Get(link, ro)
 	if err != nil {
 		this.proxy.Update()
 		return nil, err

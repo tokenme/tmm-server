@@ -10,7 +10,7 @@ import (
 	"github.com/mkideal/log"
 	"github.com/tokenme/tmm/common"
 	"github.com/tokenme/tmm/tools/articlesuggest"
-	"github.com/tokenme/tmm/tools/blowup"
+	//"github.com/tokenme/tmm/tools/blowup"
 	"github.com/tokenme/tmm/utils"
 	//"github.com/tokenme/ucoin/tools/sqs"
 	"net"
@@ -24,10 +24,10 @@ import (
 )
 
 var (
-	Service       *common.Service
-	Config        common.Config
-	GlobalLock    *sync.Mutex
-	BlowupService *blowup.Server
+	Service    *common.Service
+	Config     common.Config
+	GlobalLock *sync.Mutex
+	//BlowupService *blowup.Server
 	SuggestEngine *articlesuggest.Engine
 	ExitCh        chan struct{}
 	//Queues  map[string]sqs.Queue
@@ -37,7 +37,7 @@ func InitHandler(s *common.Service, c common.Config) {
 	Service = s
 	Config = c
 	GlobalLock = new(sync.Mutex)
-	BlowupService = blowup.NewServer(s, c)
+	//BlowupService = blowup.NewServer(s, c)
 	SuggestEngine = articlesuggest.NewEngine(s, c)
 	//Queues = queues
 	raven.SetDSN(Config.SentryDSN)
@@ -45,13 +45,13 @@ func InitHandler(s *common.Service, c common.Config) {
 }
 
 func Start() {
-	BlowupService.Start()
-	go SuggestEngine.Start()
+	//BlowupService.Start()
+	//go SuggestEngine.Start()
 }
 
 func Close() {
-	BlowupService.Stop()
-	SuggestEngine.Stop()
+	//BlowupService.Stop()
+	//SuggestEngine.Stop()
 }
 
 type APIResponse struct {
@@ -72,6 +72,7 @@ const (
 	DUPLICATE_USER_ERROR                 ErrorCode = 202
 	UNACTIVATED_USER_ERROR               ErrorCode = 502
 	NOT_ENOUGH_TOKEN_ERROR               ErrorCode = 600
+	NOT_ENOUGH_TOKEN_IN_POOL_ERROR       ErrorCode = 602
 	DAILY_BONUS_COMMITTED_ERROR          ErrorCode = 601
 	NOT_ENOUGH_POINTS_ERROR              ErrorCode = 700
 	INVALID_MIN_POINTS_ERROR             ErrorCode = 701
@@ -83,6 +84,7 @@ const (
 	WECHAT_OPENID_ERROR                  ErrorCode = 705
 	TOKEN_WITHDRAW_RATE_LIMIT_ERROR      ErrorCode = 707
 	TOKEN_CHANGE_RATE_LIMIT_ERROR        ErrorCode = 708
+	EXCEEDED_DAILY_WITHDRAW_LIMIT_ERROR  ErrorCode = 709
 	NOT_ENOUGH_ETH_ERROR                 ErrorCode = 800
 	INVALID_INVITE_CODE_ERROR            ErrorCode = 1000
 	MAX_BIND_DEVICE_ERROR                ErrorCode = 1100

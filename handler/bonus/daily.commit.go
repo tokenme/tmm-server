@@ -41,6 +41,10 @@ func DailyCommitHandler(c *gin.Context) {
 		return
 	}
 	user := userContext.(common.User)
+	if CheckErr(user.IsBlocked(Service), c) {
+		log.Error("Blocked User:%d", user.Id)
+		return
+	}
 	db := Service.Db
 	_, ret, err := db.Query(`INSERT INTO tmm.daily_bonus_logs (user_id, updated_on, days) VALUES (%d, NOW(), 1) ON DUPLICATE KEY UPDATE days=IF(updated_on=DATE(DATE_SUB(NOW(), INTERVAL 1 DAY)) AND days<7, days+1, IF(updated_on=DATE(NOW()), days, 1)), updated_on=VALUES(updated_on)`, user.Id)
 	if CheckErr(err, c) {
@@ -88,9 +92,12 @@ func giveDailyInterests(c *gin.Context, user common.User) (origin decimal.Decima
 	}
 	origin = decimal.NewFromBigInt(balance, -1*int32(tokenDecimal))
 	interests = origin.Mul(decimal.NewFromFloat(Config.DailyTMMInterestsRate))
+	maxInsterests := decimal.New(1, 2)
 	if interests.LessThanOrEqual(decimal.New(1, -4)) {
 		log.Error("Interests: %s", interests.String())
 		return
+	} else if interests.GreaterThanOrEqual(maxInsterests) {
+		interests = maxInsterests
 	}
 
 	tmmInt := interests.Mul(decimal.New(1, int32(tokenDecimal)))

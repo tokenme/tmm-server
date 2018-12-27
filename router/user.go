@@ -11,8 +11,10 @@ func userRouter(r *gin.Engine) {
 	userGroup.Use(AuthMiddleware.MiddlewareFunc())
 	{
 		userGroup.GET("/info", user.InfoGetHandler)
-		userGroup.POST("/update", user.UpdateHandler)
+		userGroup.GET("/balance", user.BalanceHandler)
+		userGroup.POST("/update", handler.ApiSignFunc(), user.UpdateHandler)
 		userGroup.GET("/invite/summary", user.InviteSummaryHandler)
+		userGroup.GET("/invite/lastday-contribute", user.InviteLastdayContributeHandler)
 		userGroup.GET("/invites", user.InviteListHandler)
 		userGroup.GET("/credit/levels", user.CreditLevelsHandler)
 	}

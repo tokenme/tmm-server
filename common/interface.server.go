@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/garyburd/redigo/redis"
+	"github.com/lionsoul2014/ip2region/binding/golang/ip2region"
 	"github.com/nlopes/slack"
 	"github.com/oschwald/geoip2-golang"
 	"github.com/ziutek/mymysql/autorc"
@@ -26,13 +27,14 @@ type RedisConn struct {
 
 // Service struct provide i/o resources for application
 type Service struct {
-	Db        *autorc.Conn      `json:"-"`
-	Redis     *RedisConn        `json:"-"`
-	redisConf *RedisConf        `json:"-"`
-	Geth      *ethclient.Client `json:"-"`
-	GethWSS   *ethclient.Client `json:"-"`
-	GeoIP     *geoip2.Reader    `json:"-"`
-	Slack     *slack.Client     `json:"-"`
+	Db        *autorc.Conn         `json:"-"`
+	Redis     *RedisConn           `json:"-"`
+	redisConf *RedisConf           `json:"-"`
+	Geth      *ethclient.Client    `json:"-"`
+	GethWSS   *ethclient.Client    `json:"-"`
+	GeoIP     *geoip2.Reader       `json:"-"`
+	Slack     *slack.Client        `json:"-"`
+	Ip2Region *ip2region.Ip2Region `json:"-"`
 }
 
 func NewService(config Config) *Service {
@@ -49,11 +51,21 @@ func NewService(config Config) *Service {
 	service.NewGethWSS(config.GethWSS)
 	service.NewGeoIP(config.GeoIP)
 	service.NewSlack(config.Slack.Token)
+	service.NewIp2Region(config.Ip2Region)
 	return service
 }
 
 func (this *Service) Close() {
 	this.CloseRedisPool()
+}
+
+func (this *Service) NewIp2Region(db string) (*ip2region.Ip2Region, error) {
+	c, err := ip2region.New(db)
+	if err != nil {
+		return nil, err
+	}
+	this.Ip2Region = c
+	return c, nil
 }
 
 func (this *Service) NewGeth(ipcLocation string) (*ethclient.Client, error) {

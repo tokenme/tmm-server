@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"github.com/getsentry/raven-go"
 	"github.com/gin-gonic/gin"
+	"github.com/mkideal/log"
 	. "github.com/tokenme/tmm/handler"
+	"github.com/tokenme/tmm/tools/mobilecode"
 	"github.com/tokenme/tmm/utils"
 	"github.com/tokenme/tmm/utils/twilio"
 	"net/http"
@@ -31,15 +33,24 @@ func ResetPasswordHandler(c *gin.Context) {
 	if Check(req.Password != req.RePassword, "repassword!=password", c) {
 		return
 	}
-	mobile := strings.Replace(req.Mobile, " ", "", 0)
-
-	ret, err := twilio.AuthVerification(Config.TwilioToken, mobile, req.CountryCode, req.VerifyCode)
-	if CheckErr(err, c) {
-		raven.CaptureError(err, nil)
-		return
-	}
-	if Check(!ret.Success, ret.Message, c) {
-		return
+	mobile := strings.Replace(req.Mobile, " ", "", -1)
+	mobile = strings.Replace(mobile, "-", "", -1)
+	if req.CountryCode == 86 {
+		authClient := mobilecode.NewClient(Service, Config)
+		ret := authClient.Verify(mobile, req.VerifyCode)
+		if Check(!ret.Success, ret.Message, c) {
+			log.Error("Auth Send Failed: %s", ret.Message)
+			return
+		}
+	} else {
+		ret, err := twilio.AuthVerification(Config.TwilioToken, mobile, req.CountryCode, req.VerifyCode)
+		if CheckErr(err, c) {
+			raven.CaptureError(err, nil)
+			return
+		}
+		if Check(!ret.Success, ret.Message, c) {
+			return
+		}
 	}
 
 	db := Service.Db

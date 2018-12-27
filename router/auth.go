@@ -80,9 +80,9 @@ func AuthCheckerFunc() gin.HandlerFunc {
 func authRouter(r *gin.Engine) {
 	r.POST("/auth/login", handler.ApiSignFunc(), AuthMiddleware.LoginHandler)
 	authGroup := r.Group("/auth")
-	authGroup.Use(AuthMiddleware.MiddlewareFunc(), handler.ApiSignFunc())
+	authGroup.Use(AuthMiddleware.MiddlewareFunc())
 	{
-		authGroup.GET("/refresh_token", AuthMiddleware.RefreshHandler)
+		authGroup.GET("/refresh_token", handler.ApiSignFunc(), AuthMiddleware.RefreshHandler)
 	}
 	r.POST("/auth/send", handler.ApiSignFunc(), auth.SendHandler)
 	r.POST("/auth/verify", handler.ApiSignFunc(), auth.VerifyHandler)

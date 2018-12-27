@@ -1,16 +1,22 @@
 package user
 
 import (
+	"errors"
 	"fmt"
 	//"github.com/davecgh/go-spew/spew"
 	"github.com/getsentry/raven-go"
 	"github.com/gin-gonic/gin"
 	"github.com/mkideal/log"
 	"github.com/nu7hatch/gouuid"
+	"github.com/shopspring/decimal"
+	"github.com/tokenme/tmm/coins/eth"
+	"github.com/tokenme/tmm/coins/eth/utils"
 	"github.com/tokenme/tmm/common"
 	. "github.com/tokenme/tmm/handler"
-	"github.com/tokenme/tmm/utils"
+	"github.com/tokenme/tmm/tools/forex"
+	commonutils "github.com/tokenme/tmm/utils"
 	tokenUtils "github.com/tokenme/tmm/utils/token"
+	"math/big"
 	"net/http"
 	"strings"
 	"time"
@@ -69,8 +75,8 @@ func UpdateHandler(c *gin.Context) {
 		if CheckErr(err, c) {
 			return
 		}
-		salt := utils.Sha1(token.String())
-		passwd = utils.Sha1(fmt.Sprintf("%s%s%s", salt, req.Password, salt))
+		salt := commonutils.Sha1(token.String())
+		passwd = commonutils.Sha1(fmt.Sprintf("%s%s%s", salt, req.Password, salt))
 		mobile = strings.Replace(req.Mobile, " ", "", 0)
 		rows, _, err := db.Query(`SELECT 1 FROM ucoin.auth_verify_codes WHERE country_code=%d AND mobile='%s' AND code='%s' LIMIT 1`, req.CountryCode, db.Escape(mobile), db.Escape(req.VerifyCode))
 		if CheckErr(err, c) {
@@ -82,23 +88,10 @@ func UpdateHandler(c *gin.Context) {
 		}
 		updateFields = append(updateFields, fmt.Sprintf("country_code=%d, mobile='%s', salt='%s', passwd='%s'", req.CountryCode, db.Escape(mobile), db.Escape(salt), db.Escape(passwd)))
 	} else if req.PaymentPasswd != "" {
-		paymentPasswd := utils.Sha1(fmt.Sprintf("%s%s%s", user.Salt, req.PaymentPasswd, user.Salt))
+		paymentPasswd := commonutils.Sha1(fmt.Sprintf("%s%s%s", user.Salt, req.PaymentPasswd, user.Salt))
 		updateFields = append(updateFields, fmt.Sprintf("payment_passwd='%s'", db.Escape(paymentPasswd)))
 	} else if req.InviterCode > 0 {
-		query := `SELECT
-d.id
-FROM tmm.devices AS d
-WHERE d.user_id = %d
-ORDER BY d.lastping_at DESC LIMIT 1`
-		rows, _, err := db.Query(query, user.Id)
-		if CheckErr(err, c) {
-			return
-		}
-		if CheckWithCode(len(rows) == 0, NOTFOUND_ERROR, "not found", c) {
-			return
-		}
-		deviceId := rows[0].Str(0)
-		_, ret, err := db.Query(`UPDATE tmm.invite_codes AS t1, tmm.invite_codes AS t2 SET t1.parent_id=t2.user_id, t1.grand_id=t2.parent_id WHERE (t1.parent_id!=t2.user_id OR t1.grand_id!=t2.parent_id) AND t2.user_id!= t1.user_id AND t2.parent_id!= t1.user_id AND t2.id != t1.id AND t2.id=%d AND t1.user_id=%d`, req.InviterCode, user.Id)
+		_, ret, err := db.Query(`UPDATE tmm.invite_codes AS t1, tmm.invite_codes AS t2 SET t1.parent_id=t2.user_id, t1.grand_id=t2.parent_id WHERE (t1.parent_id!=t2.user_id OR t1.grand_id!=t2.parent_id) AND t2.user_id!=t1.user_id AND t2.parent_id!= t1.user_id AND t2.id != t1.id AND t2.id=%d AND t1.user_id=%d`, req.InviterCode, user.Id)
 		if CheckErr(err, c) {
 			log.Error(err.Error())
 			raven.CaptureError(err, nil)
@@ -107,34 +100,55 @@ ORDER BY d.lastping_at DESC LIMIT 1`
 		if CheckWithCode(ret.AffectedRows() == 0, INVALID_INVITE_CODE_ERROR, "invalid invite code", c) {
 			return
 		}
-		query = `SELECT
+		query := `SELECT
 d.id,
 d.user_id
 FROM tmm.devices AS d
 LEFT JOIN tmm.invite_codes AS ic ON (ic.parent_id=d.user_id)
-WHERE ic.user_id = %d
+LEFT JOIN tmm.user_settings AS us ON (us.user_id=d.user_id)
+WHERE ic.user_id = %d AND (IFNULL(us.blocked, 0)=0 OR us.block_whitelist=1)
 ORDER BY d.lastping_at DESC LIMIT 1`
-		rows, _, err = db.Query(query, user.Id)
+		rows, _, err := db.Query(query, user.Id)
 		if CheckErr(err, c) {
 			return
 		}
 		if CheckWithCode(len(rows) == 0, NOTFOUND_ERROR, "not found", c) {
 			return
 		}
+		/*
+			inviterCashBonus := decimal.New(int64(Config.InviterCashBonus), 0)
+			pointPrice := common.GetPointPrice(Service, Config)
+			forexRate := forex.Rate(Service, "USD", "CNY")
+			pointCnyPrice := pointPrice.Mul(forexRate)
+				inviterPointBonus := inviterCashBonus.Div(pointCnyPrice)
+				maxInviterBonus := decimal.New(Config.MaxInviteBonus, 0)
+				if inviterPointBonus.GreaterThanOrEqual(maxInviterBonus) {
+					inviterPointBonus = maxInviterBonus
+				}
+		*/
+		inviterPointBonus := decimal.New(int64(Config.InviterBonus), 0)
+
 		inviterDeviceId := rows[0].Str(0)
 		inviterUserId := rows[0].Uint64(1)
-		_, ret2, err := db.Query(`UPDATE tmm.devices AS d1, tmm.devices AS d2 SET d1.points = d1.points + %d, d2.points = d2.points + %d WHERE d1.id='%s' AND d2.id='%s'`, Config.InviteBonus, Config.InviterBonus, db.Escape(deviceId), db.Escape(inviterDeviceId))
+		pointsPerTs, _ := common.GetPointsPerTs(Service)
+		inviterTs := inviterPointBonus.Div(pointsPerTs)
+		forexRate := forex.Rate(Service, "USD", "CNY")
+		tx, tmm, err := _transferToken(user.Id, forexRate, c)
+		if CheckErr(err, c) {
+			log.Error("Bonus Transfer failed")
+			return
+		}
+		//log.Warn("Inviter bonus: %s, inviter:%d", inviterPointBonus.String(), inviterUserId)
+		_, _, err = db.Query(`UPDATE tmm.devices AS d2 SET d2.points = d2.points + %s, d2.total_ts = d2.total_ts + %d WHERE d2.id='%s'`, inviterPointBonus.String(), inviterTs.IntPart(), db.Escape(inviterDeviceId))
 		if CheckErr(err, c) {
 			log.Error(err.Error())
 			raven.CaptureError(err, nil)
 			return
 		}
-		if ret2.AffectedRows() > 0 {
-			_, _, err = db.Query(`INSERT INTO tmm.invite_bonus (user_id, from_user_id, bonus) VALUES (%d, %d, %d), (%d, %d, %d)`, user.Id, user.Id, Config.InviteBonus, inviterUserId, user.Id, Config.InviterBonus)
-			if err != nil {
-				log.Error(err.Error())
-				raven.CaptureError(err, nil)
-			}
+		_, _, err = db.Query(`INSERT INTO tmm.invite_bonus (user_id, from_user_id, bonus, tmm, tmm_tx) VALUES (%d, %d, 0, %s, '%s'), (%d, %d, %s, 0, '')`, user.Id, user.Id, tmm.String(), db.Escape(tx), inviterUserId, user.Id, inviterPointBonus.String())
+		if err != nil {
+			log.Error(err.Error())
+			raven.CaptureError(err, nil)
 		}
 		_, _, err = db.Query(`UPDATE tmm.invite_codes AS t1, tmm.invite_codes AS t2 SET t1.grand_id=t2.parent_id WHERE t2.user_id=t1.parent_id AND t2.parent_id!=t1.user_id AND t2.user_id=%d`, user.Id)
 		if CheckErr(err, c) {
@@ -148,8 +162,11 @@ SELECT
 i.parent_id, ul.id
 FROM tmm.user_levels AS ul
 INNER JOIN (
-    SELECT parent_id, COUNT(*) AS invites FROM tmm.invite_codes WHERE parent_id=%d
-) AS i ON (i.invites >= ul.invites)
+    SELECT ic.parent_id, COUNT(DISTINCT ic.user_id) AS invites
+    FROM tmm.invite_codes AS ic
+    LEFT JOIN tmm.user_settings AS us ON (us.user_id=ic.user_id)
+    WHERE ic.parent_id=%d AND (IFNULL(us.blocked, 0)=0 OR us.block_whitelist=1)
+) AS i ON (i.invites >= ul.invites AND parent_id IS NOT NULL)
 ORDER BY ul.id DESC LIMIT 1
 ) ON DUPLICATE KEY UPDATE level=VALUES(level)`, inviterUserId)
 		if CheckErr(err, c) {
@@ -178,4 +195,73 @@ ORDER BY ul.id DESC LIMIT 1
 		return
 	}
 	c.JSON(http.StatusOK, APIResponse{Msg: "ok"})
+}
+
+func _transferToken(userId uint64, forexRate decimal.Decimal, c *gin.Context) (receipt string, tokenAmount decimal.Decimal, err error) {
+	db := Service.Db
+	rows, _, err := db.Query(`SELECT u.wallet_addr FROM ucoin.users AS u LEFT JOIN tmm.user_settings AS us ON (us.user_id=u.id) WHERE u.id=%d AND (IFNULL(us.blocked, 0)=0 OR us.block_whitelist=1)`, userId)
+	if err != nil {
+		return receipt, tokenAmount, err
+	}
+	if len(rows) == 0 {
+		return receipt, tokenAmount, errors.New("not found")
+	}
+	userWallet := rows[0].Str(0)
+	tokenPrice := common.GetTMMPrice(Service, Config, common.RecyclePrice)
+	tokenPriceCny := tokenPrice.Mul(forexRate)
+	tokenAmount = decimal.New(3, 0).Div(tokenPriceCny)
+
+	token, err := utils.NewToken(Config.TMMTokenAddress, Service.Geth)
+	if err != nil {
+		return receipt, tokenAmount, err
+	}
+	tokenDecimal, err := utils.TokenDecimal(token)
+	if err != nil {
+		return receipt, tokenAmount, err
+	}
+	tmmInt := tokenAmount.Mul(decimal.New(1, int32(tokenDecimal)))
+	amount, ok := new(big.Int).SetString(tmmInt.Floor().String(), 10)
+	if !ok {
+		return receipt, tokenAmount, nil
+	}
+
+	agentPrivKey, err := commonutils.AddressDecrypt(Config.TMMAgentWallet.Data, Config.TMMAgentWallet.Salt, Config.TMMAgentWallet.Key)
+	if err != nil {
+		return receipt, tokenAmount, err
+	}
+	agentPubKey, err := eth.AddressFromHexPrivateKey(agentPrivKey)
+	if err != nil {
+		return receipt, tokenAmount, err
+	}
+	tokenBalance, err := utils.TokenBalanceOf(token, agentPubKey)
+	if err != nil {
+		return receipt, tokenAmount, err
+	}
+	if amount.Cmp(tokenBalance) == 1 {
+		return receipt, tokenAmount, nil
+	}
+	transactor := eth.TransactorAccount(agentPrivKey)
+	GlobalLock.Lock()
+	defer GlobalLock.Unlock()
+	nonce, err := eth.Nonce(c, Service.Geth, Service.Redis.Master, agentPubKey, Config.Geth)
+	if err != nil {
+		return receipt, tokenAmount, err
+	}
+	var gasPrice *big.Int
+	transactorOpts := eth.TransactorOptions{
+		Nonce:    nonce,
+		GasPrice: gasPrice,
+		GasLimit: 210000,
+	}
+	eth.TransactorUpdate(transactor, transactorOpts, c)
+	tx, err := utils.Transfer(token, transactor, userWallet, amount)
+	if err != nil {
+		return receipt, tokenAmount, err
+	}
+	err = eth.NonceIncr(c, Service.Geth, Service.Redis.Master, agentPubKey, Config.Geth)
+	if err != nil {
+		log.Error(err.Error())
+	}
+	receipt = tx.Hash().Hex()
+	return receipt, tokenAmount, nil
 }

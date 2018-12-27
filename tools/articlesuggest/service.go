@@ -34,6 +34,7 @@ type Task struct {
 	TaskId    uint64
 	ArticleId uint64
 	Gravity   float64
+	Bonus     float64
 	Words     map[string]float64
 }
 
@@ -62,17 +63,20 @@ func NewEngine(service *common.Service, config common.Config) *Engine {
 
 func (this *Engine) Start() {
 	this.Gse.LoadDict(this.config.GseDict)
+	log.Println("Loading Weighter")
 	this.weighter.Load(this.config.ArticleClassifierTFIDF)
+	log.Println("Weighter Loaded")
 	taskTicker := time.NewTicker(3 * time.Hour)
 	logTicker := time.NewTicker(1 * time.Hour)
-	this.getTasks()
-	this.getLogs()
+	log.Println("SuggestEngine Started")
+	go this.getTasks()
+	go this.getLogs()
 	for {
 		select {
 		case <-taskTicker.C:
-			this.getTasks()
+			go this.getTasks()
 		case <-logTicker.C:
-			this.getLogs()
+			go this.getLogs()
 		case <-this.exitCh:
 			taskTicker.Stop()
 			logTicker.Stop()
@@ -107,7 +111,7 @@ func (this *Engine) Match(userId uint64, page uint, limit uint) []uint64 {
 		if err != nil {
 			log.Println(err.Error())
 		} else {
-			readIds := this.getUserReadIds(userId)
+			//readIds := this.getUserReadIds(userId)
 			totalIds := len(taskIds)
 			if startId >= totalIds {
 				return nil
@@ -117,9 +121,9 @@ func (this *Engine) Match(userId uint64, page uint, limit uint) []uint64 {
 			for {
 				taskId := taskIds[cur]
 				cur += 1
-				if _, found := readIds[taskId]; !found {
-					retIds = append(retIds, taskId)
-				}
+				//if _, found := readIds[taskId]; !found {
+				retIds = append(retIds, taskId)
+				//}
 				if cur >= totalIds || len(retIds) >= int(limit) {
 					redisConn.Do("SETEX", curKey, 1*60, cur)
 					break
@@ -175,7 +179,7 @@ func (this *Engine) Match(userId uint64, page uint, limit uint) []uint64 {
 			}
 		}
 		score = 0.5*abScore/(math.Sqrt(bScore)*math.Sqrt(aScore)) + 0.5
-		taskScores[task.TaskId] = score - task.Gravity
+		taskScores[task.TaskId] = score - task.Gravity + task.Bonus
 	}
 	sorter := NewScoreSorter(taskScores)
 	sort.Sort(sort.Reverse(sorter))
@@ -187,7 +191,7 @@ func (this *Engine) Match(userId uint64, page uint, limit uint) []uint64 {
 	if err == nil {
 		redisConn.Do("SETEX", infoKey, 1*60, string(js))
 	}
-	readIds := this.getUserReadIds(userId)
+	//readIds := this.getUserReadIds(userId)
 	totalIds := len(taskIds)
 	if startId >= totalIds {
 		return nil
@@ -197,9 +201,9 @@ func (this *Engine) Match(userId uint64, page uint, limit uint) []uint64 {
 	for {
 		taskId := taskIds[cur]
 		cur += 1
-		if _, found := readIds[taskId]; !found {
-			retIds = append(retIds, taskId)
-		}
+		//if _, found := readIds[taskId]; !found {
+		retIds = append(retIds, taskId)
+		//}
 		if cur >= totalIds || len(retIds) >= int(limit) {
 			_, err := redisConn.Do("SETEX", curKey, 5*60, cur)
 			if err != nil {
@@ -225,6 +229,8 @@ func (this *Engine) getUserReadIds(userId uint64) map[uint64]struct{} {
 }
 
 func (this *Engine) getLogs() {
+	log.Println("SuggestEngine getting Logs")
+	defer log.Println("SuggestEngine got Logs")
 	var (
 		db        = this.service.Db
 		startTime string
@@ -352,12 +358,15 @@ func (this *Engine) getLogs() {
 }
 
 func (this *Engine) getTasks() {
+	log.Println("SuggestEngine getting Tasks")
+	defer log.Println("SuggestEngine got Tasks")
 	db := this.service.Db
 	rows, _, err := db.Query(`SELECT
     st.id,
     st.link,
     st.title,
     st.summary,
+    st.bonus,
     LOG(TIME_TO_SEC(TIMEDIFF(NOW(), inserted_at)) / (3600 * 24)) AS gravity
 FROM tmm.share_tasks AS st
 WHERE st.points_left>0 AND st.online_status = 1
@@ -375,8 +384,9 @@ ORDER BY st.bonus DESC, st.id DESC LIMIT 5000`)
 		taskId := row.Uint64(0)
 		link := row.Str(1)
 		text := fmt.Sprintf("%s %s", row.Str(2), row.Str(3))
-		gravity := row.ForceFloat(4)
-		task := &Task{TaskId: taskId, Gravity: gravity}
+		bonus := row.ForceFloat(4)
+		gravity := row.ForceFloat(5)
+		task := &Task{TaskId: taskId, Gravity: gravity, Bonus: bonus}
 		topWords, err := this.topWordsFromString(text)
 		if err != nil {
 			log.Println(err.Error())
@@ -386,6 +396,8 @@ ORDER BY st.bonus DESC, st.id DESC LIMIT 5000`)
 		tasks = append(tasks, task)
 		if !strings.Contains(link, "https://tmm.tokenmama.io/article/show/") {
 			continue
+		} else {
+			task.Gravity = 0
 		}
 		idStr := strings.Replace(link, "https://tmm.tokenmama.io/article/show/", "", -1)
 		id, err := strconv.ParseUint(idStr, 10, 64)

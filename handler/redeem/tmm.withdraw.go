@@ -5,7 +5,6 @@ import (
 	//"github.com/davecgh/go-spew/spew"
 	"encoding/json"
 	//"github.com/ethereum/go-ethereum/params"
-	"github.com/garyburd/redigo/redis"
 	"github.com/gin-gonic/gin"
 	"github.com/mkideal/log"
 	"github.com/nlopes/slack"
@@ -29,8 +28,6 @@ type TMMWithdrawRequest struct {
 	Currency string          `json:"currency" form:"currency" binding:"required"`
 }
 
-const TMMWithdrawRateKey = "TMMWithdrawRate-%d"
-
 func TMMWithdrawHandler(c *gin.Context) {
 	/*
 		if CheckWithCode(true, FEATURE_NOT_AVAILABLE_ERROR, "feature not available", c) {
@@ -44,6 +41,10 @@ func TMMWithdrawHandler(c *gin.Context) {
 	user := userContext.(common.User)
 	var req TMMWithdrawRequest
 	if CheckErr(c.Bind(&req), c) {
+		return
+	}
+	if CheckErr(user.IsBlocked(Service), c) {
+		log.Error("Blocked User:%d", user.Id)
 		return
 	}
 	db := Service.Db
@@ -72,14 +73,25 @@ func TMMWithdrawHandler(c *gin.Context) {
 		}
 	}
 
-	redisConn := Service.Redis.Master.Get()
-	defer redisConn.Close()
-	withdrawRateKey := fmt.Sprintf(TMMWithdrawRateKey, user.Id)
-	withdrawTime, err := redis.String(redisConn.Do("GET", withdrawRateKey))
-	if CheckWithCode(err == nil, TOKEN_WITHDRAW_RATE_LIMIT_ERROR, "每次提现时间间隔不能少于2小时", c) {
-		log.Warn("WithdrawRateLimit: %d, time: %s", user.Id, withdrawTime)
-		return
+	{
+		query := `SELECT 1
+FROM tmm.wx AS wx
+INNER JOIN tmm.point_withdraws AS pw ON (pw.user_id=wx.user_id)
+WHERE (wx.user_id=%d OR wx.union_id='%s') AND pw.inserted_at >= DATE_SUB(NOW(), INTERVAL 1 DAY)
+UNION
+SELECT 1
+FROM tmm.wx AS wx
+INNER JOIN tmm.withdraw_txs AS wt ON (wt.user_id=wx.user_id)
+WHERE (wx.user_id=%d OR wx.union_id='%s') AND wt.inserted_at >= DATE_SUB(NOW(), INTERVAL 1 DAY)`
+		rows, _, err := db.Query(query, user.Id, wxUnionId, user.Id, wxUnionId)
+		if CheckErr(err, c) {
+			return
+		}
+		if CheckWithCode(len(rows) > 0, TOKEN_WITHDRAW_RATE_LIMIT_ERROR, "每个账号或微信号每次提现时间间隔不能少于24小时", c) {
+			return
+		}
 	}
+
 	recyclePrice := common.GetTMMPrice(Service, Config, common.RecyclePrice)
 	minTmmRequire := decimal.New(int64(Config.MinTMMRedeem), 0)
 	if req.TMM.LessThan(minTmmRequire) {
@@ -117,9 +129,28 @@ func TMMWithdrawHandler(c *gin.Context) {
 
 	forexRate := forex.Rate(Service, "USD", "CNY")
 	cny := cash.Mul(forexRate)
+	minCash := decimal.New(5, 0)
+	maxCash := decimal.New(2000, 0)
+	{
+		rows, _, err := db.Query(`SELECT 1 FROM tmm.withdraw_txs WHERE user_id=%d UNION SELECT 1 FROM tmm.point_withdraws WHERE user_id=%d LIMIT 1`, user.Id, user.Id)
+		if CheckErr(err, c) {
+			return
+		}
+		if len(rows) > 0 {
+			minCash = decimal.New(15, 0)
+		}
+	}
 
-	if CheckWithCode(cny.LessThan(decimal.New(1, 0)) || cny.GreaterThan(decimal.New(2000, 0)), WECHAT_PAYMENT_ERROR, "提现金额超出限制。最小金额1元或累计超过2000元", c) {
+	if CheckWithCode(cny.LessThan(minCash) || cny.GreaterThan(maxCash), WECHAT_PAYMENT_ERROR, fmt.Sprintf("提现金额超出限制。最小金额%s元或累计超过%s元", minCash.String(), maxCash.String()), c) {
 		log.Error("cash: %s, tmm: %s, recyclePrice:%s", cny.String(), req.TMM.String(), recyclePrice.String())
+		return
+	}
+
+	exceeded, _, err := common.ExceededDailyWithdraw(Service, Config)
+	if CheckErr(err, c) {
+		return
+	}
+	if CheckWithCode(exceeded, EXCEEDED_DAILY_WITHDRAW_LIMIT_ERROR, "超出系统今日提现额度，请明天再试", c) {
 		return
 	}
 
@@ -174,10 +205,7 @@ func TMMWithdrawHandler(c *gin.Context) {
 		log.Error(err.Error())
 		return
 	}
-	_, err = redisConn.Do("SETEX", withdrawRateKey, 60*60*2, time.Now().Format("2006-01-02 15:04:05"))
-	if err != nil {
-		log.Error(err.Error())
-	}
+
 	receipt := common.TMMWithdrawResponse{
 		TMM:      req.TMM,
 		Cash:     cny,

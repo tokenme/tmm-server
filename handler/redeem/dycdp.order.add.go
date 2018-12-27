@@ -41,6 +41,11 @@ func DycdpOrderAddHandler(c *gin.Context) {
 	if CheckWithCode(user.CountryCode != 86, INVALID_CDP_VENDOR_ERROR, "the cdp vendor not supported", c) {
 		return
 	}
+
+	if CheckErr(user.IsBlocked(Service), c) {
+		log.Error("Blocked User:%d", user.Id)
+		return
+	}
 	userMobile := strings.TrimSpace(user.Mobile)
 	phone, err := phonedata.Find(userMobile)
 	if CheckErr(err, c) {

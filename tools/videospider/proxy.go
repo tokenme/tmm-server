@@ -39,7 +39,6 @@ func (this *Proxy) Get() (proxyURL *url.URL, err error) {
 			if proxy == "" || err != nil {
 				return nil, err
 			}
-			redisConn.Do("SETEX", _PROXY_CACHE_KEY, 50, proxy)
 		}
 	} else {
 		proxy, err = this.Update()
@@ -63,7 +62,13 @@ func (this *Proxy) Update() (proxy string, err error) {
 		return "", err
 	}
 	if reg.Match(body) {
-		return strings.TrimSpace(string(body)), nil
+		proxy = strings.TrimSpace(string(body))
+		if proxy != "" {
+			redisConn := this.cache.Get()
+			defer redisConn.Close()
+			redisConn.Do("SETEX", _PROXY_CACHE_KEY, 50, proxy)
+		}
+		return proxy, nil
 	}
 	return "", nil
 }

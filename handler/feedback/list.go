@@ -26,7 +26,7 @@ func ListHandler(c *gin.Context) {
 	var feedbacks []*common.Feedback
 
 	var wg sync.WaitGroup
-	pool, _ := ants.NewPoolWithFunc(10000, func(req interface{}) error {
+	pool, _ := ants.NewPoolWithFunc(10000, func(req interface{}) {
 		defer wg.Done()
 		fb := req.(*common.Feedback)
 		params := &slack.GetConversationRepliesParameters{
@@ -36,7 +36,7 @@ func ListHandler(c *gin.Context) {
 		msgs, _, _, err := Service.Slack.GetConversationRepliesContext(c, params)
 		if err != nil {
 			log.Error(err.Error())
-			return err
+			return
 		}
 		if len(msgs) > 1 {
 			var replies []common.Feedback
@@ -49,7 +49,7 @@ func ListHandler(c *gin.Context) {
 			}
 			fb.Replies = replies
 		}
-		return nil
+		return
 	})
 
 	for _, row := range rows {

@@ -58,11 +58,19 @@ func GetExchangeRate(config Config, service *Service) (ExchangeRate, decimal.Dec
 	if err != nil {
 		return exchRate, pointsPerTs, err
 	}
-	pointsPerTs, err = GetPointsPerTs(service)
+	pointsPerTs, err = GetPointsPerTsYearly(service)
 	if err != nil {
 		return exchRate, pointsPerTs, err
 	}
 	exchRate.Rate = tmmPerTs.Div(pointsPerTs)
+	minExchangeRate := decimal.NewFromFloat(config.MinExchangeRate)
+	maxExchangeRate := decimal.NewFromFloat(config.MaxExchangeRate)
+	if exchRate.Rate.LessThan(minExchangeRate) {
+		exchRate.Rate = minExchangeRate
+	}
+	if exchRate.Rate.GreaterThan(maxExchangeRate) {
+		exchRate.Rate = maxExchangeRate
+	}
 	minTMMExchange := decimal.New(int64(config.MinTMMExchange), 0)
 	exchRate.MinPoints = pointsPerTs.Div(tmmPerTs).Mul(minTMMExchange)
 	return exchRate, pointsPerTs, nil
@@ -83,6 +91,32 @@ func GetPointsPerTs(service *Service) (decimal.Decimal, error) {
 	if ts.LessThan(decimal.Zero) {
 		ts = decimal.New(1, 0)
 	}
+	pointsPerTs = points.Div(ts)
+	return pointsPerTs, nil
+}
+
+func GetPointsPerTsYearly(service *Service) (decimal.Decimal, error) {
+	pointsPerTs := decimal.New(0, 0)
+	db := service.Db
+	rows, _, err := db.Query(`SELECT SUM(d.points) AS points, SUM(IF(d.total_ts > d.consumed_ts, d.total_ts - d.consumed_ts, 0)) AS ts FROM tmm.devices AS d`)
+	if err != nil {
+		return pointsPerTs, err
+	}
+	points, err := decimal.NewFromString(rows[0].Str(0))
+	if err != nil {
+		return pointsPerTs, err
+	}
+	ts := decimal.New(rows[0].Int64(1), 0)
+	if ts.LessThan(decimal.Zero) {
+		ts = decimal.New(1, 0)
+	}
+	/*
+		remainSeconds := commonutils.YearRemainSeconds()
+		remainSecondsDecimal := decimal.NewFromFloat(remainSeconds)
+		if ts.GreaterThan(remainSecondsDecimal) {
+			ts = remainSecondsDecimal
+		}
+	*/
 	pointsPerTs = points.Div(ts)
 	return pointsPerTs, nil
 }
@@ -110,9 +144,6 @@ func GetTMMPerTs(config Config, service *Service) (decimal.Decimal, error) {
 		return tmmPerTs, err
 	}
 	remainSeconds := commonutils.YearRemainSeconds()
-	if err != nil {
-		return tmmPerTs, err
-	}
 	balanceDecimal := decimal.NewFromBigInt(balance, 0)
 	remainSecondsDecimal := decimal.NewFromFloat(remainSeconds)
 	tmmPerTs = balanceDecimal.Div(remainSecondsDecimal).Div(decimal.New(1, int32(tokenDecimal)))

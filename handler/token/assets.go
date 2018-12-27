@@ -29,7 +29,7 @@ func AssetsHandler(c *gin.Context) {
 	var (
 		tokens   []*common.Token
 		tokenMap = make(map[string]*common.Token)
-		ethPrice = common.GetETHPrice(Service, Config)
+		//ethPrice = common.GetETHPrice(Service, Config)
 		currency = c.Query("currency")
 	)
 
@@ -45,7 +45,7 @@ func AssetsHandler(c *gin.Context) {
 			Icon:     "https://www.ethereum.org/images/logos/ETHEREUM-ICON_Black_small.png",
 			Balance:  decimal.NewFromBigInt(ethBalance, -18),
 		}
-		token.Price = ethPrice
+		//token.Price = ethPrice
 		tokens = append(tokens, token)
 	}
 
@@ -132,30 +132,30 @@ func AssetsHandler(c *gin.Context) {
 		knownAddressMap[addr] = struct{}{}
 	}
 	var wg sync.WaitGroup
-	balancePool, _ := ants.NewPoolWithFunc(10000, func(req interface{}) error {
+	balancePool, _ := ants.NewPoolWithFunc(10000, func(req interface{}) {
 		defer wg.Done()
 		token := req.(*common.Token)
 		tokenABI, err := utils.NewToken(token.Address, Service.Geth)
 		if err != nil {
 			log.Error(err.Error())
-			return err
+			return
 		}
 		balance, err := utils.TokenBalanceOf(tokenABI, user.Wallet)
 		if err != nil {
 			log.Error(err.Error())
-			return err
+			return
 		}
 		balanceDecimal, err := decimal.NewFromString(balance.String())
 		if err != nil {
 			log.Error(err.Error())
-			return err
+			return
 		}
 		if token.Decimals > 0 {
 			token.Balance = balanceDecimal.Div(decimal.New(1, int32(token.Decimals)))
 		} else {
 			token.Balance = balanceDecimal
 		}
-		return nil
+		return
 	})
 	for _, token := range tokenMap {
 		wg.Add(1)

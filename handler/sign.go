@@ -8,6 +8,7 @@ import (
 	"github.com/garyburd/redigo/redis"
 	"github.com/gin-gonic/gin"
 	"github.com/mkideal/log"
+	"github.com/shopspring/decimal"
 	"github.com/tokenme/tmm/utils"
 	"io/ioutil"
 	"net/http"
@@ -39,7 +40,7 @@ func ApiSignPassFunc() gin.HandlerFunc {
 }
 
 func ApiCheckError(c *gin.Context) *APIError {
-	var headerKeys = []string{"tmm-build", "tmm-ts", "tmm-nounce", "tmm-platform"}
+	var headerKeys = []string{"tmm-build", "tmm-ts", "tmm-nounce", "tmm-platform", "tmm-mac", "tmm-imei"}
 	var requestParams = make(map[string]string)
 	for _, k := range headerKeys {
 		v := c.Request.Header.Get(k)
@@ -52,17 +53,36 @@ func ApiCheckError(c *gin.Context) *APIError {
 	if len(requestParams) == 0 {
 		return nil
 	}
-	appKey := c.Request.Header.Get("tmm-appkey")
-	ts, _ := strconv.ParseInt(c.Request.Header.Get("tmm-ts"), 10, 64)
-	if ts < time.Now().Add(-30*time.Second).Unix() || ts > time.Now().Add(30*time.Second).Unix() {
+
+	ipInfo, err := Service.Ip2Region.MemorySearch(ClientIP(c))
+	if err != nil {
+		log.Error(err.Error())
 		return &APIError{
 			Code: 400,
-			Msg:  "expired request"}
+			Msg:  err.Error()}
+	}
+	if strings.Contains(ipInfo.ISP, "阿里云") {
+		log.Warn("%s", ipInfo)
+		return &APIError{
+			Code: 400,
+			Msg:  "invalid signature"}
+	}
+	appKey := c.Request.Header.Get("tmm-appkey")
+	ts, _ := strconv.ParseInt(c.Request.Header.Get("tmm-ts"), 10, 64)
+	if ts < time.Now().Add(-10*time.Minute).Unix() || ts > time.Now().Add(10*time.Minute).Unix() {
+		return &APIError{
+			Code: 400,
+			Msg:  "Invalid timestamp, you may need to correct your system clock."}
 	}
 	sign := c.Request.Header.Get("tmm-sign")
-	secret := GetAppSecret(appKey)
+	var secret string
+	platform := c.Request.Header.Get("tmm-platform")
+	if platform == "android" && appKey == Config.AndroidSig.Key {
+		secret = Config.AndroidSig.Secret
+	} else if appKey == Config.IOSSig.Key {
+		secret = Config.IOSSig.Secret
+	}
 	if secret == "" {
-		log.Error("empty secret")
 		return &APIError{
 			Code: 400,
 			Msg:  "invalid appkey"}
@@ -86,6 +106,12 @@ func ApiCheckError(c *gin.Context) *APIError {
 					} else {
 						param = "0"
 					}
+				case float64:
+					d := decimal.NewFromFloat(v.(float64))
+					param = d.String()
+				case float32:
+					d := decimal.NewFromFloat(float64(v.(float32)))
+					param = d.String()
 				default:
 					param = fmt.Sprintf("%v", v)
 				}
@@ -124,7 +150,7 @@ func ApiCheckError(c *gin.Context) *APIError {
 	redisConn := Service.Redis.Master.Get()
 	defer redisConn.Close()
 	nounceKey := fmt.Sprintf(REQUEST_NOUNCE_KEY, nounce)
-	_, err := redis.String(redisConn.Do("GET", nounceKey))
+	_, err = redis.String(redisConn.Do("GET", nounceKey))
 	if err == nil {
 		log.Warn("Duplicate Request Nounce: %s", nounce)
 		return &APIError{

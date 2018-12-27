@@ -15,13 +15,14 @@ type Adgroup struct {
 }
 
 type Creative struct {
-	Id        uint64 `json:"id"`
-	AdgroupId uint64 `json:"adgroup_id,omitempty"`
-	Title     string `json:"title,omitempty"`
-	Image     string `json:"image,omitempty"`
-	Link      string `json:"link,omitempty"`
-	Width     uint   `json:"width,omitempty"`
-	Height    uint   `json:"height,omitempty"`
+	Id          uint64 `json:"id"`
+	AdgroupId   uint64 `json:"adgroup_id,omitempty"`
+	Title       string `json:"title,omitempty"`
+	Image       string `json:"image,omitempty"`
+	Link        string `json:"link,omitempty"`
+	Width       uint   `json:"width,omitempty"`
+	Height      uint   `json:"height,omitempty"`
+    ShareImage  string `json:"share_image,omitempty"`
 }
 
 func (this Creative) Code(key []byte) (string, error) {

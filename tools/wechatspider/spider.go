@@ -11,8 +11,8 @@ import (
 	"github.com/panjf2000/ants"
 	"github.com/tokenme/tmm/common"
 	"github.com/tokenme/tmm/tools/qiniu"
+	"github.com/tokenme/tmm/tools/wechatspider/spider"
 	"github.com/tokenme/tmm/utils"
-	"github.com/tokenme/wechat/spider"
 	"gopkg.in/russross/blackfriday.v2"
 	"io/ioutil"
 	"net/http"
@@ -29,7 +29,7 @@ type Crawler struct {
 
 func NewCrawler(service *common.Service, config common.Config) *Crawler {
 	slack := spider.NewSlack(config.Slack.Token, config.Slack.CaptchaChannel)
-	spiderClient := spider.New(slack, service.Redis.Master, config.ProxyApiKey)
+	spiderClient := spider.New(slack, service, config.ProxyApiKey)
 	return &Crawler{
 		spider:  spiderClient,
 		service: service,
@@ -91,7 +91,7 @@ func (this *Crawler) GetGzhArticles(name string) (int, error) {
 	if len(ids) == 0 {
 		return 0, nil
 	}
-	rows, _, err := db.Query(`SELECT fileid FROM tmm.articles WHERE fileid IN (%s)`, strings.Join(ids, ","))
+	rows, _, err := db.Query(`SELECT fileid FROM tmm.articles WHERE fileid IN (%s) AND platform=0`, strings.Join(ids, ","))
 	if err != nil {
 		return 0, err
 	}
@@ -138,16 +138,16 @@ func (this *Crawler) updateArticleImages(a spider.Article) (spider.Article, erro
 	}
 	var imageMap sync.Map
 	var wg sync.WaitGroup
-	uploadImagePool, _ := ants.NewPoolWithFunc(10, func(src interface{}) error {
+	uploadImagePool, _ := ants.NewPoolWithFunc(10, func(src interface{}) {
 		defer wg.Done()
 		ori := src.(string)
 		link, err := this.uploadImage(ori)
 		if err != nil {
 			log.Error(err.Error())
-			return err
+			return
 		}
 		imageMap.Store(ori, link)
-		return nil
+		return
 	})
 	doc.Find("img").Each(func(idx int, s *goquery.Selection) {
 		s.SetAttr("class", "image")
@@ -194,7 +194,7 @@ func (this *Crawler) uploadImage(src string) (string, error) {
 
 func (this *Crawler) Publish() error {
 	db := this.service.Db
-	rows, _, err := db.Query(`SELECT id, title, digest, cover FROM tmm.articles WHERE published=0 ORDER BY sortid LIMIT 1000`)
+	rows, _, err := db.Query(`SELECT id, title, digest, cover FROM tmm.articles WHERE published=0 AND platform=0 ORDER BY sortid LIMIT 1000`)
 	if err != nil {
 		return err
 	}
@@ -207,10 +207,10 @@ func (this *Crawler) Publish() error {
 		link := fmt.Sprintf("https://tmm.tokenmama.io/article/show/%d", id)
 		cover := strings.Replace(row.Str(3), "http://", "https://", -1)
 		ids = append(ids, fmt.Sprintf("%d", id))
-		val = append(val, fmt.Sprintf("(0, '%s', '%s', '%s', '%s', 5000, 5000, 5, 20)", db.Escape(title), db.Escape(digest), db.Escape(link), db.Escape(cover)))
+		val = append(val, fmt.Sprintf("(0, '%s', '%s', '%s', '%s', 500, 500, 5, 20, 1)", db.Escape(title), db.Escape(digest), db.Escape(link), db.Escape(cover)))
 	}
 	if len(val) > 0 {
-		_, _, err := db.Query(`INSERT INTO tmm.share_tasks (creator, title, summary, link, image, points, points_left, bonus, max_viewers) VALUES %s`, strings.Join(val, ","))
+		_, _, err := db.Query(`INSERT INTO tmm.share_tasks (creator, title, summary, link, image, points, points_left, bonus, max_viewers, is_crawled) VALUES %s`, strings.Join(val, ","))
 		if err != nil {
 			return err
 		}

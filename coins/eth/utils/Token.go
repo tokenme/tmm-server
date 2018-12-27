@@ -44,6 +44,14 @@ func Transfer(token *eth.Token, opts *bind.TransactOpts, _to string, _value *big
 	return token.Transfer(opts, common.HexToAddress(_to), _value)
 }
 
+func BurnFrom(token *eth.Token, opts *bind.TransactOpts, _from string, _value *big.Int) (*types.Transaction, error) {
+	return token.BurnFrom(opts, common.HexToAddress(_from), _value)
+}
+
+func Burn(token *eth.Token, opts *bind.TransactOpts, _value *big.Int) (*types.Transaction, error) {
+	return token.Burn(opts, _value)
+}
+
 func TransferProxy(token *eth.Token, opts *bind.TransactOpts, _from string, _to string, _value *big.Int) (*types.Transaction, error) {
 	return token.TransferProxy(opts, common.HexToAddress(_from), common.HexToAddress(_to), _value)
 }
