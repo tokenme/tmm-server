@@ -262,6 +262,9 @@ func (this *Crawler) getArticle(link string) (article Article, err error) {
 	if len(articleInfo.Article.Images) > 0 {
 		var images []string
 		for _, img := range articleInfo.Article.Images {
+			if strings.HasPrefix(img, "//") {
+				img = fmt.Sprintf("https:%s", img)
+			}
 			images = append(images, fmt.Sprintf(`<img src="%s">`, img))
 		}
 		content = fmt.Sprintf("<div>%s</div>%s", content, strings.Join(images, "\n"))

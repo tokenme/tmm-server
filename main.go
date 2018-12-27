@@ -219,7 +219,7 @@ func main() {
 			close(ch)
 		}()
 		go addToutiaoArticles(addToutiaoArticlesCh, service, config)
-		go addWxArticles(addWxArticlesCh, service, config)
+		//go addWxArticles(addWxArticlesCh, service, config)
 		for {
 			select {
 			case <-addWxArticlesCh:
