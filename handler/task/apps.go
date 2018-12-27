@@ -77,6 +77,7 @@ func AppsHandler(c *gin.Context) {
     a.online_status,
     a.download_url,
     a.icon,
+    a.size,
     EXISTS (SELECT 1 FROM tmm.device_app_tasks AS dat WHERE dat.task_id=a.id AND dat.device_id='%s' AND dat.status=1 LIMIT 1)
 FROM tmm.app_tasks AS a
 LEFT JOIN tmm.app_scheme_ids AS asi ON (asi.bundle_id = a.bundle_id)
@@ -106,7 +107,8 @@ ORDER BY %s LIMIT %d, %d`
 			SchemeId:      row.Uint64(12),
 			DownloadUrl:   row.Str(14),
 			Icon:          row.Str(15),
-			InstallStatus: int8(row.Int(16)),
+			Size:          row.Uint(16),
+			InstallStatus: int8(row.Int(17)),
 		}
 		if creator == user.Id {
 			task.Downloads = row.Uint(8)
