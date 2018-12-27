@@ -5,7 +5,16 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/tokenme/tmm/utils"
 	"github.com/tokenme/tmm/utils/binary"
+	"net/url"
 	"strings"
+)
+
+type ShareTaskTrackSource = uint
+
+const (
+	TrackFromUCoin   ShareTaskTrackSource = 0
+	TrackFromWechat  ShareTaskTrackSource = 1
+	TrackFromUnknown ShareTaskTrackSource = 2
 )
 
 type ShareTask struct {
@@ -38,6 +47,21 @@ type ShareTask struct {
 
 func (this ShareTask) ShouldUseIframe() bool {
 	return strings.HasPrefix(this.Link, "https://static.tianxi100.com") || strings.HasPrefix(this.Link, "https://tmm.tokenmama.io")
+}
+
+func (this ShareTask) TrackLink(link string, userId uint64, config Config) (string, error) {
+	encrypted, err := utils.EncryptUint64(this.Id, []byte(config.LinkSalt))
+	if err != nil {
+		return "", err
+	}
+	var encryptedUserId string
+	if userId > 0 {
+		encryptedUserId, err = utils.EncryptUint64(userId, []byte(config.LinkSalt))
+		if err != nil {
+			return "", err
+		}
+	}
+	return fmt.Sprintf("%s/%s?uid=%s&url=%s", config.ShareTrackUrl, encrypted, url.QueryEscape(encryptedUserId), url.QueryEscape(link)), nil
 }
 
 func (this ShareTask) GetShareLink(deviceId string, config Config) (string, error) {
@@ -86,6 +110,10 @@ func (this ShareTask) IpKey(ip string) string {
 
 func (this ShareTask) OpenidKey(openId string) string {
 	return fmt.Sprintf("share-task-%d-openid-%s", this.Id, openId)
+}
+
+func (this ShareTask) UidKey(uid uint64) string {
+	return fmt.Sprintf("st-%d-uid-%s", this.Id, uid)
 }
 
 type AppTask struct {

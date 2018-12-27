@@ -110,6 +110,7 @@ WHERE ic.user_id = %d AND (IFNULL(us.blocked, 0)=0 OR us.block_whitelist=1)
 ORDER BY d.lastping_at DESC LIMIT 1`
 		rows, _, err := db.Query(query, user.Id)
 		if CheckErr(err, c) {
+			raven.CaptureError(err, nil)
 			return
 		}
 		if CheckWithCode(len(rows) == 0, NOTFOUND_ERROR, "not found", c) {
@@ -136,6 +137,7 @@ ORDER BY d.lastping_at DESC LIMIT 1`
 		tx, tmm, err := _transferToken(user.Id, forexRate, c)
 		if CheckErr(err, c) {
 			log.Error("Bonus Transfer failed")
+			raven.CaptureError(err, nil)
 			return
 		}
 		//log.Warn("Inviter bonus: %s, inviter:%d", inviterPointBonus.String(), inviterUserId)

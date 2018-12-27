@@ -217,6 +217,14 @@ ORDER BY d.lastping_at DESC LIMIT 1) AS t2`
 						}
 					}
 				}
+				trackSource := common.TrackFromUnknown
+				if len(openid) > 0 {
+					trackSource = common.TrackFromWechat
+				}
+				_, _, err = db.Query(`INSERT INTO tmm.share_task_stats (task_id, record_on, source) VALUES (%d, NOW(), %d) ON DUPLICATE KEY UPDATE uv=uv+1`, task.Id, trackSource)
+				if err != nil {
+					log.Error(err.Error())
+				}
 			} else {
 				log.Error(err.Error())
 			}

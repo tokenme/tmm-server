@@ -36,12 +36,14 @@ type Client struct {
 
 func NewClient(service *common.Service, config common.Config) *Client {
 	c := &Client{
-		service:   service,
-		config:    config,
-		proxy:     NewProxy(service.Redis.Master, config.ProxyApiKey),
-		resolvers: make(map[string]Resolver),
-		exitCh:    make(chan struct{}, 1),
-		canExitCh: make(chan struct{}, 1),
+		service:             service,
+		config:              config,
+		proxy:               NewProxy(service.Redis.Master, config.ProxyApiKey),
+		TLSHandshakeTimeout: 10 * time.Second,
+		DialTimeout:         30 * time.Second,
+		resolvers:           make(map[string]Resolver),
+		exitCh:              make(chan struct{}, 1),
+		canExitCh:           make(chan struct{}, 1),
 	}
 	c.RegisterAll()
 	return c
@@ -117,6 +119,7 @@ func (this *Client) UpdateVideos(updateCh chan<- struct{}) error {
 	}()
 	db := this.service.Db
 	var wg sync.WaitGroup
+	ignoreIds := make(map[uint64]struct{})
 	videoFetchPool, _ := ants.NewPoolWithFunc(10, func(req interface{}) {
 		defer wg.Done()
 		task := req.(*TaskVideo)
@@ -124,6 +127,7 @@ func (this *Client) UpdateVideos(updateCh chan<- struct{}) error {
 		video, err := this.Get(task.Link)
 		if err != nil {
 			log.Error("Update:%s, Failed:%s", task.Link, err.Error())
+			ignoreIds[task.Id] = struct{}{}
 			return
 		}
 		if len(video.Files) == 0 {
@@ -171,7 +175,7 @@ func (this *Client) UpdateVideos(updateCh chan<- struct{}) error {
 		for _, task := range tasks {
 			if task.VideoLink != "" {
 				val = append(val, fmt.Sprintf("(%d, '%s', NOW())", task.Id, db.Escape(task.VideoLink)))
-			} else {
+			} else if _, found := ignoreIds[task.Id]; !found {
 				offlineIds = append(offlineIds, strconv.FormatUint(task.Id, 10))
 			}
 		}
@@ -215,15 +219,21 @@ func (this *Client) GetHtml(link string, ro *grequests.RequestOptions) (string, 
 	if proxyUrl != nil {
 		if ro == nil {
 			ro = &grequests.RequestOptions{
-				//Proxies:             map[string]*url.URL{"https": proxyUrl},
-				TLSHandshakeTimeout: this.TLSHandshakeTimeout,
-				DialTimeout:         this.DialTimeout,
-				UserAgent:           "Mozilla/5.0 (Linux; U; Android 4.3; en-us; SM-N900T Build/JSS15J) AppleWebKit/534.30 (KHTML, like Gecko) Version/4.0 Mobile Safari/534.30",
+				Proxies: map[string]*url.URL{"https": proxyUrl, "http": proxyUrl},
+				//TLSHandshakeTimeout: this.TLSHandshakeTimeout,
+				//DialTimeout:         this.DialTimeout,
+				UserAgent: "Mozilla/5.0 (Linux; U; Android 4.3; en-us; SM-N900T Build/JSS15J) AppleWebKit/534.30 (KHTML, like Gecko) Version/4.0 Mobile Safari/534.30",
 			}
 		} else {
-			ro.Proxies = map[string]*url.URL{"https": proxyUrl}
-			ro.TLSHandshakeTimeout = this.TLSHandshakeTimeout
-			ro.DialTimeout = this.DialTimeout
+			ro.Proxies = map[string]*url.URL{"https": proxyUrl, "http": proxyUrl}
+			//ro.TLSHandshakeTimeout = this.TLSHandshakeTimeout
+			//ro.DialTimeout = this.DialTimeout
+		}
+	} else if ro == nil {
+		ro = &grequests.RequestOptions{
+			//TLSHandshakeTimeout: this.TLSHandshakeTimeout,
+			//DialTimeout:         this.DialTimeout,
+			UserAgent: "Mozilla/5.0 (Linux; U; Android 4.3; en-us; SM-N900T Build/JSS15J) AppleWebKit/534.30 (KHTML, like Gecko) Version/4.0 Mobile Safari/534.30",
 		}
 	}
 	var (
@@ -253,15 +263,21 @@ func (this *Client) GetBytes(link string, ro *grequests.RequestOptions) ([]byte,
 	if proxyUrl != nil {
 		if ro == nil {
 			ro = &grequests.RequestOptions{
-				Proxies:             map[string]*url.URL{"https": proxyUrl},
+				Proxies:             map[string]*url.URL{"https": proxyUrl, "http": proxyUrl},
 				TLSHandshakeTimeout: this.TLSHandshakeTimeout,
 				DialTimeout:         this.DialTimeout,
 				UserAgent:           "Mozilla/5.0 (Linux; U; Android 4.3; en-us; SM-N900T Build/JSS15J) AppleWebKit/534.30 (KHTML, like Gecko) Version/4.0 Mobile Safari/534.30",
 			}
 		} else {
-			//ro.Proxies = map[string]*url.URL{"https": proxyUrl}
+			ro.Proxies = map[string]*url.URL{"https": proxyUrl, "http": proxyUrl}
 			ro.TLSHandshakeTimeout = this.TLSHandshakeTimeout
 			ro.DialTimeout = this.DialTimeout
+		}
+	} else if ro == nil {
+		ro = &grequests.RequestOptions{
+			//TLSHandshakeTimeout: this.TLSHandshakeTimeout,
+			//DialTimeout:         this.DialTimeout,
+			UserAgent: "Mozilla/5.0 (Linux; U; Android 4.3; en-us; SM-N900T Build/JSS15J) AppleWebKit/534.30 (KHTML, like Gecko) Version/4.0 Mobile Safari/534.30",
 		}
 	}
 	resp, err := grequests.Get(link, ro)

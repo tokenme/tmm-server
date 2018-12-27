@@ -20,5 +20,6 @@ func taskRouter(r *gin.Engine) {
 		taskGroup.POST("/app/add", handler.ApiSignFunc(), task.AppAddHandler)
 	}
 	r.GET("/share/:encryptedTaskId/:encryptedDeviceId", task.ShareHandler)
+	r.GET("/s/track/:encryptedTaskId", task.ShareTrackHandler)
 	r.GET("/s/imp/:encryptedTaskId/:encryptedDeviceId", task.ShareImpHandler)
 }

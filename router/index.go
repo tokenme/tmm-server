@@ -3,8 +3,10 @@ package router
 import (
 	"github.com/danielkov/gin-helmet"
 	"github.com/dvwright/xss-mw"
+	"github.com/getsentry/raven-go"
 	"github.com/gin-gonic/gin"
 	"github.com/tokenme/tmm/common"
+	"github.com/tokenme/tmm/middlewares/sentry"
 	"net/http"
 )
 
@@ -18,6 +20,10 @@ func NewRouter(templatePath string, config common.Config) *gin.Engine {
 		BmPolicy:     "UGCPolicy",
 	}
 	r.Use(xssMdlwr.RemoveXss())
+	err := raven.SetDSN(config.SentryDSN)
+	if err != nil {
+		r.Use(sentry.Recovery(raven.DefaultClient, false))
+	}
 	r.LoadHTMLGlob(templatePath)
 	r.GET("/", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"msg": "tokenmama.io"})

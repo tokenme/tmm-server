@@ -165,6 +165,7 @@ ORDER BY %s %s`
 		} else {
 			task.IsTask = true
 		}
+		task.Link, _ = task.TrackLink(task.Link, user.Id, Config)
 		if creator == user.Id {
 			task.Viewers = row.Uint(9)
 			task.Creator = creator
