@@ -50,8 +50,8 @@ LIMIT %d OFFSET %d`
 	for _, row := range rows {
 		exchange := &Task{
 			Type:   ExchangePoint,
-			Pay:    fmt.Sprintf("-%.2f积分", row.Float(1)),
-			Get:    fmt.Sprintf("+%.2fUC", row.Float(2)),
+			Pay:    fmt.Sprintf("-%.0f积分", row.Float(1)),
+			Get:    fmt.Sprintf("+%.0fUC", row.Float(2)),
 			When:   row.Str(0),
 			Status: MsgMap[row.Int(3)],
 		}

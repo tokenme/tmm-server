@@ -53,7 +53,7 @@ LIMIT %d OFFSET %d`
 	for _, row := range rows {
 		drawMoney := &Task{}
 		drawMoney.Type = DrawMoneyByUc
-		drawMoney.Pay = fmt.Sprintf("-%.2f UC", row.Float(0))
+		drawMoney.Pay = fmt.Sprintf("-%.0f UC", row.Float(0))
 		drawMoney.Get = fmt.Sprintf("+%.2f CNY", row.Float(1))
 		drawMoney.When = row.Str(2)
 		drawMoney.Status = MsgMap[row.Int(3)]

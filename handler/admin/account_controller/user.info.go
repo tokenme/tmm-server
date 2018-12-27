@@ -141,11 +141,11 @@ WHERE
 		return
 	}
 	user := &admin.Users{
-		Point:           point,
+		Point:           point.Ceil(),
 		DrawCash:        fmt.Sprintf("%.2f", row.Float(res.Map(`cny`))),
 		DrawCashByUc:    fmt.Sprintf("%.2f", row.Float(res.Map(`uc_cny`))),
 		DrawCashByPoint: fmt.Sprintf("%.2f", row.Float(res.Map(`point_cny`))),
-		Tmm:             tmm,
+		Tmm:             tmm.Ceil(),
 		DirectFriends:   row.Int(res.Map(`direct`)),
 		IndirectFriends: row.Int(res.Map(`indirect`)),
 		OnlineBFNumber:  row.Int(res.Map(`online`)),
