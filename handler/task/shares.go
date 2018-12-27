@@ -66,9 +66,9 @@ func SharesHandler(c *gin.Context) {
 
 	var taskIds []uint64
 	limitState := fmt.Sprintf("LIMIT %d, %d", (req.Page-1)*req.PageSize, req.PageSize)
-	onlineStatusConstrain := "st.points_left>0 AND st.online_status=1"
+	onlineStatusConstrain := "st.points_left>0 AND st.online_status=1 AND st.creator!=4"
 	if platform == common.IOS && buildVersion == Config.App.SubmitBuild {
-		onlineStatusConstrain = "st.points_left>0 AND st.online_status=1 AND (st.is_crawled=1 OR st.is_video=1)"
+		onlineStatusConstrain = "st.points_left>0 AND st.online_status=1 AND (st.is_crawled=1 OR st.is_video=1) AND st.creator!=4"
 	}
 	var inCidConstrain string
 	orderBy := "st.bonus DESC, st.id DESC"
@@ -94,7 +94,7 @@ func SharesHandler(c *gin.Context) {
 		limitState = ""
 	}
 	db := Service.Db
-	query := `SELECT
+	query := `SELECT * FROM (SELECT
     st.id,
     st.title,
     st.summary,
@@ -110,16 +110,36 @@ func SharesHandler(c *gin.Context) {
     st.creator,
     st.video_link,
     st.is_video,
-    st.online_status
+    st.online_status,
+    st.is_crawled
 FROM tmm.share_tasks AS st
 %s
 WHERE %s
-ORDER BY %s %s`
+ORDER BY %s %s) AS t
+UNION
+SELECT * FROM (SELECT
+    st.id,
+    st.title,
+    st.summary,
+    st.link,
+    st.image,
+    st.max_viewers,
+    st.bonus,
+    st.points,
+    st.points_left,
+    st.viewers,
+    st.inserted_at,
+    st.updated_at,
+    st.creator,
+    st.video_link,
+    st.is_video,
+    st.online_status,
+    st.is_crawled
+FROM tmm.share_tasks AS st WHERE st.creator=4 ORDER BY RAND() LIMIT 10) AS t2 ORDER BY is_crawled ASC, bonus DESC, RAND()`
 	rows, _, err := db.Query(query, inCidConstrain, onlineStatusConstrain, orderBy, limitState)
 	if CheckErr(err, c) {
 		return
 	}
-
 	adsMap := make(map[int][]*common.Adgroup)
 	if platform == common.IOS && buildVersion != Config.App.SubmitBuild {
 		if !req.IsVideo && (platform == common.IOS && buildVersion > 42 || platform == common.ANDROID && buildVersion > 211) {
@@ -159,11 +179,10 @@ ORDER BY %s %s`
 			VideoLink:     row.Str(13),
 			IsVideo:       uint8(row.Uint(14)),
 			ShowBonusHint: true,
+			IsTask:        !row.Bool(16),
 		}
 		if strings.HasPrefix(task.Link, "https://tmm.tokenmama.io/article/show") {
 			task.Link = strings.Replace(task.Link, "https://tmm.tokenmama.io/article/show", "https://static.tianxi100.com/article/show", -1)
-		} else {
-			task.IsTask = true
 		}
 		task.Link, _ = task.TrackLink(task.Link, user.Id, Config)
 		if creator == user.Id {
