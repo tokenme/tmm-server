@@ -120,7 +120,6 @@ WHERE
 		})
 		return
 	}
-	fmt.Printf(query, id, id, id, id, id, id, id, id, id, id, id, id)
 	rows, res, err := db.Query(query, id, id, id, id, id, id, id, id, id, id, id, id)
 	if CheckErr(err, c) {
 		return

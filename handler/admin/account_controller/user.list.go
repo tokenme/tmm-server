@@ -376,8 +376,6 @@ LEFT JOIN (
 	if search.IsWhiteList {
 		where = append(where, fmt.Sprintf(`  AND blocked = %d `, 1))
 	}
-	fmt.Printf(query, strings.Join(when, " "),
-		strings.Join(leftJoin, " "), strings.Join(where, " "), limit, offset)
 	rows, res, err := db.Query(query, strings.Join(when, " "),
 		strings.Join(leftJoin, " "), strings.Join(where, " "), limit, offset)
 	if CheckErr(err, c) {
