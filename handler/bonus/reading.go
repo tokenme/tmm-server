@@ -57,7 +57,7 @@ func ReadingHandler(c *gin.Context) {
 		return
 	}
 	db := Service.Db
-	_, _, err = db.Query(`INSERT INTO tmm.reading_logs (user_id, task_id, ts) VALUES (%d, %d, %d) ON DUPLICATE KEY UPDATE ts=ts+VALUES(ts)`, user.Id, payload.TaskId, payload.Duration)
+	_, _, err = db.Query(`INSERT INTO tmm.reading_logs (user_id, task_id, ts, point) VALUES (%d, %d, %d ,%s) ON DUPLICATE KEY UPDATE ts=ts+VALUES(ts),point=point+VALUES(point)`, user.Id, payload.TaskId, payload.Duration,payload.Points.String())
 	if err != nil {
 		log.Error(err.Error())
 	}
@@ -89,10 +89,6 @@ func ReadingHandler(c *gin.Context) {
 	_, _, err = db.Query(`UPDATE tmm.devices SET total_ts=total_ts+%d, points=points+%s WHERE id='%s' AND user_id=%d`, ts.IntPart(), payload.Points.String(), db.Escape(deviceId), user.Id)
 	if CheckErr(err, c) {
 		return
-	}
-	_, _, err = db.Query(`INSERT INTO tmm.reading_logs (user_id, task_id,ts, point) VALUES (%d, %d, %d, %s ) ON DUPLICATE KEY UPDATE ts=ts+VALUES(ts),point=point+VALUES(point) `, user.Id, payload.TaskId, payload.Duration, db.Escape(payload.Points.String()))
-	if err != nil {
-		log.Error(err.Error())
 	}
 	c.JSON(http.StatusOK, payload)
 }
