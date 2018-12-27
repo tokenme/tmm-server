@@ -23,15 +23,15 @@ SELECT
 	wx.nick AS nick,
 	uc.cny AS uc_cny,
 	point.cny AS point_cny,
-	IFNULL(uc.cny+point.cny,0) AS cny,
-	IFNULL(tmp.tmm-uc.tmm,0) AS tmm,
+	IFNULL(uc.cny,0)+IFNULL(point.cny,0) AS cny,
+	IFNULL(tmp.tmm,0)-IFNULL(uc.tmm,0) AS tmm,
 	SUM(dev.points) AS points,
 	inv.direct AS direct,
 	inv.indirect AS indirect,
 	inv.online AS online,
 	inv.active AS active,
 	bonus.inv_bonus AS inv_bonus,
-	sha.points AS sha_points,
+	IFNULL(sha.points,0) AS sha_points,
 	reading.point AS reading_point
 FROM 
 	devices AS dev
@@ -76,25 +76,28 @@ LEFT JOIN
 (
 	SELECT 
 		SUM(sha.points) AS points 
-	FROM 
-		tmm.device_share_tasks AS sha  
-	INNER JOIN 
-		tmm.devices AS dev ON  (dev.id = sha.device_id)
-	WHERE
-		 dev.user_id = %d UNION ALL
-    SELECT
-		SUM(app.points) AS points 
-	FROM 
-		tmm.device_app_tasks AS app
-	INNER JOIN 
-		tmm.devices AS dev ON  (dev.id = app.device_id)
-	WHERE
-		 dev.user_id = %d
+	FROM(
+		SELECT
+			IFNULL(SUM(sha.points),0) AS points
+		FROM
+			tmm.device_share_tasks AS sha
+		INNER JOIN
+			tmm.devices AS dev ON  (dev.id = sha.device_id)
+		WHERE
+			 dev.user_id = %d UNION ALL
+   		SELECT
+			IFNULL(SUM(app.points),0) AS points
+		FROM
+			tmm.device_app_tasks AS app
+		INNER JOIN
+			tmm.devices AS dev ON  (dev.id = app.device_id)
+		WHERE
+			 dev.user_id = %d AND app.status = 1
+		 ) AS sha
 ) AS sha,
-
 (
 	SELECT
-		SUM(bonus) AS inv_bonus
+		IFNULL(SUM(bonus),0) AS inv_bonus
 	FROM 
 		tmm.invite_bonus 
 	WHERE 
@@ -102,7 +105,7 @@ LEFT JOIN
 ) AS bonus,
 (
 	SELECT 
-		SUM(point) AS point
+		IFNULL(SUM(point),0) AS point
 	FROM
 		tmm.reading_logs
 	WHERE user_id = %d
@@ -138,11 +141,11 @@ WHERE
 		return
 	}
 	user := &admin.Users{
-		Point:           point,
+		Point:           point.Ceil(),
 		DrawCash:        fmt.Sprintf("%.2f", row.Float(res.Map(`cny`))),
 		DrawCashByUc:    fmt.Sprintf("%.2f", row.Float(res.Map(`uc_cny`))),
 		DrawCashByPoint: fmt.Sprintf("%.2f", row.Float(res.Map(`point_cny`))),
-		Tmm:             tmm,
+		Tmm:             tmm.Ceil(),
 		DirectFriends:   row.Int(res.Map(`direct`)),
 		IndirectFriends: row.Int(res.Map(`indirect`)),
 		OnlineBFNumber:  row.Int(res.Map(`online`)),
