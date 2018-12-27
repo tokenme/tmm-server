@@ -402,17 +402,13 @@ LEFT JOIN (
 		if CheckErr(err, c) {
 			return
 		}
-		drawCash, err := decimal.NewFromString(row.Str(res.Map(`cny`)))
-		if CheckErr(err, c) {
-			return
-		}
 		pointToUcoin, err := decimal.NewFromString(row.Str(res.Map(`point_to_tmm`)))
 		if CheckErr(err, c) {
 			return
 		}
 		user := &admin.Users{
 			Point:                point.Ceil(),
-			DrawCash:             drawCash.Ceil().String(),
+			DrawCash:             fmt.Sprintf("%.2f",row.Float(res.Map(`cny`))),
 			ExchangeCount:        row.Int(res.Map(`point_to_tmm_times`)),
 			OnlineBFNumber:       row.Int(res.Map(`online`)),
 			OffLineBFNumber:      row.Int(res.Map(`offline`)),

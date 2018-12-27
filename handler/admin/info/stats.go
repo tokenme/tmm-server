@@ -5,9 +5,9 @@ import (
 	. "github.com/tokenme/tmm/handler"
 	"net/http"
 	"github.com/tokenme/tmm/handler/admin"
-	"github.com/shopspring/decimal"
 	"encoding/json"
 	"github.com/garyburd/redigo/redis"
+	"fmt"
 )
 
 const statsKey = `info-stats-stats`
@@ -140,49 +140,25 @@ WHERE
 	}
 	row := rows[0]
 	var yesterdayStats, todayStats StatsData
-
-	yesterdayCash, err := decimal.NewFromString(row.Str(res.Map(`yesterday_cny`)))
-	if CheckErr(err, c) {
-		return
-	}
-	yesterdayUcSupply, err := decimal.NewFromString(row.Str(res.Map(`yesterday_tmm_supply`)))
-	if CheckErr(err, c) {
-		return
-	}
-	yesterdayPointSupply, err := decimal.NewFromString(row.Str(res.Map(`yesterday_point_supply`)))
-	if CheckErr(err, c) {
-		return
-	}
 	yesterdayStats.PointExchangeNumber = row.Int(res.Map(`point_yesterday_number`))
 	yesterdayStats.UcoinExchangeNumber = row.Int(res.Map(`tmm_yesterday_number`))
 	yesterdayStats.TotalTaskUser = row.Int(res.Map(`yesterday_users`))
 	yesterdayStats.TotalFinishTask = row.Int(res.Map(`yesterday_task_number`))
 	yesterdayStats.InviteNumber = row.Int(res.Map(`yesterday_invite`))
 	yesterdayStats.Active = row.Int(res.Map(`yesterday_active`))
-	yesterdayStats.Cash = yesterdayCash
-	yesterdayStats.PointSupply = yesterdayPointSupply
-	yesterdayStats.UcSupply = yesterdayUcSupply
-	todayCash, err := decimal.NewFromString(row.Str(res.Map(`today_cny`)))
-	if CheckErr(err, c) {
-		return
-	}
-	todayUcSupply, err := decimal.NewFromString(row.Str(res.Map(`today_tmm_supply`)))
-	if CheckErr(err, c) {
-		return
-	}
-	todayPointSupply, err := decimal.NewFromString(row.Str(res.Map(`today_point_supply`)))
-	if CheckErr(err, c) {
-		return
-	}
+	yesterdayStats.Cash = fmt.Sprintf("%.2f",row.Float(res.Map(`yesterday_cny`)))
+	yesterdayStats.PointSupply = fmt.Sprintf("%.1f",row.Float(res.Map(`yesterday_point_supply`)))
+	yesterdayStats.UcSupply = fmt.Sprintf("%.1f",row.Float(res.Map(`yesterday_tmm_supply`)))
+
 	todayStats.PointExchangeNumber = row.Int(res.Map(`point_today_number`))
 	todayStats.UcoinExchangeNumber = row.Int(res.Map(`tmm_today_number`))
 	todayStats.TotalTaskUser = row.Int(res.Map(`today_users`))
 	todayStats.TotalFinishTask = row.Int(res.Map(`today_task_number`))
 	todayStats.InviteNumber = row.Int(res.Map(`today_invite`))
 	todayStats.Active = row.Int(res.Map(`today_active`))
-	todayStats.Cash = todayCash
-	todayStats.UcSupply = todayUcSupply
-	todayStats.PointSupply = todayPointSupply
+	todayStats.Cash = fmt.Sprintf("%.2f",row.Float(res.Map(`today_cny`)))
+	todayStats.PointSupply = fmt.Sprintf("%.1f",row.Float(res.Map(`today_point_supply`)))
+	todayStats.UcSupply = fmt.Sprintf("%.1f",row.Float(res.Map(`today_tmm_supply`)))
 	var statsList StatsList
 	statsList.Yesterday = yesterdayStats
 	statsList.Today = todayStats

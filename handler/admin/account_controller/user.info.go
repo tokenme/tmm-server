@@ -8,6 +8,7 @@ import (
 	"github.com/tokenme/tmm/handler/admin"
 	"github.com/shopspring/decimal"
 	"fmt"
+	"github.com/tokenme/tmm/coins/eth/utils"
 )
 
 func UserInfoHandler(c *gin.Context) {
@@ -24,7 +25,6 @@ SELECT
 	uc.cny AS uc_cny,
 	point.cny AS point_cny,
 	IFNULL(uc.cny,0)+IFNULL(point.cny,0) AS cny,
-	IFNULL(tmp.tmm,0)-IFNULL(uc.tmm,0) AS tmm,
 	SUM(dev.points) AS points,
 	inv.direct AS direct,
 	inv.indirect AS indirect,
@@ -32,7 +32,8 @@ SELECT
 	inv.active AS active,
 	bonus.inv_bonus AS inv_bonus,
 	IFNULL(sha.points,0) AS sha_points,
-	reading.point AS reading_point
+	reading.point AS reading_point,
+	u.wallet_addr AS addr
 FROM 
 	devices AS dev
 INNER JOIN  
@@ -41,8 +42,7 @@ LEFT JOIN
 	tmm.wx AS wx ON (wx.user_id =dev.user_id),
 (
 	SELECT 
-		SUM(cny) AS cny,
-		SUM(tmm) AS tmm
+		SUM(cny) AS cny
 	FROM 
 		tmm.withdraw_txs
 	WHERE 
@@ -55,14 +55,6 @@ LEFT JOIN
 		tmm.point_withdraws 
 		WHERE user_id = %d
 ) AS point,
-( 
-	SELECT 
-		SUM(IF(direction = 1,tmm,0))-SUM(IF(direction = -1,tmm,0)) AS tmm
-	FROM 
-  		tmm.exchange_records 
-	WHERE
-		status = 1 AND user_id = %d
-) AS tmp,
 (
 	SELECT
 		COUNT(IF(inv.parent_id = %d,0,NULL)) AS direct,
@@ -120,7 +112,7 @@ WHERE
 		})
 		return
 	}
-	rows, res, err := db.Query(query, id, id, id, id, id, id, id, id, id, id, id, id)
+	rows, res, err := db.Query(query, id, id, id, id, id, id, id, id, id, id, id)
 	if CheckErr(err, c) {
 		return
 	}
@@ -136,20 +128,24 @@ WHERE
 	if CheckErr(err, c) {
 		return
 	}
-	tmm, err := decimal.NewFromString(row.Str(res.Map(`tmm`)))
+
+	tokenABI, err := utils.NewToken(Config.TMMTokenAddress, Service.Geth)
 	if CheckErr(err, c) {
 		return
 	}
+	_, _, decimals, _, _, _, _, _, balance, err := utils.TokenMeta(tokenABI, row.Str(res.Map(`addr`)))
+	balanceDecimal, err := decimal.NewFromString(balance.String())
+	tmm := balanceDecimal.Div(decimal.New(1, int32(decimals)))
 	user := &admin.Users{
 		Point:           point.Ceil(),
 		DrawCash:        fmt.Sprintf("%.2f", row.Float(res.Map(`cny`))),
 		DrawCashByUc:    fmt.Sprintf("%.2f", row.Float(res.Map(`uc_cny`))),
 		DrawCashByPoint: fmt.Sprintf("%.2f", row.Float(res.Map(`point_cny`))),
-		Tmm:             tmm.Ceil(),
 		DirectFriends:   row.Int(res.Map(`direct`)),
 		IndirectFriends: row.Int(res.Map(`indirect`)),
 		OnlineBFNumber:  row.Int(res.Map(`online`)),
 		ActiveFriends:   row.Int(res.Map(`active`)),
+		Tmm:             tmm.Ceil(),
 		PointByShare:    int(row.Float(res.Map(`sha_points`))),
 		PointByReading:  int(row.Float(res.Map(`reading_point`))),
 		PointByInvite:   int(row.Float(res.Map(`inv_bonus`))),

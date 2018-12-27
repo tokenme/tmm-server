@@ -74,7 +74,7 @@ FROM(
 		tmm.device_app_tasks AS app
 	INNER JOIN tmm.devices AS dev ON (dev.id = app.device_id)
 	WHERE 
-		dev.user_id = %d 
+		dev.user_id = %d  AND app.status = 1
 ) AS tmp
 ORDER BY tmp.inserted_at DESC
 LIMIT %d OFFSET %d

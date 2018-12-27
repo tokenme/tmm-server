@@ -13,9 +13,9 @@ const (
 
 type Stats struct {
 	Top10       []*admin.Users `json:"top_10,omitempty"`
-	Numbers     int      `json:"numbers"`
-	CurrentTime string   `json:"current_time"`
-	Title       string   `json:"title"`
+	Numbers     int            `json:"numbers"`
+	CurrentTime string         `json:"current_time"`
+	Title       string         `json:"title"`
 }
 
 //提现
@@ -114,15 +114,15 @@ type Series struct {
 }
 
 type StatsData struct {
-	PointExchangeNumber int             `json:"point_exchange_number"`
-	UcoinExchangeNumber int             `json:"ucoin_exchange_number"`
-	Cash                decimal.Decimal `json:"cash"`
-	PointSupply         decimal.Decimal `json:"point_supply"`
-	UcSupply            decimal.Decimal `json:"uc_supply"`
-	TotalTaskUser       int             `json:"total_task_user"`
-	TotalFinishTask     int             `json:"total_finish_task"`
-	InviteNumber        int             `json:"invite_number"`
-	Active              int             `json:"active"`
+	PointExchangeNumber int    `json:"point_exchange_number"`
+	UcoinExchangeNumber int    `json:"ucoin_exchange_number"`
+	Cash                string `json:"cash"`
+	PointSupply         string `json:"point_supply"`
+	UcSupply            string `json:"uc_supply"`
+	TotalTaskUser       int    `json:"total_task_user"`
+	TotalFinishTask     int    `json:"total_finish_task"`
+	InviteNumber        int    `json:"invite_number"`
+	Active              int    `json:"active"`
 }
 
 type StatsList struct {

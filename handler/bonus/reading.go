@@ -57,10 +57,6 @@ func ReadingHandler(c *gin.Context) {
 		return
 	}
 	db := Service.Db
-	_, _, err = db.Query(`INSERT INTO tmm.reading_logs (user_id, task_id, ts) VALUES (%d, %d, %d) ON DUPLICATE KEY UPDATE ts=ts+VALUES(ts)`, user.Id, payload.TaskId, payload.Duration)
-	if err != nil {
-		log.Error(err.Error())
-	}
 	device := common.DeviceRequest{
 		Idfa: req.Idfa,
 		Imei: req.Imei,
@@ -90,7 +86,7 @@ func ReadingHandler(c *gin.Context) {
 	if CheckErr(err, c) {
 		return
 	}
-	_, _, err = db.Query(`INSERT INTO tmm.reading_logs (user_id, task_id,ts, point) VALUES (%d, %d, %d, %s ) ON DUPLICATE KEY UPDATE ts=ts+VALUES(ts),point=point+VALUES(point) `, user.Id, payload.TaskId, payload.Duration, db.Escape(payload.Points.String()))
+	_, _, err = db.Query(`INSERT INTO tmm.reading_logs (user_id, task_id, ts, point) VALUES (%d, %d, %d ,%s) ON DUPLICATE KEY UPDATE ts=ts+VALUES(ts),point=point+VALUES(point)`, user.Id, payload.TaskId, payload.Duration,payload.Points.String())
 	if err != nil {
 		log.Error(err.Error())
 	}
