@@ -254,15 +254,6 @@
 
 [[projects]]
   branch = "master"
-  name = "github.com/fabioberger/coinbase-go"
-  packages = [
-    ".",
-    "config"
-  ]
-  revision = "8328539b18ab1c8b492ddf19321acf0b8c26f7a3"
-
-[[projects]]
-  branch = "master"
   name = "github.com/fvbock/endless"
   packages = ["."]
   revision = "447134032cb6a86814f570257390a379982dfc61"
@@ -445,6 +436,15 @@
   packages = ["binding/golang/ip2region"]
   revision = "b7e9755c6b12193a882739e50760c86d7f3e8cdd"
   version = "v1.7.0-release"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/lucazulian/cryptocomparego"
+  packages = [
+    ".",
+    "context"
+  ]
+  revision = "0bbb5bcaed797b002bd4997d8b1e48a1e8f5b3da"
 
 [[projects]]
   name = "github.com/mattn/go-isatty"
@@ -840,6 +840,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "29df700bf741eae657308a78194a0a49f5f341e6fc14aa2ffba1e21400f89667"
+  inputs-digest = "19d1b9f5fecdb99b08711e334b8bda59c85a5e5209f7ced3104c563e8230c693"
   solver-name = "gps-cdcl"
   solver-version = 1

@@ -5,10 +5,12 @@ import (
 	"errors"
 	"fmt"
 	//"github.com/davecgh/go-spew/spew"
-	"github.com/fabioberger/coinbase-go"
 	"github.com/garyburd/redigo/redis"
+	"github.com/lucazulian/cryptocomparego"
+	"github.com/lucazulian/cryptocomparego/context"
 	"github.com/shopspring/decimal"
 	"github.com/tokenme/tmm/tools/ethplorer-api"
+	"strings"
 )
 
 const (
@@ -75,11 +77,19 @@ func GetETHPrice(service *Service, config Config) decimal.Decimal {
 	if err == nil {
 		return rateValue
 	}
-	coinbaseClient := coinbase.ApiKeyClient(config.CoinbaseAPI.Key, config.CoinbaseAPI.Secret)
-	exchange, err := coinbaseClient.GetExchangeRate("eth", "usd")
-	rateValue = decimal.NewFromFloat(exchange)
-	if err == nil {
-		redisConn.Do("SETEX", ETH_PRICE_CACHE, 2*60, rateValue.StringFixed(9))
+	ctx := context.TODO()
+	client := cryptocomparego.NewClient(nil)
+	req := cryptocomparego.NewPriceRequest("ETH", []string{"USD"})
+	priceList, _, err := client.Price.List(ctx, req)
+	if err != nil {
+		return rateValue
+	}
+	for _, price := range priceList {
+		if strings.ToLower(price.Name) == "usd" {
+			rateValue = decimal.NewFromFloat(price.Value)
+			redisConn.Do("SETEX", ETH_PRICE_CACHE, 2*60, rateValue.StringFixed(9))
+			break
+		}
 	}
 	return rateValue
 }

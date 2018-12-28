@@ -60,11 +60,13 @@ func TMMChangeHandler(c *gin.Context) {
 	if CheckErr(err, c) {
 		return
 	}
-	minChangePointRate := decimal.New(3, -1)
-	if Check(req.Direction == common.TMMExchangeOut && exchangeRate.Rate.LessThan(minChangePointRate), "Service not available", c) {
-		return
-		exchangeRate.Rate = minChangePointRate
-	}
+	/*
+		minChangePointRate := decimal.New(3, -1)
+		if Check(req.Direction == common.TMMExchangeOut && exchangeRate.Rate.LessThan(minChangePointRate), "Service not available", c) {
+			return
+			exchangeRate.Rate = minChangePointRate
+		}
+	*/
 	if req.Points.LessThan(exchangeRate.MinPoints) {
 		c.JSON(INVALID_MIN_POINTS_ERROR, exchangeRate)
 		return
