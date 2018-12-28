@@ -76,13 +76,17 @@ func GetTaskListHandler(c *gin.Context) {
 		where = append(where, isAuto)
 		sumwhere = append(sumwhere, isAuto)
 	}
-	if req.Online != 0 {
-		isOnline := fmt.Sprintf(` And s.online_status = %d `, req.Online)
+	if req.Online == 1 {
+		isOnline := fmt.Sprintf(`AND s.online_status = %d AND s.points_left > s.bonus`, req.Online)
+		where = append(where, isOnline)
+		sumwhere = append(sumwhere, isOnline)
+	} else {
+		isOnline := fmt.Sprintf(`AND s.online_status = %d `, req.Online)
 		where = append(where, isOnline)
 		sumwhere = append(sumwhere, isOnline)
 	}
 	if req.IsTask != -1 {
-		istask := fmt.Sprint(" AND s.link not like  'https://tmm.tokenmama.io/article/show%' ")
+		istask := fmt.Sprint(" AND s.is_crawled = 0 ")
 		where = append(where, istask)
 		sumwhere = append(sumwhere, istask)
 	}

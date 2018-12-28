@@ -112,14 +112,28 @@ GROUP BY
 ) AS ex ON (ex.user_id = u.id)
 LEFT JOIN (
 SELECT 
+	tmp.id AS id,
+	SUM(tmp.online) AS online,
+	SUM(tmp.offline) AS offline
+FROM (
+SELECT
 	inv.parent_id AS id,
-	COUNT(IF(dev.lastping_at > DATE_SUB(NOW(),INTERVAL 1 DAY),1,NULL))   AS online,
-	COUNT(IF(dev.lastping_at < DATE_SUB(NOW(),INTERVAL 1 DAY),1,NULL))   AS offline
+	COUNT(distinct IF(dev.updated_at > DATE_SUB(NOW(),INTERVAL 1 DAY),inv.user_id,NULL))   AS online,
+	COUNT(distinct IF(dev.updated_at < DATE_SUB(NOW(),INTERVAL 1 DAY),inv.user_id,NULL))   AS offline
 FROM 	
 	invite_codes AS inv 
-INNER JOIN tmm.devices AS dev ON (dev.user_id = inv.user_id)
-GROUP BY 
-	inv.parent_id 
+LEFT JOIN tmm.devices AS dev ON (dev.user_id = inv.user_id)
+GROUP BY  id UNION ALL
+SELECT 
+	inv.grand_id AS id,
+	COUNT(distinct IF(dev.updated_at > DATE_SUB(NOW(),INTERVAL 1 DAY),inv.user_id,NULL))   AS online,
+	COUNT(distinct IF(dev.updated_at < DATE_SUB(NOW(),INTERVAL 1 DAY),inv.user_id,NULL))   AS offline
+FROM 	
+	invite_codes AS inv 
+LEFT JOIN tmm.devices AS dev ON (dev.user_id = inv.user_id)
+GROUP BY  id
+) AS tmp 
+GROUP BY tmp.id
 ) AS inv ON (inv.id = u.id)
 %s 
 WHERE 
@@ -344,34 +358,34 @@ LEFT JOIN (
 		where = append(where, fmt.Sprintf(` AND u.mobile = '%s'`, search.Mobile))
 	}
 	if search.WithDrawNumberOfTimes != 0 {
-		where = append(where, fmt.Sprintf(" AND cny.total > %d", search.WithDrawNumberOfTimes))
+		where = append(where, fmt.Sprintf(" AND cny.total >= %d", search.WithDrawNumberOfTimes))
 	}
 	if search.WithDrawAmount != 0 {
-		where = append(where, fmt.Sprintf(" AND cny > %d", search.WithDrawAmount))
+		where = append(where, fmt.Sprintf(" AND cny >= %d", search.WithDrawAmount))
 	}
 	if search.ExchangePointToUc != 0 {
-		where = append(where, fmt.Sprintf(` AND point_to_tmm_times > %d `, search.ExchangePointToUc))
+		where = append(where, fmt.Sprintf(` AND point_to_tmm_times >= %d `, search.ExchangePointToUc))
 	}
 	if search.ExchangePointToUcAmount != 0 {
-		where = append(where, fmt.Sprintf(` AND point_to_tmm > %d`, search.ExchangePointToUcAmount))
+		where = append(where, fmt.Sprintf(` AND point_to_tmm >= %d`, search.ExchangePointToUcAmount))
 	}
 	if search.ExchangeUcToPoint != 0 {
-		where = append(where, fmt.Sprintf(` AND tmm_to_point_times > %d`, search.ExchangeUcToPoint))
+		where = append(where, fmt.Sprintf(` AND tmm_to_point_times >= %d`, search.ExchangeUcToPoint))
 	}
 	if search.ExchangeUcToPointAmount != 0 {
-		where = append(where, fmt.Sprintf(` AND tmm_to_point > %d`, search.ExchangeUcToPointAmount))
+		where = append(where, fmt.Sprintf(` AND tmm_to_point >= %d`, search.ExchangeUcToPointAmount))
 	}
 	if search.MakePointTimes != 0 {
-		where = append(where, fmt.Sprintf(` AND point.total > %d`, search.MakePointTimes))
+		where = append(where, fmt.Sprintf(` AND point.total >= %d`, search.MakePointTimes))
 	}
 	if search.MakePointDay != 0 {
-		where = append(where, fmt.Sprintf(` AND IFNULL(point.point,1) / IFNULL(point._day,1) > %d`, search.MakePointDay))
+		where = append(where, fmt.Sprintf(` AND IFNULL(point.point,1) / IFNULL(point._day,1) >= %d`, search.MakePointDay))
 	}
 	if search.OnlineBFNumber != 0 {
-		where = append(where, fmt.Sprintf(` AND online > %d`, search.OnlineBFNumber))
+		where = append(where, fmt.Sprintf(` AND online >= %d`, search.OnlineBFNumber))
 	}
 	if search.OffLineBfNumber != 0 {
-		where = append(where, fmt.Sprintf(` AND offline > %d`, search.OffLineBfNumber))
+		where = append(where, fmt.Sprintf(` AND offline >= %d`, search.OffLineBfNumber))
 	}
 	if search.IsWhiteList {
 		where = append(where, fmt.Sprintf(`  AND blocked = %d `, 1))
@@ -379,8 +393,6 @@ LEFT JOIN (
 	rows, res, err := db.Query(query, strings.Join(when, " "),
 		strings.Join(leftJoin, " "), strings.Join(where, " "), limit, offset)
 	if CheckErr(err, c) {
-		fmt.Printf(query, strings.Join(when, " "),
-			strings.Join(leftJoin, " "), strings.Join(where, " "), limit, offset)
 		return
 	}
 	var List []*admin.Users
@@ -420,7 +432,7 @@ LEFT JOIN (
 		user.Mobile = row.Str(res.Map(`mobile`))
 		List = append(List, user)
 	}
-	total := 100
+	var total int
 	rows, _, err = db.Query(`SELECT COUNT(id) FROM  ucoin.users`)
 	if err == nil || len(rows) != 0 {
 		total = rows[0].Int(0)

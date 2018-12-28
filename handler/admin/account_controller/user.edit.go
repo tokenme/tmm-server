@@ -19,13 +19,15 @@ func EditAccountHandler(c *gin.Context) {
 		return
 	}
 	query := `
-INSERT INTO tmm.user_settings (user_id,blocked,block_whitelist) VALUES(%d,%d,%d)  ON DUPLICATE KEY UPDATE blocked=VALUES(blocked),block_whitelist=VALUES(block_whitelist)`
+	INSERT INTO tmm.user_settings (user_id,blocked,block_whitelist) 
+	VALUES(%d,%d,%d)  ON 
+	DUPLICATE KEY UPDATE blocked=VALUES(blocked),block_whitelist=VALUES(block_whitelist)`
 	var err error
 	if req.Ban {
 		_, _, err = db.Query(query, req.Id, 1, 0)
 
 	} else {
-		_, _, err = db.Query(query, req.Id, 0, 0)
+		_, _, err = db.Query(query, req.Id, 0, 1)
 	}
 	if CheckErr(err, c) {
 		return

@@ -9,6 +9,7 @@ import (
 	"github.com/shopspring/decimal"
 	"fmt"
 	"github.com/tokenme/tmm/coins/eth/utils"
+	"github.com/tokenme/tmm/common"
 )
 
 func UserInfoHandler(c *gin.Context) {
@@ -28,7 +29,6 @@ SELECT
 	SUM(dev.points) AS points,
 	inv.direct AS direct,
 	inv.indirect AS indirect,
-	inv.online AS online,
 	inv.active AS active,
 	bonus.inv_bonus AS inv_bonus,
 	IFNULL(sha.points,0) AS sha_points,
@@ -57,13 +57,12 @@ LEFT JOIN
 ) AS point,
 (
 	SELECT
-		COUNT(IF(inv.parent_id = %d,0,NULL)) AS direct,
-		COUNT(IF(inv.grand_id = %d,0,NULL)) AS indirect,
-		COUNT(IF(dev.lastping_at > DATE_SUB(NOW(),INTERVAL 1 DAY) AND inv.parent_id = %d,1,NULL)) AS online,
-		COUNT(IF(dev.lastping_at > DATE_SUB(NOW(),INTERVAL 3 DAY) AND inv.parent_id = %d,1,NULL)) AS active
+		COUNT(distinct IF(inv.parent_id = %d,inv.user_id,NULL)) AS direct,
+		COUNT(distinct IF(inv.grand_id = %d,inv.user_id,NULL)) AS indirect,
+		COUNT(distinct IF(dev.updated_at > DATE_SUB(NOW(),INTERVAL 3 DAY) AND (inv.parent_id = %d OR inv.grand_id = %d),inv.user_id,NULL)) AS active
 	FROM 
 		tmm.invite_codes  AS inv 
-	INNER JOIN tmm.devices AS dev ON (dev.user_id = inv.user_id)
+	LEFT JOIN tmm.devices AS dev ON (dev.user_id = inv.user_id)
 ) AS inv,
 (
 	SELECT 
@@ -143,18 +142,34 @@ WHERE
 		DrawCashByPoint: fmt.Sprintf("%.2f", row.Float(res.Map(`point_cny`))),
 		DirectFriends:   row.Int(res.Map(`direct`)),
 		IndirectFriends: row.Int(res.Map(`indirect`)),
-		OnlineBFNumber:  row.Int(res.Map(`online`)),
 		ActiveFriends:   row.Int(res.Map(`active`)),
 		Tmm:             tmm.Ceil(),
 		PointByShare:    int(row.Float(res.Map(`sha_points`))),
 		PointByReading:  int(row.Float(res.Map(`reading_point`))),
 		PointByInvite:   int(row.Float(res.Map(`inv_bonus`))),
 	}
+	user.ChildrenNumber = user.DirectFriends + user.IndirectFriends
 	user.TotalMakePoint = user.PointByShare + user.PointByReading + user.PointByInvite
 	user.Id = row.Uint64(res.Map(`id`))
 	user.Mobile = row.Str(res.Map(`mobile`))
 	user.Nick = row.Str(res.Map(`nick`))
-
+	rows, _, err = db.Query("SELECT id,platform FROM tmm.devices WHERE user_id = %d", id)
+	if CheckErr(err, c) {
+		return
+	}
+	if Check(len(rows) == 0 || err != nil, admin.Not_Found, c) {
+		c.JSON(http.StatusOK, admin.Response{
+			Code:    0,
+			Message: admin.Not_Found,
+		})
+		return
+	}
+	for _,row:=range rows{
+		device := &common.Device{}
+		device.Id = row.Str(0)
+		device.Platform = row.Str(1)
+		user.DeviceList = append(user.DeviceList,device)
+	}
 	c.JSON(http.StatusOK, admin.Response{
 		Code:    0,
 		Message: admin.API_OK,

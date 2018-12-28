@@ -44,7 +44,7 @@ SELECT
     l,
 	SUM(tmp.total_points)
 FROM (
-   SELECT
+	SELECT
 		d.user_id,
 	 	IF (d.total_points=0,0,
 		IF(d.total_points  >= 10000,
@@ -52,15 +52,61 @@ FROM (
 		FLOOR(d.total_points/1000)*1000+1) ) AS l,
 		d.total_points
 	FROM (
+	SELECT 
+		dev.user_id AS user_id ,
+		IFNULL(reading.points,0)+IFNULL(inv.bonus,0) + IFNULL(task.points,0) AS total_points
+	FROM 
+		tmm.devices AS dev
+	LEFT JOIN (
 		SELECT 
-			dev.user_id AS user_id,
-			SUM(dev.points) AS total_points
+			SUM(inv.bonus) AS bonus,						
+			inv.user_id
 		FROM 
-			tmm.devices AS dev 
+			tmm.invite_bonus AS inv 
 		GROUP BY 
-			dev.user_id
-		)AS d 
-	WHERE NOT EXISTS
+			inv.user_id 
+		) AS inv  ON (inv.user_id = dev.user_id)
+	LEFT JOIN (
+		SELECT 
+			SUM(tmp.points) AS points,
+			dev.user_id AS user_id 
+		FROM (
+			SELECT 
+				sha.device_id, 
+				SUM(sha.points) AS points
+			FROM 
+				tmm.device_share_tasks AS sha	
+			WHERE 
+				sha.points > 0 
+			GROUP BY
+				sha.device_id UNION ALL
+			SELECT 
+				app.device_id, 
+				SUM(app.points) AS points
+			FROM 
+				tmm.device_app_tasks AS app   
+			WHERE
+				app.status = 1
+			GROUP BY
+				app.device_id   
+		) AS tmp 
+		INNER JOIN tmm.devices  AS dev ON (dev.id = tmp.device_id)
+		GROUP BY 
+			dev.user_id 
+	) AS task ON (task.user_id = dev.user_id)
+	LEFT JOIN (
+		SELECT 
+			SUM(point) AS points,
+			user_id 
+		FROM 
+			tmm.reading_logs 
+		GROUP BY 
+			user_id 
+	) AS reading  ON (reading.user_id =dev.user_id)
+	GROUP BY 
+		dev.user_id 
+	)AS d 
+WHERE NOT EXISTS
 	(SELECT 1 FROM tmm.user_settings AS us  
 	WHERE us.blocked= 1 AND us.user_id=d.user_id AND us.block_whitelist=0  LIMIT 1)
 ) AS tmp

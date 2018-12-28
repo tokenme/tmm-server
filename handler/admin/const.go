@@ -29,26 +29,27 @@ type AddRequest struct {
 }
 
 type Users struct {
-	Point                decimal.Decimal `json:"point"`
-	InviteBonus          decimal.Decimal `json:"invite_bonus,omitempty"`
-	DrawCash             string          `json:"draw_cash"`
-	InviteCount          int             `json:"invite_count,omitempty"`
-	Tmm                  decimal.Decimal `json:"tmm"`
-	ExchangePointToUcoin decimal.Decimal `json:"exchange_point_to_ucoin"`
-	ExchangeCount        int             `json:"exchange_count"`
-	CompletedTaskCount   int             `json:"completed_task_count,omitempty"`
-	OnlineBFNumber       int             `json:"online_bf_number"`
-	OffLineBFNumber      int             `json:"off_line_bf_number"`
-
-	Blocked         int    `json:"blocked"`
-	PointByShare    int    `json:"point_by_share"`
-	PointByReading  int    `json:"point_by_reading"`
-	PointByInvite   int    `json:"point_by_invite"`
-	DrawCashByPoint string `json:"draw_cash_by_point,omitempty"`
-	DrawCashByUc    string `json:"draw_cash_by_uc,omitempty"`
-	DirectFriends   int    `json:"direct_friends"`
-	IndirectFriends int    `json:"indirect_friends"`
-	ActiveFriends   int    `json:"active_friends"`
-	TotalMakePoint  int    `json:"total_make_point"`
+	Point                decimal.Decimal  `json:"point"`
+	InviteBonus          decimal.Decimal  `json:"invite_bonus,omitempty"`
+	DrawCash             string           `json:"draw_cash"`
+	InviteCount          int              `json:"invite_count,omitempty"`
+	Tmm                  decimal.Decimal  `json:"tmm"`
+	ExchangePointToUcoin decimal.Decimal  `json:"exchange_point_to_ucoin"`
+	ExchangeCount        int              `json:"exchange_count"`
+	CompletedTaskCount   int              `json:"completed_task_count,omitempty"`
+	OnlineBFNumber       int              `json:"online_bf_number"`
+	OffLineBFNumber      int              `json:"off_line_bf_number"`
+	ChildrenNumber       int              `json:"children_number"`
+	Blocked              int              `json:"blocked"`
+	PointByShare         int              `json:"point_by_share"`
+	PointByReading       int              `json:"point_by_reading"`
+	PointByInvite        int              `json:"point_by_invite"`
+	DrawCashByPoint      string           `json:"draw_cash_by_point,omitempty"`
+	DrawCashByUc         string           `json:"draw_cash_by_uc,omitempty"`
+	DirectFriends        int              `json:"direct_friends"`
+	IndirectFriends      int              `json:"indirect_friends"`
+	ActiveFriends        int              `json:"active_friends"`
+	TotalMakePoint       int              `json:"total_make_point"`
+	DeviceList           []*common.Device `json:"device_list"`
 	common.User
 }
