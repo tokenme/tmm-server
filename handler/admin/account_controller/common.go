@@ -3,8 +3,8 @@ package account_controller
 const (
 	ExchangeUc       = "UC兑换"
 	ExchangePoint    = "积分兑换"
-	DrawMoneyByPoint = "提现_By_积分"
-	DrawMoneyByUc    = "提现_By_UC"
+	DrawMoneyByPoint = "积分提现"
+	DrawMoneyByUc    = "UC提现"
 )
 
 const (
@@ -30,9 +30,9 @@ var MsgMap = map[int]string{
 }
 
 var typeMap = map[int]string{
-	Reading: "阅读",
+	Reading: "阅读奖励",
 	Invite:  "拉新好友",
-	Share:   "分享任务",
+	Share:   "分享文章",
 	BfBouns: "好友贡献",
 	AppTask: "安装app",
 }
@@ -46,8 +46,9 @@ type Task struct {
 }
 
 type PageOptions struct {
-	Id    int `form:"id"`
-	Page  int `form:"page"`
-	Limit int `form:"limit"`
-	Types int `form:"type"`
+	Id      int `form:"id"`
+	Page    int `form:"page"`
+	Limit   int `form:"limit"`
+	Types   int `form:"type"`
+	Devices int `form:"devices"`
 }

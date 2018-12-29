@@ -66,7 +66,7 @@ FROM(
 	FROM 
 		 tmm.device_app_tasks AS app   
 	WHERE
-		 app.status = 0 %s
+		 app.status = 1 %s
 	GROUP BY
      	 app.device_id   
 ) AS tmp,ucoin.users AS us

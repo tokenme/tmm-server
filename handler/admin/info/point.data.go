@@ -12,20 +12,12 @@ import (
 )
 
 const pointDataKey = `info-Data-points`
-const AnotherKey = `info-data-points-another`
 
 func PointDataHandler(c *gin.Context) {
 	db := Service.Db
 	redisConn := Service.Redis.Master.Get()
-	types := c.DefaultQuery(`type`, "-1")
 	defer redisConn.Close()
-	var context []byte
-	var err error
-	if types != "-1" {
-		context, err = redis.Bytes(redisConn.Do(`GET`, AnotherKey))
-	} else {
-		context, err = redis.Bytes(redisConn.Do(`GET`, pointDataKey))
-	}
+	context, err := redis.Bytes(redisConn.Do(`GET`, pointDataKey))
 	if context != nil && err == nil {
 		var data Data
 		if !CheckErr(json.Unmarshal(context, &data), c) {
@@ -44,7 +36,7 @@ SELECT
     l,
 	SUM(tmp.total_points)
 FROM (
-   SELECT
+	SELECT
 		d.user_id,
 	 	IF (d.total_points=0,0,
 		IF(d.total_points  >= 10000,
@@ -52,15 +44,61 @@ FROM (
 		FLOOR(d.total_points/1000)*1000+1) ) AS l,
 		d.total_points
 	FROM (
+	SELECT 
+		dev.user_id AS user_id ,
+		IFNULL(reading.points,0)+IFNULL(inv.bonus,0) + IFNULL(task.points,0) AS total_points
+	FROM 
+		tmm.devices AS dev
+	LEFT JOIN (
 		SELECT 
-			dev.user_id AS user_id,
-			SUM(dev.points) AS total_points
+			SUM(inv.bonus) AS bonus,						
+			inv.user_id
 		FROM 
-			tmm.devices AS dev 
+			tmm.invite_bonus AS inv 
 		GROUP BY 
-			dev.user_id
-		)AS d 
-	WHERE NOT EXISTS
+			inv.user_id 
+		) AS inv  ON (inv.user_id = dev.user_id)
+	LEFT JOIN (
+		SELECT 
+			SUM(tmp.points) AS points,
+			dev.user_id AS user_id 
+		FROM (
+			SELECT 
+				sha.device_id, 
+				SUM(sha.points) AS points
+			FROM 
+				tmm.device_share_tasks AS sha	
+			WHERE 
+				sha.points > 0 
+			GROUP BY
+				sha.device_id UNION ALL
+			SELECT 
+				app.device_id, 
+				SUM(app.points) AS points
+			FROM 
+				tmm.device_app_tasks AS app   
+			WHERE
+				app.status = 1
+			GROUP BY
+				app.device_id   
+		) AS tmp 
+		INNER JOIN tmm.devices  AS dev ON (dev.id = tmp.device_id)
+		GROUP BY 
+			dev.user_id 
+	) AS task ON (task.user_id = dev.user_id)
+	LEFT JOIN (
+		SELECT 
+			SUM(point) AS points,
+			user_id 
+		FROM 
+			tmm.reading_logs 
+		GROUP BY 
+			user_id 
+	) AS reading  ON (reading.user_id =dev.user_id)
+	GROUP BY 
+		dev.user_id 
+	)AS d 
+WHERE NOT EXISTS
 	(SELECT 1 FROM tmm.user_settings AS us  
 	WHERE us.blocked= 1 AND us.user_id=d.user_id AND us.block_whitelist=0  LIMIT 1)
 ) AS tmp
@@ -79,39 +117,26 @@ ORDER BY l
 	var indexName []string
 	var valueList []string
 	var data Data
-	if types == "-1" {
-		for _, row := range rows {
-			valueList = append(valueList, row.Str(0))
-			startPoint := row.Int(1)
-			var endPoints int
-			if startPoint == 1 {
-				startPoint = 0
-				endPoints = 1001
-			} else {
-				log10 := math.Log10(float64(startPoint))
-				endPoints = startPoint + int(math.Pow10(int(log10)))
-			}
-			name := fmt.Sprintf(`%d-%d`, startPoint, endPoints)
-			indexName = append(indexName, name)
-		}
-		data.Series = append(data.Series, Series{Data: valueList, Name: "用户人数"})
-		data.Series = append(data.Series, Series{Data: GetPercentList(valueList), Name: "占比"})
-		data.Title.Text = "用户积分"
-	} else {
-		var pointList []string
-		for _, row := range rows[1:] {
-			valueList = append(valueList, row.Str(0))
-			startPoint := row.Int(1)
-			pointList = append(pointList, fmt.Sprintf("%.0f", row.Float(2)))
+	var pointList []string
+	for _, row := range rows {
+		valueList = append(valueList, row.Str(0))
+		pointList = append(pointList, fmt.Sprintf("%.0f", row.Float(2)))
+		startPoint := row.Int(1)
+		var endPoints int
+		if startPoint == 1 {
+			startPoint = 0
+			endPoints = 1001
+		} else {
 			log10 := math.Log10(float64(startPoint))
-			endPoints := startPoint + int(math.Pow10(int(log10)))
-			name := fmt.Sprintf(`%d-%d`, startPoint, endPoints)
-			indexName = append(indexName, name)
+			endPoints = startPoint + int(math.Pow10(int(log10)))
 		}
-		data.Series = append(data.Series, Series{Data: valueList, Name: "用户人数"})
-		data.Series = append(data.Series, Series{Data: GetPercentList(pointList), Name: "积分占比"})
-		data.Title.Text = "用户积分(折线是积分占比)"
+		name := fmt.Sprintf(`%d-%d`, startPoint, endPoints)
+		indexName = append(indexName, name)
 	}
+	data.Series = append(data.Series, Series{Data: valueList, Name: "用户人数"})
+	data.Series = append(data.Series, Series{Data: GetPercentList(valueList), Name: "人数占比"})
+	data.Series = append(data.Series, Series{Data: GetPercentList(pointList), Name: "积分占比"})
+	data.Title.Text = "用户积分"
 	data.Xaxis.Data = indexName
 	data.Xaxis.Name = "积分区间"
 	data.Yaxis.Name = "人数"
@@ -119,11 +144,7 @@ ORDER BY l
 	if CheckErr(err, c) {
 		return
 	}
-	if types != "-1" {
-		redisConn.Do(`SET`, AnotherKey, bytes, `EX`, KeyAlive)
-	} else {
-		redisConn.Do(`SET`, pointDataKey, bytes, `EX`, KeyAlive)
-	}
+	redisConn.Do(`SET`, pointDataKey, bytes, `EX`, KeyAlive)
 	c.JSON(http.StatusOK, admin.Response{
 		Code:    0,
 		Message: admin.API_OK,

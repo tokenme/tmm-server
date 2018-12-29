@@ -17,8 +17,7 @@ func AccountRouter(r *gin.Engine) {
 		AccountGroup.GET(`/user/point`, account_controller.MakePointHandler)
 	}
 	{
-		AccountGroup.GET(`/user/exchange/uc`, account_controller.ExchangeByUcHandler)
-		AccountGroup.GET(`/user/exchange/point`, account_controller.ExchangeByPointHandler)
+		AccountGroup.GET(`/user/exchange`, account_controller.ExchangeHandler)
 	}
 	{
 		AccountGroup.GET(`/user/drawmoney/point`, account_controller.DrawMoneyByPointHandler)

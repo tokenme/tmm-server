@@ -13,7 +13,7 @@ type types int
 const (
 	Direct types = iota
 	Indirect
-	Online
+	Children
 	Active
 )
 
@@ -48,6 +48,7 @@ func FriendsHandler(c *gin.Context) {
 	LEFT JOIN 
 		tmm.wx AS wx ON wx.user_id = inv.user_id 
 	WHERE %s
+	GROUP BY inv.user_id
 	LIMIT %d OFFSET %d`
 	totalquery = `
 	SELECT
@@ -61,23 +62,25 @@ func FriendsHandler(c *gin.Context) {
 	LEFT JOIN 
 		tmm.wx AS wx ON wx.user_id = inv.user_id 
 	WHERE 
-		 %s`
+		 %s
+	GROUP BY inv.user_id
+`
 	switch types(req.Types) {
 	case Direct:
-		direct := fmt.Sprintf(" inv.parent_id = %d", req.Id)
+		direct := fmt.Sprintf(" inv.parent_id = %d ", req.Id)
 		query = fmt.Sprintf(query, direct, req.Limit, offset)
 		totalquery = fmt.Sprintf(totalquery, direct)
 	case Indirect:
 		indirect := fmt.Sprintf(" inv.grand_id = %d", req.Id)
 		query = fmt.Sprintf(query, indirect, req.Limit, offset)
 		totalquery = fmt.Sprintf(totalquery, indirect)
-	case Online:
-		online := fmt.Sprintf(" inv.parent_id = %d AND dev.lastping_at > DATE_SUB(NOW(),INTERVAL 1 DAY) ", req.Id)
+	case Children:
+		online := fmt.Sprintf("  inv.parent_id = %d OR inv.grand_id = %d ", req.Id, req.Id)
 		query = fmt.Sprintf(query, online, req.Limit, offset)
 		totalquery = fmt.Sprintf(totalquery, online)
 
 	case Active:
-		active := fmt.Sprintf(" inv.parent_id = %d AND dev.lastping_at > DATE_SUB(NOW(),INTERVAL 3 DAY) ", req.Id)
+		active := fmt.Sprintf(" (inv.parent_id = %d OR inv.grand_id = %d)  AND dev.updated_at > DATE_SUB(NOW(),INTERVAL 3 DAY) ", req.Id, req.Id)
 		query = fmt.Sprintf(query, active, req.Limit, offset)
 		totalquery = fmt.Sprintf(totalquery, active)
 	default:

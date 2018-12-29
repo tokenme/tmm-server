@@ -17,6 +17,7 @@ func InfoRouter(r *gin.Engine) {
 	{
 		InfoGroup.GET(`/exchange/data`, info.ExchangeDataHandler)
 		InfoGroup.GET(`/exchange/info`, info.ExchangeStatsHandler)
+		InfoGroup.GET(`/exchange/rate`, info.ExchangeRateHandler)
 	}
 	{
 		InfoGroup.GET(`/invest/data`, info.InvestsDataHandler)
@@ -39,9 +40,9 @@ func InfoRouter(r *gin.Engine) {
 		InfoGroup.GET(`/task/total`, info.TotalTaskHandler)
 	}
 	{
-		InfoGroup.GET(`/user/total`,info.UserStatsHandler)
+		InfoGroup.GET(`/user/total`, info.UserStatsHandler)
 	}
 	{
-		InfoGroup.GET(`/stats/stats`,info.StatsHandler)
+		InfoGroup.GET(`/stats/stats`, info.StatsHandler)
 	}
 }
