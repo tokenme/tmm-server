@@ -12,20 +12,12 @@ import (
 )
 
 const pointDataKey = `info-Data-points`
-const AnotherKey = `info-data-points-another`
 
 func PointDataHandler(c *gin.Context) {
 	db := Service.Db
 	redisConn := Service.Redis.Master.Get()
-	types := c.DefaultQuery(`type`, "-1")
 	defer redisConn.Close()
-	var context []byte
-	var err error
-	if types != "-1" {
-		context, err = redis.Bytes(redisConn.Do(`GET`, AnotherKey))
-	} else {
-		context, err = redis.Bytes(redisConn.Do(`GET`, pointDataKey))
-	}
+	context, err := redis.Bytes(redisConn.Do(`GET`, pointDataKey))
 	if context != nil && err == nil {
 		var data Data
 		if !CheckErr(json.Unmarshal(context, &data), c) {
@@ -125,39 +117,26 @@ ORDER BY l
 	var indexName []string
 	var valueList []string
 	var data Data
-	if types == "-1" {
-		for _, row := range rows {
-			valueList = append(valueList, row.Str(0))
-			startPoint := row.Int(1)
-			var endPoints int
-			if startPoint == 1 {
-				startPoint = 0
-				endPoints = 1001
-			} else {
-				log10 := math.Log10(float64(startPoint))
-				endPoints = startPoint + int(math.Pow10(int(log10)))
-			}
-			name := fmt.Sprintf(`%d-%d`, startPoint, endPoints)
-			indexName = append(indexName, name)
-		}
-		data.Series = append(data.Series, Series{Data: valueList, Name: "用户人数"})
-		data.Series = append(data.Series, Series{Data: GetPercentList(valueList), Name: "占比"})
-		data.Title.Text = "用户积分"
-	} else {
-		var pointList []string
-		for _, row := range rows[1:] {
-			valueList = append(valueList, row.Str(0))
-			startPoint := row.Int(1)
-			pointList = append(pointList, fmt.Sprintf("%.0f", row.Float(2)))
+	var pointList []string
+	for _, row := range rows {
+		valueList = append(valueList, row.Str(0))
+		pointList = append(pointList, fmt.Sprintf("%.0f", row.Float(2)))
+		startPoint := row.Int(1)
+		var endPoints int
+		if startPoint == 1 {
+			startPoint = 0
+			endPoints = 1001
+		} else {
 			log10 := math.Log10(float64(startPoint))
-			endPoints := startPoint + int(math.Pow10(int(log10)))
-			name := fmt.Sprintf(`%d-%d`, startPoint, endPoints)
-			indexName = append(indexName, name)
+			endPoints = startPoint + int(math.Pow10(int(log10)))
 		}
-		data.Series = append(data.Series, Series{Data: valueList, Name: "用户人数"})
-		data.Series = append(data.Series, Series{Data: GetPercentList(pointList), Name: "积分占比"})
-		data.Title.Text = "用户积分(折线是积分占比)"
+		name := fmt.Sprintf(`%d-%d`, startPoint, endPoints)
+		indexName = append(indexName, name)
 	}
+	data.Series = append(data.Series, Series{Data: valueList, Name: "用户人数"})
+	data.Series = append(data.Series, Series{Data: GetPercentList(valueList), Name: "人数占比"})
+	data.Series = append(data.Series, Series{Data: GetPercentList(pointList), Name: "积分占比"})
+	data.Title.Text = "用户积分"
 	data.Xaxis.Data = indexName
 	data.Xaxis.Name = "积分区间"
 	data.Yaxis.Name = "人数"
@@ -165,11 +144,7 @@ ORDER BY l
 	if CheckErr(err, c) {
 		return
 	}
-	if types != "-1" {
-		redisConn.Do(`SET`, AnotherKey, bytes, `EX`, KeyAlive)
-	} else {
-		redisConn.Do(`SET`, pointDataKey, bytes, `EX`, KeyAlive)
-	}
+	redisConn.Do(`SET`, pointDataKey, bytes, `EX`, KeyAlive)
 	c.JSON(http.StatusOK, admin.Response{
 		Code:    0,
 		Message: admin.API_OK,

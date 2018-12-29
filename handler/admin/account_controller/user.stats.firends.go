@@ -75,12 +75,12 @@ func FriendsHandler(c *gin.Context) {
 		query = fmt.Sprintf(query, indirect, req.Limit, offset)
 		totalquery = fmt.Sprintf(totalquery, indirect)
 	case Children:
-		online := fmt.Sprintf("  inv.parent_id = %d OR inv.grand_id = %d ", req.Id,req.Id)
+		online := fmt.Sprintf("  inv.parent_id = %d OR inv.grand_id = %d ", req.Id, req.Id)
 		query = fmt.Sprintf(query, online, req.Limit, offset)
 		totalquery = fmt.Sprintf(totalquery, online)
 
 	case Active:
-		active := fmt.Sprintf(" (inv.parent_id = %d OR inv.grand_id = %d)  AND dev.updated_at > DATE_SUB(NOW(),INTERVAL 3 DAY) ", req.Id,req.Id)
+		active := fmt.Sprintf(" (inv.parent_id = %d OR inv.grand_id = %d)  AND dev.updated_at > DATE_SUB(NOW(),INTERVAL 3 DAY) ", req.Id, req.Id)
 		query = fmt.Sprintf(query, active, req.Limit, offset)
 		totalquery = fmt.Sprintf(totalquery, active)
 	default:
