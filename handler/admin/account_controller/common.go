@@ -50,5 +50,5 @@ type PageOptions struct {
 	Page    int `form:"page"`
 	Limit   int `form:"limit"`
 	Types   int `form:"type"`
-	Devices int `form:"devices"`
+	Devices string `form:"devices"`
 }

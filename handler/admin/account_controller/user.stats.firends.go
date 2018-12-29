@@ -52,7 +52,7 @@ func FriendsHandler(c *gin.Context) {
 	LIMIT %d OFFSET %d`
 	totalquery = `
 	SELECT
-		COUNT(1)
+		COUNT(distinct inv.user_id)
 	FROM 
 		tmm.invite_codes AS inv
 	INNER JOIN 
@@ -63,7 +63,6 @@ func FriendsHandler(c *gin.Context) {
 		tmm.wx AS wx ON wx.user_id = inv.user_id 
 	WHERE 
 		 %s
-	GROUP BY inv.user_id
 `
 	switch types(req.Types) {
 	case Direct:
@@ -80,7 +79,7 @@ func FriendsHandler(c *gin.Context) {
 		totalquery = fmt.Sprintf(totalquery, online)
 
 	case Active:
-		active := fmt.Sprintf(" (inv.parent_id = %d OR inv.grand_id = %d)  AND dev.updated_at > DATE_SUB(NOW(),INTERVAL 3 DAY) ", req.Id, req.Id)
+		active := fmt.Sprintf(" (inv.parent_id = %d OR inv.grand_id = %d)  AND dev.updated_at > DATE_SUB(NOW(),INTERVAL 1 DAY) ", req.Id, req.Id)
 		query = fmt.Sprintf(query, active, req.Limit, offset)
 		totalquery = fmt.Sprintf(totalquery, active)
 	default:

@@ -59,10 +59,10 @@ LEFT JOIN
 	SELECT
 		COUNT(distinct IF(inv.parent_id = %d,inv.user_id,NULL)) AS direct,
 		COUNT(distinct IF(inv.grand_id = %d,inv.user_id,NULL)) AS indirect,
-		COUNT(distinct IF(dev.updated_at > DATE_SUB(NOW(),INTERVAL 3 DAY) AND (inv.parent_id = %d OR inv.grand_id = %d),inv.user_id,NULL)) AS active
+		COUNT(distinct IF(dev.lastping_at > DATE_SUB(NOW(),INTERVAL 1 DAY) AND (inv.parent_id = %d OR inv.grand_id = %d),inv.user_id,NULL)) AS active
 	FROM 
 		tmm.invite_codes  AS inv 
-	LEFT JOIN tmm.devices AS dev ON (dev.user_id = inv.user_id)
+	INNER JOIN tmm.devices AS dev ON (dev.user_id = inv.user_id)
 ) AS inv,
 (
 	SELECT 

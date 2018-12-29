@@ -54,8 +54,8 @@ LIMIT %d OFFSET %d`
 	} else {
 		where = append(where, fmt.Sprintf(" direction = %d ", Point))
 	}
-	if req.Devices != 0 {
-		where = append(where, fmt.Sprintf(" device_id = %d", req.Devices))
+	if req.Devices != "" {
+		where = append(where, fmt.Sprintf(" device_id = %s", req.Devices))
 	}
 	rows, _, err := db.Query(query, req.Id, strings.Join(where, " AND "), req.Limit, offset)
 	if CheckErr(err, c) {

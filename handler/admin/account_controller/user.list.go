@@ -90,7 +90,7 @@ SELECT
 	ex.tmm_to_point AS tmm_to_point,
 	IFNULL(inv.online,0) AS online,
 	IFNULL(inv.offline,0) AS offline,
-	IFNULL(us_set.blocked,0) AS blocked
+	IF(us_set.block_whitelist = NULL,0,IF(us_set.block_whitelist=us_set.block_whitelist,0,1)) AS blocked
 FROM 
 	ucoin.users AS u
 LEFT JOIN tmm.wx AS wx ON (wx.user_id = u.id)
@@ -118,19 +118,19 @@ SELECT
 FROM (
 SELECT
 	inv.parent_id AS id,
-	COUNT(distinct IF(dev.updated_at > DATE_SUB(NOW(),INTERVAL 1 DAY),inv.user_id,NULL))   AS online,
-	COUNT(distinct IF(dev.updated_at < DATE_SUB(NOW(),INTERVAL 1 DAY),inv.user_id,NULL))   AS offline
+	COUNT(distinct IF(dev.lastping_at > DATE_SUB(NOW(),INTERVAL 1 DAY),inv.user_id,NULL))   AS online,
+	COUNT(distinct IF(dev.lastping_at < DATE_SUB(NOW(),INTERVAL 1 DAY),inv.user_id,NULL))   AS offline
 FROM 	
 	invite_codes AS inv 
-LEFT JOIN tmm.devices AS dev ON (dev.user_id = inv.user_id)
+INNER JOIN tmm.devices AS dev ON (dev.user_id = inv.user_id)
 GROUP BY  id UNION ALL
 SELECT 
 	inv.grand_id AS id,
-	COUNT(distinct IF(dev.updated_at > DATE_SUB(NOW(),INTERVAL 1 DAY),inv.user_id,NULL))   AS online,
-	COUNT(distinct IF(dev.updated_at < DATE_SUB(NOW(),INTERVAL 1 DAY),inv.user_id,NULL))   AS offline
+	COUNT(distinct IF(dev.lastping_at > DATE_SUB(NOW(),INTERVAL 1 DAY),inv.user_id,NULL))   AS online,
+	COUNT(distinct IF(dev.lastping_at < DATE_SUB(NOW(),INTERVAL 1 DAY),inv.user_id,NULL))   AS offline
 FROM 	
 	invite_codes AS inv 
-LEFT JOIN tmm.devices AS dev ON (dev.user_id = inv.user_id)
+INNER JOIN tmm.devices AS dev ON (dev.user_id = inv.user_id)
 GROUP BY  id
 ) AS tmp 
 GROUP BY tmp.id
