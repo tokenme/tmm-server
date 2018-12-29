@@ -31,7 +31,7 @@ func FriendsHandler(c *gin.Context) {
 		req.Limit = 10
 	}
 	if req.Page > 0 {
-		offset = (req.Page - 1) * offset
+		offset = (req.Page - 1) * req.Limit
 	}
 	var totalquery, query string
 	query = `
