@@ -35,7 +35,7 @@ func TotalInviteHandler(c *gin.Context) {
 	SUM(bonus) AS cost, 
 	COUNT(*)
 	FROM tmm.invite_bonus 
-	WHERE task_id = 0`
+	WHERE task_type = 0`
 	var total TotalInvite
 	rows, _, err := db.Query(query)
 	if CheckErr(err, c) {

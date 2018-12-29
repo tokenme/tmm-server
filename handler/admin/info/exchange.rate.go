@@ -40,7 +40,6 @@ func ExchangeRateHandler(c *gin.Context) {
 	UTCPrice := common.GetTMMPrice(Service, Config, common.RecyclePrice)
 	rate = forex.Rate(Service, "USD", currency)
 	rt.UcToCashRate = UTCPrice.Mul(rate)
-
 	rates,_:=rt.PointToCashRate.Div(rt.UcToCashRate).Float64()
 	rt.PointToUcRate = fmt.Sprintf("%.4f",rates)
 

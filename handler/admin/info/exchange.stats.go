@@ -40,23 +40,17 @@ func ExchangeStatsHandler(c *gin.Context) {
 	query := `
 SELECT 
 	us.id AS id,
-	wx.nick AS nickname , 
-	tmp.tmm_add - tmp.tmm_ AS tmm,
-	tmp.points_add - tmp.points_ AS points,
-	tmp.numbers AS numbers,
+	wx.nick AS nickname, 
+	tmp.tmm_add  AS tmm,
 	us.mobile AS mobile
-FROM (
-	SELECT  
-		COUNT(1) AS numbers,
-		SUM(IF (direction=1, er.points,0)) AS points_,
-		SUM(IF (direction=1, er.tmm,0)) AS  tmm_add,
-		SUM(IF (direction=-1, er.points,0)) AS points_add ,
-		SUM(IF (direction=-1, er.tmm,0))   AS tmm_,
+FROM(
+	SELECT
+		IFNULL(SUM(tmm),0) AS  tmm_add,
 		er.user_id 
 	FROM 
 		tmm.exchange_records AS er
 	WHERE 
-		er.status = 1  AND %s
+		er.status = 1  AND direction=1 AND %s
 	GROUP BY 
 		user_id
 ) AS tmp ,ucoin.users AS us
@@ -87,23 +81,23 @@ LEFT JOIN tmm.wx AS wx ON (wx.user_id = us.id)
 		if CheckErr(err, c) {
 			return
 		}
-		points, err := decimal.NewFromString(row.Str(res.Map(`points`)))
-		if CheckErr(err, c) {
-			return
-		}
-		count := row.Int(res.Map(`numbers`))
+		//points, err := decimal.NewFromString(row.Str(res.Map(`points`)))
+		//if CheckErr(err, c) {
+		//	return
+		//}
+		//count := row.Int(res.Map(`numbers`))
 		if req.Top10 {
 			user := &admin.Users{
 				Tmm:           tmm.Ceil(),
-				Point:         points.Ceil(),
-				ExchangeCount: count,
+				//Point:         points.Ceil(),
+				//ExchangeCount: count,
 			}
 			user.Mobile = row.Str(res.Map(`mobile`))
 			user.Id = row.Uint64(res.Map(`id`))
 			user.Nick = row.Str(res.Map(`nickname`))
 			info.Top10 = append(info.Top10, user)
 		}
-		info.ExchangeCount = info.ExchangeCount + count
+		//info.ExchangeCount = info.ExchangeCount + count
 	}
 	c.JSON(http.StatusOK, admin.Response{
 		Code:    0,

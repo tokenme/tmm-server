@@ -18,7 +18,7 @@ func PointStatsHandler(c *gin.Context) {
 	if CheckErr(c.Bind(&req), c) {
 		return
 	}
-	var shareWhen, appTaskWhen, invWhen []string
+	var shareWhen, appTaskWhen, when []string
 	var startTime, endTime string
 	var top10 string
 	endTime = time.Now().Format("2006-01-02 15:04:05")
@@ -26,19 +26,19 @@ func PointStatsHandler(c *gin.Context) {
 		startTime = req.StartTime
 		shareWhen = append(shareWhen, fmt.Sprintf(" AND sha.inserted_at >= '%s' ", db.Escape(startTime)))
 		appTaskWhen = append(appTaskWhen, fmt.Sprintf(" AND  app.inserted_at >= '%s' ", db.Escape(startTime)))
-		invWhen = append(invWhen, fmt.Sprintf(" inv.inserted_at >= '%s' ", db.Escape(startTime)))
+		when = append(when, fmt.Sprintf(" inserted_at >= '%s' ", db.Escape(startTime)))
 	} else {
 		startTime = time.Now().AddDate(0, 0, -7).Format("2006-01-02")
 		shareWhen = append(shareWhen, fmt.Sprintf(" AND sha.inserted_at >= '%s' ", db.Escape(startTime)))
 		appTaskWhen = append(appTaskWhen, fmt.Sprintf(" AND  app.inserted_at >= '%s' ", db.Escape(startTime)))
-		invWhen = append(invWhen, fmt.Sprintf("  inv.inserted_at >= '%s' ", db.Escape(startTime)))
+		when = append(when, fmt.Sprintf("  inserted_at >= '%s' ", db.Escape(startTime)))
 	}
 
 	if req.EndTime != "" {
 		endTime = req.EndTime
 		shareWhen = append(shareWhen, fmt.Sprintf(" AND sha.inserted_at <= '%s' ", db.Escape(endTime)))
 		appTaskWhen = append(appTaskWhen, fmt.Sprintf(" AND  app.inserted_at <= '%s' ", db.Escape(endTime)))
-		invWhen = append(invWhen, fmt.Sprintf("AND inv.inserted_at <= '%s' ", db.Escape(endTime)))
+		when = append(when, fmt.Sprintf("AND  inserted_at <= '%s' ", db.Escape(endTime)))
 	}
 
 	if req.Top10 {
@@ -48,9 +48,15 @@ func PointStatsHandler(c *gin.Context) {
 SELECT
 	us.id AS id,
 	wx.nick AS nick ,
-	(tmp.points+IFNULL(inv.bonus,0)) AS points,
+	IFNULL(tmp.points,0)+IFNULL(inv.bonus,0)+IFNULL(reading.points,0) AS points,
 	us.mobile AS mobile
-FROM(
+FROM ucoin.users AS us 
+LEFT JOIN (
+	SELECT 
+	SUM(tmp.points) AS points,
+	dev.user_id   AS user_id
+	FROM   tmm.devices AS dev
+	LEFT JOIN (
 	SELECT 
 		 sha.device_id, 
 		 SUM(sha.points) AS points
@@ -68,22 +74,29 @@ FROM(
 	WHERE
 		 app.status = 1 %s
 	GROUP BY
-     	 app.device_id   
-) AS tmp,ucoin.users AS us
+     	 app.device_id  
+	) AS tmp ON (tmp.device_id = dev.id)
+	GROUP BY dev.user_id 
+) AS tmp ON (tmp.user_id = us.id )
 INNER JOIN tmm.devices AS dev ON (dev.user_id = us.id)
 LEFT JOIN tmm.wx AS wx ON (wx.user_id = us.id)
-LEFT JOIN (SELECT SUM(inv.bonus) AS bonus,inv.user_id AS user_id FROM tmm.invite_bonus AS inv 
+LEFT JOIN (SELECT SUM(bonus) AS bonus,user_id AS user_id FROM tmm.invite_bonus  
  		  WHERE %s
-   		  GROUP BY inv.user_id)AS inv ON (inv.user_id = us.id )  
-WHERE 
-		 tmp.device_id = dev.id 
+   		  GROUP BY user_id)AS inv ON (inv.user_id = us.id )  
+LEFT JOIN (SELECT 
+		   SUM(point) AS points ,
+			user_id AS user_id 
+		FROM tmm.reading_logs 
+		WHERE %s 
+		GROUP BY user_id) AS reading ON(reading.user_id = us.id)
+WHERE IFNULL(tmp.points,0)+IFNULL(inv.bonus,0)+IFNULL(reading.points,0)  > 0 
 AND NOT EXISTS  
 		(SELECT 1 FROM user_settings AS us  WHERE us.blocked= 1 AND us.user_id=us.id AND us.block_whitelist=0  LIMIT 1)
 GROUP BY 
 		 us.id
 ORDER BY points DESC %s`
 	rows, res, err := db.Query(query, strings.Join(shareWhen, " "),
-		strings.Join(appTaskWhen, " "), strings.Join(invWhen, " "),
+		strings.Join(appTaskWhen, " "), strings.Join(when, " "),strings.Join(when," "),
 		top10)
 	if CheckErr(err, c) {
 		return

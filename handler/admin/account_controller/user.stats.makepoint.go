@@ -35,7 +35,7 @@ func MakePointHandler(c *gin.Context) {
 	FROM 
   		tmm.invite_bonus
 	WHERE 
-		user_id = %d AND task_id = 0`, req.Id))
+		user_id = %d AND task_type = 0`, req.Id))
 	}
 	if req.Types == Reading || req.Types == -1 {
 		froms = append(froms, fmt.Sprintf(`	
@@ -73,7 +73,7 @@ func MakePointHandler(c *gin.Context) {
 	FROM 
   		tmm.invite_bonus
 	WHERE 
-		user_id = %d AND task_id != 0`, req.Id))
+		user_id = %d AND task_type != 0`, req.Id))
 	}
 	if req.Types == AppTask || req.Types == -1 {
 		froms = append(froms, fmt.Sprintf(`
