@@ -49,6 +49,8 @@ func main() {
 		updateVideoFlag            bool
 		accelerateTxFlag           string
 		accelerateGasFlag          int64
+		dataFlag                   string
+		nonceFlag                  uint64
 		ucoinHoldersFlag           bool
 		activeBonusFlag            bool
 		fixInviteBonusFlag         bool
@@ -70,6 +72,8 @@ func main() {
 	flag.BoolVar(&configFlag.EnableOrderBook, "orderbook", false, "enable orderbook handler")
 	flag.StringVar(&accelerateTxFlag, "accelerate-tx", "", "accelerate tx hex")
 	flag.Int64Var(&accelerateGasFlag, "gas", 0, "set gas price")
+	flag.StringVar(&dataFlag, "data", "", "tx data")
+	flag.Uint64Var(&nonceFlag, "nonce", 0, "tx nonce")
 	flag.BoolVar(&articleClassifierTrainFlag, "train-article-classifier", false, "enable article classifer training")
 	flag.BoolVar(&articleClassifyFlag, "classify-articles", false, "enable articles classify")
 	flag.BoolVar(&updateVideoFlag, "update-videos", false, "enable update videos")
@@ -133,7 +137,7 @@ func main() {
 	service.Db.Reconnect()
 
 	if accelerateTxFlag != "" && accelerateGasFlag > 0 {
-		err := txaccelerate.Accelerate(service, config, accelerateTxFlag, accelerateGasFlag)
+		err := txaccelerate.Accelerate(service, config, accelerateTxFlag, accelerateGasFlag, dataFlag, nonceFlag)
 		if err != nil {
 			log.Error(err.Error())
 		}

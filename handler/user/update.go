@@ -249,7 +249,10 @@ func _transferToken(userId uint64, forexRate decimal.Decimal, c *gin.Context) (r
 	if err != nil {
 		return receipt, tokenAmount, err
 	}
-	var gasPrice *big.Int
+	gasPrice, _ := Service.Geth.SuggestGasPrice(c)
+	if gasPrice.Cmp(eth.MinGas) == -1 {
+		gasPrice = eth.MinGas
+	}
 	transactorOpts := eth.TransactorOptions{
 		Nonce:    nonce,
 		GasPrice: gasPrice,

@@ -94,7 +94,7 @@ func SharesHandler(c *gin.Context) {
 		limitState = ""
 	}
 	db := Service.Db
-	query := `SELECT * FROM (SELECT
+	query := `SELECT
     st.id,
     st.title,
     st.summary,
@@ -115,27 +115,7 @@ func SharesHandler(c *gin.Context) {
 FROM tmm.share_tasks AS st
 %s
 WHERE %s
-ORDER BY %s %s) AS t
-UNION
-SELECT * FROM (SELECT
-    st.id,
-    st.title,
-    st.summary,
-    st.link,
-    st.image,
-    st.max_viewers,
-    st.bonus,
-    st.points,
-    st.points_left,
-    st.viewers,
-    st.inserted_at,
-    st.updated_at,
-    st.creator,
-    st.video_link,
-    st.is_video,
-    st.online_status,
-    st.is_crawled
-FROM tmm.share_tasks AS st WHERE st.creator=4 ORDER BY RAND() LIMIT 10) AS t2 ORDER BY is_crawled ASC, bonus DESC, RAND()`
+ORDER BY %s %s`
 	rows, _, err := db.Query(query, inCidConstrain, onlineStatusConstrain, orderBy, limitState)
 	if CheckErr(err, c) {
 		return

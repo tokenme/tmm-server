@@ -179,7 +179,10 @@ WHERE (wx.user_id=%d OR wx.union_id='%s') AND wt.inserted_at >= DATE_SUB(NOW(), 
 	if CheckErr(err, c) {
 		return
 	}
-	var gasPrice *big.Int
+	gasPrice, err := Service.Geth.SuggestGasPrice(c)
+	if err == nil && gasPrice.Cmp(eth.MinGas) == -1 {
+		gasPrice = eth.MinGas
+	}
 	/*gas, err := ethgasstation.Gas()
 	if err != nil {
 		gasPrice = nil
