@@ -20,7 +20,7 @@ import (
 
 var (
 	InitialGas = new(big.Int).Mul(big.NewInt(10), big.NewInt(params.Ether))
-	MinGas     = new(big.Int).Mul(big.NewInt(2), big.NewInt(params.Ether))
+	MinGas     = new(big.Int).Mul(big.NewInt(2), big.NewInt(params.GWei))
 )
 
 const (
