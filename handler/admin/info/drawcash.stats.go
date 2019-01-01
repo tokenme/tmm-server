@@ -51,7 +51,7 @@ FROM (
  SUM(cny) AS cny
 FROM(
 	SELECT
-            tx.user_id, SUM( tx.cny ) AS cny
+            tx.user_id, IFNULL(SUM( tx.cny ),0) AS cny
         FROM
             tmm.withdraw_txs AS tx
 		WHERE
@@ -59,7 +59,7 @@ FROM(
         GROUP BY
             tx.user_id UNION ALL
         SELECT
-            pw.user_id, SUM( pw.cny ) AS cny
+            pw.user_id, IFNULL(SUM( pw.cny ),0) AS cny
         FROM
             tmm.point_withdraws AS pw
         WHERE 

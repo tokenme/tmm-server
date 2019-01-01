@@ -102,7 +102,7 @@ SELECT
 	COUNT(IF(direction = 1,0,NULL)) AS point_to_tmm_times,
 	COUNT(IF(direction = -1,0,NULL)) AS tmm_to_point_times,
 	SUM(IF(direction = 1 ,tmm,0)) AS point_to_tmm,
-	SUM(IF(direction = 1 ,points,0)) AS tmm_to_point
+	SUM(IF(direction = -1 ,points,0)) AS tmm_to_point
 FROM 
 	tmm.exchange_records 
 WHERE 

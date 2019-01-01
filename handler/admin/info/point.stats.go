@@ -50,7 +50,7 @@ SELECT
 	wx.nick AS nick ,
 	IFNULL(tmp.points,0)+IFNULL(inv.bonus,0)+IFNULL(reading.points,0) AS points,
 	us.mobile AS mobile
-FROM ucoin.users AS us 
+FROM ucoin.users AS us
 LEFT JOIN (
 	SELECT 
 	SUM(tmp.points) AS points,
