@@ -18,22 +18,19 @@ func WithdrawHandler(c *gin.Context) {
 	}
 	user := userContext.(common.User)
 	db := Service.Db
-	pointsQuery := `SELECT SUM(pw.cny) FROM point_withdraws AS pw WHERE pw.user_id=%d GROUP BY pw.user_id`
-	pointsRows, _, err := db.Query(pointsQuery, user.Id)
+	query := `
+        SELECT SUM(pw.cny) FROM point_withdraws AS pw WHERE pw.user_id=%d GROUP BY pw.user_id
+        UNION ALL
+        SELECT SUM(wt.cny) FROM withdraw_txs AS wt WHERE wt.user_id=%d GROUP BY wt.user_id
+    `
+	rows, _, err := db.Query(query, user.Id, user.Id)
 	if CheckErr(err, c) {
 		return
 	}
 	var userWithdraw common.UserWithdraw
-	if len(pointsRows) > 0 {
-		userWithdraw.Points, _ = decimal.NewFromString(pointsRows[0].Str(0))
-	}
-	tmmQuery := `SELECT SUM(wt.cny) FROM withdraw_txs AS wt WHERE wt.user_id=%d GROUP BY wt.user_id`
-	tmmRows, _, err := db.Query(tmmQuery, user.Id)
-	if CheckErr(err, c) {
-		return
-	}
-	if len(tmmRows) > 0 {
-		userWithdraw.TMM, _ = decimal.NewFromString(tmmRows[0].Str(0))
+	if len(rows) > 0 {
+		userWithdraw.Points, _ = decimal.NewFromString(rows[0].Str(0))
+		userWithdraw.TMM, _ = decimal.NewFromString(rows[1].Str(0))
 	}
 	currency := c.Query("currency")
 	if currency == "" {
