@@ -233,7 +233,7 @@ var AuthenticatorFunc = func(loginInfo jwt.Login, c *gin.Context) (string, int, 
 			break
 		}
 	}
-	if user.Avatar == "" {
+	if wxUnionId == "" && user.Avatar == "" {
 		gender := govatar.MALE
 		maleOrFemale := utils.RangeRandUint64(0, 1)
 		if maleOrFemale == 1 {
@@ -255,10 +255,10 @@ var AuthenticatorFunc = func(loginInfo jwt.Login, c *gin.Context) (string, int, 
 		avatar, _, err := qiniu.Upload(c, Config.Qiniu, fmt.Sprintf("%s/%s", Config.Qiniu.AvatarPath, user.Wallet), timestamp, avatarBuf.Bytes())
 		if err != nil {
 			log.Error(err.Error())
-			return mobile, INTERNAL_ERROR, false
+		} else {
+			user.Avatar = avatar
+			db.Query(`UPDATE ucoin.users SET avatar='%s' WHERE id=%d LIMIT 1`, db.Escape(user.Avatar), user.Id)
 		}
-		user.Avatar = avatar
-		db.Query(`UPDATE ucoin.users SET avatar='%s' WHERE id=%d LIMIT 1`, db.Escape(user.Avatar), user.Id)
 	}
 	user.ShowName = user.GetShowName()
 	user.Avatar = user.GetAvatar(Config.CDNUrl)

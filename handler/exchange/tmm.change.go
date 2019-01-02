@@ -164,6 +164,8 @@ WHERE d.id='%s' AND d.user_id=%d`
 	gasPrice, err = Service.Geth.SuggestGasPrice(c)
 	if err == nil && gasPrice.Cmp(eth.MinGas) == -1 {
 		gasPrice = eth.MinGas
+	} else {
+		gasPrice = nil
 	}
 	transactorOpts := eth.TransactorOptions{
 		Nonce:    nonce,

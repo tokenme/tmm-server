@@ -293,6 +293,8 @@ func burnPool(c *gin.Context, tmm decimal.Decimal) error {
 	gasPrice, err := Service.Geth.SuggestGasPrice(c)
 	if err == nil && gasPrice.Cmp(eth.MinGas) == -1 {
 		gasPrice = eth.MinGas
+	} else {
+		gasPrice = nil
 	}
 	transactorOpts := eth.TransactorOptions{
 		Nonce:    nonce,

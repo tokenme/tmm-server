@@ -155,9 +155,8 @@ func createByMobile(c *gin.Context, req CreateRequest) {
 
 	timestamp := strconv.FormatInt(time.Now().UnixNano(), 10)
 	avatar, _, err := qiniu.Upload(c, Config.Qiniu, fmt.Sprintf("%s/%s", Config.Qiniu.AvatarPath, pubKey), timestamp, avatarBuf.Bytes())
-	if CheckErr(err, c) {
+	if err != nil {
 		raven.CaptureError(err, nil)
-		return
 	}
 
 	db := Service.Db
