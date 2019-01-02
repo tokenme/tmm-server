@@ -66,9 +66,9 @@ func SharesHandler(c *gin.Context) {
 
 	var taskIds []uint64
 	limitState := fmt.Sprintf("LIMIT %d, %d", (req.Page-1)*req.PageSize, req.PageSize)
-	onlineStatusConstrain := "st.points_left>0 AND st.online_status=1 AND st.creator!=4"
+	onlineStatusConstrain := "st.points_left>0 AND st.online_status=1"
 	if platform == common.IOS && buildVersion == Config.App.SubmitBuild || platform == common.ANDROID && buildVersion == Config.App.AndroidSubmitBuild {
-		onlineStatusConstrain = "st.points_left>0 AND st.online_status=1 AND (st.is_crawled=1 OR st.is_video=1) AND st.creator!=4"
+		onlineStatusConstrain = "st.points_left>0 AND st.online_status=1 AND (st.is_crawled=1 OR st.is_video=1)"
 	}
 	var inCidConstrain string
 	orderBy := "st.bonus DESC, st.id DESC"
