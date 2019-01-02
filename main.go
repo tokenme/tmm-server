@@ -258,11 +258,14 @@ func main() {
 		for {
 			select {
 			case <-updateHoldersCh:
-				go func() {
+				go func(ch chan struct{}) {
+					defer func() {
+						log.Info("Sleep for 1 hour")
+						time.Sleep(1 * time.Hour)
+						ch <- struct{}{}
+					}()
 					etherscanspider.GetHolders(service)
-					time.Sleep(1 * time.Hour)
-					updateHoldersCh <- struct{}{}
-				}()
+				}(updateHoldersCh)
 			case <-exitChan:
 				close(updateHoldersCh)
 				return
