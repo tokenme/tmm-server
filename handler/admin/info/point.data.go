@@ -38,17 +38,20 @@ SELECT
 FROM (
 	SELECT
 		d.user_id,
-	 	IF (d.total_points=0,0,
 		IF(d.total_points  >= 10000,
+		IF(d.total_points < 100000, 
 		FLOOR(d.total_points/10000)*10000+1,
-		FLOOR(d.total_points/1000)*1000+1) ) AS l,
+		IF(d.total_points < 1000000,
+		FLOOR(d.total_points/100000)*100000+1,
+		FLOOR(d.total_points/1000000)*1000000+1)),
+		FLOOR(IF(d.total_points = 0,1,d.total_points) /1000)*1000+1) AS l,
 		d.total_points
 	FROM (
 	SELECT 
-		dev.user_id AS user_id ,
+		us.id AS user_id ,
 		IFNULL(reading.points,0)+IFNULL(inv.bonus,0) + IFNULL(task.points,0) AS total_points
 	FROM 
-		tmm.devices AS dev
+		ucoin.users AS us
 	LEFT JOIN (
 		SELECT 
 			SUM(inv.bonus) AS bonus,						
@@ -57,7 +60,7 @@ FROM (
 			tmm.invite_bonus AS inv 
 		GROUP BY 
 			inv.user_id 
-		) AS inv  ON (inv.user_id = dev.user_id)
+		) AS inv  ON (inv.user_id = us.id)
 	LEFT JOIN (
 		SELECT 
 			SUM(tmp.points) AS points,
@@ -65,7 +68,7 @@ FROM (
 		FROM (
 			SELECT 
 				sha.device_id, 
-				SUM(sha.points) AS points
+				IFNULL(SUM(sha.points),0) AS points
 			FROM 
 				tmm.device_share_tasks AS sha	
 			WHERE 
@@ -74,7 +77,7 @@ FROM (
 				sha.device_id UNION ALL
 			SELECT 
 				app.device_id, 
-				SUM(app.points) AS points
+				IFNULL(SUM(app.points),0) AS points
 			FROM 
 				tmm.device_app_tasks AS app   
 			WHERE
@@ -85,7 +88,7 @@ FROM (
 		INNER JOIN tmm.devices  AS dev ON (dev.id = tmp.device_id)
 		GROUP BY 
 			dev.user_id 
-	) AS task ON (task.user_id = dev.user_id)
+	) AS task ON (task.user_id = us.id)
 	LEFT JOIN (
 		SELECT 
 			SUM(point) AS points,
@@ -94,9 +97,9 @@ FROM (
 			tmm.reading_logs 
 		GROUP BY 
 			user_id 
-	) AS reading  ON (reading.user_id =dev.user_id)
+	) AS reading  ON (reading.user_id =us.id)
 	GROUP BY 
-		dev.user_id 
+		us.id
 	)AS d 
 WHERE NOT EXISTS
 	(SELECT 1 FROM tmm.user_settings AS us  
@@ -104,8 +107,6 @@ WHERE NOT EXISTS
 ) AS tmp
 GROUP BY l 
 ORDER BY l
-
-
 `
 	rows, _, err := db.Query(query)
 	if CheckErr(err, c) {

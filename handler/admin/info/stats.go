@@ -11,13 +11,14 @@ import (
 )
 
 const statsKey = `info-stats-stats`
+
 func StatsHandler(c *gin.Context) {
 	db := Service.Db
 	redisConn := Service.Redis.Master.Get()
 	defer redisConn.Close()
 	context, err := redis.Bytes(redisConn.Do(`GET`, statsKey))
-	if context != nil && err ==nil{
-		var data  interface{}
+	if context != nil && err == nil {
+		var data interface{}
 		if !CheckErr(json.Unmarshal(context, &data), c) {
 			c.JSON(http.StatusOK, admin.Response{
 				Code:    0,
@@ -36,8 +37,8 @@ func StatsHandler(c *gin.Context) {
 		tmm.yesterday_number AS tmm_yesterday_number,
 		IFNULL(points.today_cny+tmm.today_cny,0) AS today_cny,
 		IFNULL(points.yesterday_cny+tmm.yesterday_cny,0) AS yesterday_cny,
-		IFNULL(device.today_points+inv.today_bonus,0) AS today_point_supply,
-		IFNULL(device.yes_points+inv.yesterday_bonus,0) AS yesterday_point_supply,
+		IFNULL(device.today_points+inv.today_bonus+reading.today_point,0) AS today_point_supply,
+		IFNULL(device.yes_points+inv.yesterday_bonus+reading.yesterday_point,0) AS yesterday_point_supply,
 	    device.today_users AS today_users,
 		device.yes_users AS yesterday_users,
 		device.today_total AS today_task_number,
@@ -118,19 +119,27 @@ WHERE
 )  AS exchanges,
 (
 SELECT  
-	   COUNT(IF(inv.inserted_at < DATE_FORMAT(NOW(),'%Y-%m-%d') AND dev.updated_at > DATE_SUB(NOW(),INTERVAL 2 DAY),1,NULL))  AS yesterday_active, 
-	   COUNT(IF(inv.inserted_at > DATE_FORMAT(NOW(),'%Y-%m-%d') AND dev.updated_at > DATE_SUB(NOW(),INTERVAL 2 DAY),1,NULL))  AS today_active,
-	   COUNT(IF(inv.inserted_at < DATE_FORMAT(NOW(),'%Y-%m-%d'),1,NULL)) AS yesterday_invite,
-	   COUNT(IF(inv.inserted_at > DATE_FORMAT(NOW(),'%Y-%m-%d'),1,NULL)) AS today_invite,
+	   COUNT(IF(inv.inserted_at < DATE_FORMAT(NOW(),'%Y-%m-%d') AND dev.updated_at > ADDDATE(inv.inserted_at,INTERVAL 1 HOUR) AND inv.task_type = 0,0,NULL))  AS yesterday_active, 
+	   COUNT(IF(inv.inserted_at > DATE_FORMAT(NOW(),'%Y-%m-%d') AND dev.updated_at > ADDDATE(inv.inserted_at,INTERVAL 1 HOUR) AND inv.task_type = 0,0,NULL))  AS today_active,
+	   COUNT(IF(inv.inserted_at < DATE_FORMAT(NOW(),'%Y-%m-%d') AND inv.task_type = 0,1,NULL)) AS yesterday_invite,
+	   COUNT(IF(inv.inserted_at > DATE_FORMAT(NOW(),'%Y-%m-%d') AND inv.task_type = 0,1,NULL)) AS today_invite,
 	   SUM(IF(inv.inserted_at > DATE_FORMAT(NOW(),'%Y-%m-%d'),inv.bonus,0)) AS today_bonus,
 	   SUM(IF(inv.inserted_at < DATE_FORMAT(NOW(),'%Y-%m-%d'),inv.bonus,0)) AS yesterday_bonus
 FROM 
 	   tmm.invite_bonus AS inv  
 INNER JOIN tmm.devices AS dev ON (dev.user_id = inv.from_user_id)
 WHERE 
-	   inv.task_id = 0 AND inv.inserted_at > DATE_SUB(DATE_FORMAT(NOW(),'%Y-%m-%d'),INTERVAL 1 DAY) 
-) AS inv`
-
+	    inv.inserted_at > DATE_SUB(DATE_FORMAT(NOW(),'%Y-%m-%d'),INTERVAL 1 DAY) 
+) AS inv,
+(
+SELECT
+	SUM(IF(inserted_at > DATE_FORMAT(NOW(),'%Y-%m-%d'),point,0)) AS today_point,
+	SUM(IF(inserted_at < DATE_FORMAT(NOW(),'%Y-%m-%d'),point,0)) AS yesterday_point
+FROM
+	tmm.reading_logs
+WHERE
+	inserted_at > DATE_SUB(DATE_FORMAT(NOW(),'%Y-%m-%d'),INTERVAL 1 DAY)
+) AS reading`
 	rows, res, err := db.Query(query)
 	if CheckErr(err, c) {
 		return
@@ -146,9 +155,9 @@ WHERE
 	yesterdayStats.TotalFinishTask = row.Int(res.Map(`yesterday_task_number`))
 	yesterdayStats.InviteNumber = row.Int(res.Map(`yesterday_invite`))
 	yesterdayStats.Active = row.Int(res.Map(`yesterday_active`))
-	yesterdayStats.Cash = fmt.Sprintf("%.2f",row.Float(res.Map(`yesterday_cny`)))
-	yesterdayStats.PointSupply = fmt.Sprintf("%.1f",row.Float(res.Map(`yesterday_point_supply`)))
-	yesterdayStats.UcSupply = fmt.Sprintf("%.1f",row.Float(res.Map(`yesterday_tmm_supply`)))
+	yesterdayStats.Cash = fmt.Sprintf("%.2f", row.Float(res.Map(`yesterday_cny`)))
+	yesterdayStats.PointSupply = fmt.Sprintf("%.1f", row.Float(res.Map(`yesterday_point_supply`)))
+	yesterdayStats.UcSupply = fmt.Sprintf("%.1f", row.Float(res.Map(`yesterday_tmm_supply`)))
 
 	todayStats.PointExchangeNumber = row.Int(res.Map(`point_today_number`))
 	todayStats.UcoinExchangeNumber = row.Int(res.Map(`tmm_today_number`))
@@ -156,20 +165,20 @@ WHERE
 	todayStats.TotalFinishTask = row.Int(res.Map(`today_task_number`))
 	todayStats.InviteNumber = row.Int(res.Map(`today_invite`))
 	todayStats.Active = row.Int(res.Map(`today_active`))
-	todayStats.Cash = fmt.Sprintf("%.2f",row.Float(res.Map(`today_cny`)))
-	todayStats.PointSupply = fmt.Sprintf("%.1f",row.Float(res.Map(`today_point_supply`)))
-	todayStats.UcSupply = fmt.Sprintf("%.1f",row.Float(res.Map(`today_tmm_supply`)))
+	todayStats.Cash = fmt.Sprintf("%.2f", row.Float(res.Map(`today_cny`)))
+	todayStats.PointSupply = fmt.Sprintf("%.1f", row.Float(res.Map(`today_point_supply`)))
+	todayStats.UcSupply = fmt.Sprintf("%.1f", row.Float(res.Map(`today_tmm_supply`)))
 	var statsList StatsList
 	statsList.Yesterday = yesterdayStats
 	statsList.Today = todayStats
-	bytes,err:=json.Marshal(&statsList)
-	if CheckErr(err,c){
+	bytes, err := json.Marshal(&statsList)
+	if CheckErr(err, c) {
 		return
 	}
 	redisConn.Do(`SET`, statsKey, bytes, `EX`, 60)
 	c.JSON(http.StatusOK, admin.Response{
 		Code:    0,
 		Message: admin.API_OK,
-		Data: statsList,
+		Data:    statsList,
 	})
 }

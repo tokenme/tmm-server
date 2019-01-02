@@ -59,7 +59,7 @@ LEFT JOIN (
 	LEFT JOIN (
 	SELECT 
 		 sha.device_id, 
-		 SUM(sha.points) AS points
+		 IFNULL(SUM(sha.points),0) AS points
 	FROM 
 		 tmm.device_share_tasks AS sha	
 	WHERE 
@@ -68,7 +68,7 @@ LEFT JOIN (
        sha.device_id UNION ALL
 	SELECT 
 		 app.device_id, 
-		 SUM(app.points) AS points
+		 IFNULL(SUM(app.points),0) AS points
 	FROM 
 		 tmm.device_app_tasks AS app   
 	WHERE
@@ -78,7 +78,6 @@ LEFT JOIN (
 	) AS tmp ON (tmp.device_id = dev.id)
 	GROUP BY dev.user_id 
 ) AS tmp ON (tmp.user_id = us.id )
-INNER JOIN tmm.devices AS dev ON (dev.user_id = us.id)
 LEFT JOIN tmm.wx AS wx ON (wx.user_id = us.id)
 LEFT JOIN (SELECT SUM(bonus) AS bonus,user_id AS user_id FROM tmm.invite_bonus  
  		  WHERE %s

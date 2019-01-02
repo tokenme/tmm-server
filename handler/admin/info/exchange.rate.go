@@ -17,6 +17,7 @@ type Ert struct {
 }
 
 func ExchangeRateHandler(c *gin.Context) {
+	return
 	rt := &Ert{}
 	//积分提现汇率
 	currency := "CNY"
