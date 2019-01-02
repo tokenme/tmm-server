@@ -58,6 +58,8 @@ func TransferHandler(c *gin.Context) {
 	gasPrice, err := Service.Geth.SuggestGasPrice(c)
 	if err == nil && gasPrice.Cmp(eth.MinGas) == -1 {
 		gasPrice = eth.MinGas
+	} else {
+		gasPrice = nil
 	}
 	minGas := new(big.Int).Mul(big.NewInt(60000), gasPrice)
 	if req.Token == "" {
