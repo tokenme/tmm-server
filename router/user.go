@@ -17,6 +17,7 @@ func userRouter(r *gin.Engine) {
 		userGroup.GET("/invite/lastday-contribute", user.InviteLastdayContributeHandler)
 		userGroup.GET("/invites", user.InviteListHandler)
 		userGroup.GET("/credit/levels", user.CreditLevelsHandler)
+        userGroup.GET("/withdraw", user.WithdrawHandler)
 	}
 	r.POST("/user/create", handler.ApiSignFunc(), user.CreateHandler)
 	r.POST("/user/reset-password", handler.ApiSignFunc(), user.ResetPasswordHandler)
