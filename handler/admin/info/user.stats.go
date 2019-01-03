@@ -19,7 +19,7 @@ func UserStatsHandler(c *gin.Context) {
 	query := `SELECT 
 	COUNT(*) AS total , 
 	COUNT(IF(created > date_sub(NOW(),interval 7 day),0,NULL)) AS serverDay,
-	COUNT(IF(created > date_sub(NOW(),interval 7 MONTH),0,NULL)) AS _month 
+	COUNT(IF(created > date_sub(NOW(),interval 1 MONTH),0,NULL)) AS _month 
 FROM ucoin.users 
 WHERE NOT EXISTS
 	(SELECT 1 FROM user_settings AS us
