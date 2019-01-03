@@ -34,7 +34,7 @@ type ShareData struct {
 }
 
 func ShareHandler(c *gin.Context) {
-	var trackId string
+    var trackId string
 	code := c.DefaultQuery("code", "null")
 	taskId, deviceId, err := common.DecryptShareTaskLink(c.Param("encryptedTaskId"), c.Param("encryptedDeviceId"), Config)
 	if CheckErr(err, c) {
@@ -43,9 +43,24 @@ func ShareHandler(c *gin.Context) {
 	if Check(taskId == 0 || deviceId == "", "not found", c) {
 		return
 	}
+
+	db := Service.Db
+    query := `
+        SELECT us.blocked, us.block_whitelist
+        FROM tmm.devices AS d
+        INNER JOIN tmm.user_settings AS us ON d.user_id = us.user_id
+        WHERE d.id = "%s"
+          AND us.blocked = 1
+          AND us.block_whitelist = 0
+    `
+    rows, _, err := db.Query(query, deviceId)
+	if CheckErr(err, c) {
+		return
+	}
+
 	mpClient := wechatmp.NewClient(Config.Wechat.AppId, Config.Wechat.AppSecret, Service, c)
 	isWx := strings.Contains(strings.ToLower(c.Request.UserAgent()), "micromessenger")
-	if isWx {
+	if isWx && len(rows) == 0 {
 		if len(code) > 0 && code != "null" {
 			oauthAccessToken, err := mpClient.GetOAuthAccessToken(code)
 			if err != nil {
@@ -69,8 +84,7 @@ func ShareHandler(c *gin.Context) {
 		}
 	}
 
-	db := Service.Db
-	query := `SELECT
+	query = `SELECT
     st.id,
     st.title,
     st.summary,
@@ -88,7 +102,7 @@ LEFT JOIN tmm.devices AS d ON (d.id=dst.device_id)
 LEFT JOIN tmm.invite_codes AS ic ON (ic.user_id=d.user_id)
 WHERE st.id=%d
 LIMIT 1`
-	rows, _, err := db.Query(query, db.Escape(deviceId), taskId)
+	rows, _, err = db.Query(query, db.Escape(deviceId), taskId)
 	if CheckErr(err, c) {
 		return
 	}
