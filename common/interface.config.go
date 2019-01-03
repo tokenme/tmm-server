@@ -162,9 +162,10 @@ type SlackConfig struct {
 }
 
 type AppConfig struct {
-	SubmitBuild uint64 `required:"true"`
-	IOSLink     string `required:"true"`
-	AndroidLink string `required:"true"`
+	SubmitBuild        uint64 `required:"true"`
+	AndroidSubmitBuild uint64 `required:"true"`
+	IOSLink            string `required:"true"`
+	AndroidLink        string `required:"true"`
 }
 
 type XingeConfig struct {

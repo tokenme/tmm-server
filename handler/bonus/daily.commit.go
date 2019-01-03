@@ -135,7 +135,12 @@ func giveDailyInterests(c *gin.Context, user common.User) (origin decimal.Decima
 		log.Error(err.Error())
 		return
 	}
-	var gasPrice *big.Int
+	gasPrice, err := Service.Geth.SuggestGasPrice(c)
+	if err == nil && gasPrice.Cmp(eth.MinGas) == -1 {
+		gasPrice = eth.MinGas
+	} else {
+		gasPrice = nil
+	}
 	/*gas, err := ethgasstation.Gas()
 	  if err != nil {
 	      gasPrice = nil

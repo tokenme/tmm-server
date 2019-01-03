@@ -5,6 +5,7 @@ import (
 	"github.com/tokenme/tmm/handler/admin/verify"
 	"github.com/tokenme/tmm/handler/admin/task"
 	"github.com/tokenme/tmm/handler/qiniu"
+	"github.com/tokenme/tmm/handler/admin/app"
 )
 func TaskRouter(r *gin.Engine){
 	 taskR:=r.Group(`/admin/share`)
@@ -15,6 +16,7 @@ func TaskRouter(r *gin.Engine){
 	 	taskR.POST(`/modify`,task.ModifyTaskHandler)
 	 	taskR.GET(`/list`,task.GetTaskListHandler)
 	 	taskR.GET(`/edit`,task.GetTaskHandler)
+		taskR.POST(`/add-app`,app.AddShareAppHandler)
 	 }
-	 }
+}
 

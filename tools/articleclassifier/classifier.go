@@ -18,7 +18,7 @@ import (
 
 const (
 	MaxDocWords int = 200
-	MaxDocs     int = 10000
+	MaxDocs     int = 20000
 )
 
 type Doc struct {

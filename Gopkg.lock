@@ -254,15 +254,6 @@
 
 [[projects]]
   branch = "master"
-  name = "github.com/fabioberger/coinbase-go"
-  packages = [
-    ".",
-    "config"
-  ]
-  revision = "8328539b18ab1c8b492ddf19321acf0b8c26f7a3"
-
-[[projects]]
-  branch = "master"
   name = "github.com/fvbock/endless"
   packages = ["."]
   revision = "447134032cb6a86814f570257390a379982dfc61"
@@ -445,6 +436,15 @@
   packages = ["binding/golang/ip2region"]
   revision = "b7e9755c6b12193a882739e50760c86d7f3e8cdd"
   version = "v1.7.0-release"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/lucazulian/cryptocomparego"
+  packages = [
+    ".",
+    "context"
+  ]
+  revision = "0bbb5bcaed797b002bd4997d8b1e48a1e8f5b3da"
 
 [[projects]]
   name = "github.com/mattn/go-isatty"
@@ -662,13 +662,16 @@
   version = "v1.1.1"
 
 [[projects]]
+  name = "github.com/vmihailenco/bufio"
+  packages = ["."]
+  revision = "567b2bfa514e796916c4747494d6ff5132a1dfce"
+  version = "v1"
+
+[[projects]]
   name = "github.com/vmihailenco/msgpack"
-  packages = [
-    ".",
-    "codes"
-  ]
-  revision = "c4fc0fcdd500af473157759b6d73f935e727ec77"
-  version = "v4.0.1"
+  packages = ["."]
+  revision = "6004e761984b4c5abbb5afe154e523b4a3ad3d40"
+  version = "v2.0"
 
 [[projects]]
   name = "github.com/wcharczuk/go-chart"
@@ -705,91 +708,6 @@
   ]
   revision = "e08c2f35356576b3c3690c252fe5dca728ae9292"
   version = "v1.5.4"
-
-[[projects]]
-  branch = "master"
-  name = "golang.org/x/crypto"
-  packages = [
-    "pbkdf2",
-    "scrypt"
-  ]
-  revision = "505ab145d0a99da450461ae2c1a9f6cd10d1f447"
-
-[[projects]]
-  branch = "master"
-  name = "golang.org/x/image"
-  packages = [
-    "draw",
-    "font",
-    "math/f64",
-    "math/fixed"
-  ]
-  revision = "cd38e8056d9b27bb2f265effa37fb0ea6b8a7f0f"
-
-[[projects]]
-  branch = "master"
-  name = "golang.org/x/net"
-  packages = [
-    "context",
-    "html",
-    "html/atom",
-    "idna",
-    "publicsuffix",
-    "websocket"
-  ]
-  revision = "927f97764cc334a6575f4b7a1584a147864d5723"
-
-[[projects]]
-  branch = "master"
-  name = "golang.org/x/sys"
-  packages = [
-    "unix",
-    "windows"
-  ]
-  revision = "b4a75ba826a64a70990f11a225237acd6ef35c9f"
-
-[[projects]]
-  name = "golang.org/x/text"
-  packages = [
-    "collate",
-    "collate/build",
-    "internal/colltab",
-    "internal/gen",
-    "internal/tag",
-    "internal/triegen",
-    "internal/ucd",
-    "language",
-    "secure/bidirule",
-    "transform",
-    "unicode/bidi",
-    "unicode/cldr",
-    "unicode/norm",
-    "unicode/rangetable"
-  ]
-  revision = "f21a4dfb5e38f5895301dc265a8def02365cc3d0"
-  version = "v0.3.0"
-
-[[projects]]
-  branch = "master"
-  name = "golang.org/x/time"
-  packages = ["rate"]
-  revision = "85acf8d2951cb2a3bde7632f9ff273ef0379bcbd"
-
-[[projects]]
-  name = "google.golang.org/appengine"
-  packages = [
-    ".",
-    "datastore",
-    "internal",
-    "internal/app_identity",
-    "internal/base",
-    "internal/datastore",
-    "internal/log",
-    "internal/modules",
-    "internal/remote_api"
-  ]
-  revision = "e9657d882bb81064595ca3b56cbe2546bbabf7b1"
-  version = "v1.4.0"
 
 [[projects]]
   name = "gopkg.in/dgrijalva/jwt-go.v3"
@@ -834,12 +752,12 @@
     "log.v7",
     "reqid.v7"
   ]
-  revision = "946c4a16076d6d98aeb78619e2bd4012357f7228"
-  version = "v7.0.8"
+  revision = "8fdcb89a80ae34e50b752c0dace258eb0256d2d8"
+  version = "v7.0.7"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "29df700bf741eae657308a78194a0a49f5f341e6fc14aa2ffba1e21400f89667"
+  inputs-digest = "66ca5a501f555a0498ad537b1169a3b1aafdf9988bf5f019632fd88c71586505"
   solver-name = "gps-cdcl"
   solver-version = 1

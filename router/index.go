@@ -8,6 +8,7 @@ import (
 	"github.com/tokenme/tmm/common"
 	"github.com/tokenme/tmm/middlewares/sentry"
 	"net/http"
+	"strconv"
 )
 
 func NewRouter(templatePath string, config common.Config) *gin.Engine {
@@ -49,6 +50,9 @@ func NewRouter(templatePath string, config common.Config) *gin.Engine {
 	r.GET("/android/download", func(c *gin.Context) {
 		c.Redirect(http.StatusFound, config.App.AndroidLink)
 		return
+	})
+	r.GET("/app/ios/submit-build", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"submit_build": strconv.FormatUint(config.App.SubmitBuild, 10)})
 	})
 	authRouter(r)
 	userRouter(r)

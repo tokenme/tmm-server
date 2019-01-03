@@ -11,7 +11,7 @@ import (
 	"github.com/tokenme/tmm/coins/eth/utils"
 	"github.com/tokenme/tmm/common"
 	. "github.com/tokenme/tmm/handler"
-	"github.com/tokenme/tmm/tools/ethgasstation-api"
+	//"github.com/tokenme/tmm/tools/ethgasstation-api"
 	commonutils "github.com/tokenme/tmm/utils"
 	"math/big"
 	"net/http"
@@ -46,13 +46,20 @@ func TransferHandler(c *gin.Context) {
 			return
 		}
 	}
-
-	var gasPrice *big.Int
-	gas, err := ethgasstation.Gas()
-	if err != nil {
-		gasPrice = nil
+	/*
+		var gasPrice *big.Int
+		gas, err := ethgasstation.Gas()
+		if err != nil {
+			gasPrice = nil
+		} else {
+			gasPrice = new(big.Int).Mul(big.NewInt(gas.SafeLow.Div(decimal.New(10, 0)).IntPart()), big.NewInt(params.GWei))
+		}
+	*/
+	gasPrice, err := Service.Geth.SuggestGasPrice(c)
+	if err == nil && gasPrice.Cmp(eth.MinGas) == -1 {
+		gasPrice = eth.MinGas
 	} else {
-		gasPrice = new(big.Int).Mul(big.NewInt(gas.SafeLow.Div(decimal.New(10, 0)).IntPart()), big.NewInt(params.GWei))
+		gasPrice = nil
 	}
 	minGas := new(big.Int).Mul(big.NewInt(60000), gasPrice)
 	if req.Token == "" {

@@ -17,15 +17,18 @@ func Rate(service *common.Service, from string, to string) decimal.Decimal {
 	redisConn := service.Redis.Master.Get()
 	defer redisConn.Close()
 	cacheKey := fmt.Sprintf(FOREX_CACHE_KEY, from, to)
-	rateStr, _ := redis.String(redisConn.Do("GET", cacheKey))
-	rateValue, err := decimal.NewFromString(rateStr)
+	rateStr, err := redis.String(redisConn.Do("GET", cacheKey))
+	var rateValue decimal.Decimal
 	if err == nil {
-		return rateValue
+		rateValue, err = decimal.NewFromString(rateStr)
+		if err == nil {
+			return rateValue
+		}
 	}
 	client := swap.NewSwap()
 	client.AddExchanger(ex.NewGoogleApi(nil)).AddExchanger(ex.NewYahooApi(nil)).AddExchanger(ex.NewTheMoneyConverterApi(nil)).Build()
 	exchanger := client.Latest(fmt.Sprintf("%s/%s", from, to))
 	rateValue = decimal.NewFromFloat(exchanger.GetRateValue())
-	redisConn.Do("SETEX", cacheKey, 12*60, rateValue.StringFixed(9))
+	redisConn.Do("SETEX", cacheKey, 12*60*60, rateValue.StringFixed(9))
 	return rateValue
 }

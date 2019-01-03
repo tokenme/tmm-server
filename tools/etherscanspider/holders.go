@@ -18,6 +18,7 @@ type Holder struct {
 }
 
 func GetHolders(service *common.Service) error {
+	log.Info("Getting UCoin Holders")
 	var (
 		page    int
 		holders []Holder
@@ -50,6 +51,7 @@ func GetHolders(service *common.Service) error {
 			log.Error(err.Error())
 		}
 	}
+	log.Info("Got %d UCoin Holders", len(holders))
 	return nil
 }
 

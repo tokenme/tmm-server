@@ -19,7 +19,7 @@ func Upload(ctx context.Context, config common.QiniuConfig, path string, filenam
 	mac := qbox.NewMac(config.AK, config.Secret)
 	upToken := putPolicy.UploadToken(mac)
 	cfg := storage.Config{}
-	cfg.Zone = &storage.ZoneBeimei
+	cfg.Zone = &storage.ZoneHuadong
 	cfg.UseHTTPS = true
 	cfg.UseCdnDomains = true
 	formUploader := storage.NewFormUploader(&cfg)

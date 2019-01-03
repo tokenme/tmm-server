@@ -132,6 +132,7 @@ type AppTask struct {
 	Downloads     uint            `json:"downloads,omitempty"`
 	InsertedAt    string          `json:"inserted_at,omitempty"`
 	UpdatedAt     string          `json:"updated_at,omitempty"`
+	Size          uint            `json:"size,omitempty"`
 	OnlineStatus  int8            `json:"online_status,omitempty"`
 	InstallStatus int8            `json:"install_status,omitempty"`
 }

@@ -60,11 +60,13 @@ func TMMChangeHandler(c *gin.Context) {
 	if CheckErr(err, c) {
 		return
 	}
-	minChangePointRate := decimal.New(3, -1)
-	if Check(req.Direction == common.TMMExchangeOut && exchangeRate.Rate.LessThan(minChangePointRate), "Service not available", c) {
-		return
-		exchangeRate.Rate = minChangePointRate
-	}
+	/*
+		minChangePointRate := decimal.New(3, -1)
+		if Check(req.Direction == common.TMMExchangeOut && exchangeRate.Rate.LessThan(minChangePointRate), "Service not available", c) {
+			return
+			exchangeRate.Rate = minChangePointRate
+		}
+	*/
 	if req.Points.LessThan(exchangeRate.MinPoints) {
 		c.JSON(INVALID_MIN_POINTS_ERROR, exchangeRate)
 		return
@@ -159,7 +161,12 @@ WHERE d.id='%s' AND d.user_id=%d`
 	if CheckErr(err, c) {
 		return
 	}
-
+	gasPrice, err = Service.Geth.SuggestGasPrice(c)
+	if err == nil && gasPrice.Cmp(eth.MinGas) == -1 {
+		gasPrice = eth.MinGas
+	} else {
+		gasPrice = nil
+	}
 	transactorOpts := eth.TransactorOptions{
 		Nonce:    nonce,
 		GasPrice: gasPrice,

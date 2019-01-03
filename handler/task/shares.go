@@ -67,7 +67,7 @@ func SharesHandler(c *gin.Context) {
 	var taskIds []uint64
 	limitState := fmt.Sprintf("LIMIT %d, %d", (req.Page-1)*req.PageSize, req.PageSize)
 	onlineStatusConstrain := "st.points_left>0 AND st.online_status=1"
-	if platform == common.IOS && buildVersion == Config.App.SubmitBuild {
+	if platform == common.IOS && buildVersion == Config.App.SubmitBuild || platform == common.ANDROID && buildVersion == Config.App.AndroidSubmitBuild {
 		onlineStatusConstrain = "st.points_left>0 AND st.online_status=1 AND (st.is_crawled=1 OR st.is_video=1)"
 	}
 	var inCidConstrain string
@@ -110,7 +110,8 @@ func SharesHandler(c *gin.Context) {
     st.creator,
     st.video_link,
     st.is_video,
-    st.online_status
+    st.online_status,
+    st.is_crawled
 FROM tmm.share_tasks AS st
 %s
 WHERE %s
@@ -119,9 +120,8 @@ ORDER BY %s %s`
 	if CheckErr(err, c) {
 		return
 	}
-
 	adsMap := make(map[int][]*common.Adgroup)
-	if platform == common.IOS && buildVersion != Config.App.SubmitBuild {
+	if platform == common.IOS && buildVersion != Config.App.SubmitBuild || platform == common.ANDROID && buildVersion != Config.App.AndroidSubmitBuild {
 		if !req.IsVideo && (platform == common.IOS && buildVersion > 42 || platform == common.ANDROID && buildVersion > 211) {
 			adsMap, err = getCreatives(req.Cid, req.Page, platform)
 			if err != nil {
@@ -159,11 +159,10 @@ ORDER BY %s %s`
 			VideoLink:     row.Str(13),
 			IsVideo:       uint8(row.Uint(14)),
 			ShowBonusHint: true,
+			IsTask:        !row.Bool(16),
 		}
 		if strings.HasPrefix(task.Link, "https://tmm.tokenmama.io/article/show") {
 			task.Link = strings.Replace(task.Link, "https://tmm.tokenmama.io/article/show", "https://static.tianxi100.com/article/show", -1)
-		} else {
-			task.IsTask = true
 		}
 		task.Link, _ = task.TrackLink(task.Link, user.Id, Config)
 		if creator == user.Id {

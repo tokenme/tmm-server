@@ -20,6 +20,7 @@ import (
 	//"github.com/tokenme/tmm/tools/transferwatcher"
 	"github.com/tokenme/tmm/tools/etherscanspider"
 	"github.com/tokenme/tmm/tools/invitebonus"
+	"github.com/tokenme/tmm/tools/qutoutiaospider"
 	"github.com/tokenme/tmm/tools/toutiaospider"
 	"github.com/tokenme/tmm/tools/txaccelerate"
 	"github.com/tokenme/tmm/tools/videospider"
@@ -48,6 +49,8 @@ func main() {
 		updateVideoFlag            bool
 		accelerateTxFlag           string
 		accelerateGasFlag          int64
+		dataFlag                   string
+		nonceFlag                  uint64
 		ucoinHoldersFlag           bool
 		activeBonusFlag            bool
 		fixInviteBonusFlag         bool
@@ -69,6 +72,8 @@ func main() {
 	flag.BoolVar(&configFlag.EnableOrderBook, "orderbook", false, "enable orderbook handler")
 	flag.StringVar(&accelerateTxFlag, "accelerate-tx", "", "accelerate tx hex")
 	flag.Int64Var(&accelerateGasFlag, "gas", 0, "set gas price")
+	flag.StringVar(&dataFlag, "data", "", "tx data")
+	flag.Uint64Var(&nonceFlag, "nonce", 0, "tx nonce")
 	flag.BoolVar(&articleClassifierTrainFlag, "train-article-classifier", false, "enable article classifer training")
 	flag.BoolVar(&articleClassifyFlag, "classify-articles", false, "enable articles classify")
 	flag.BoolVar(&updateVideoFlag, "update-videos", false, "enable update videos")
@@ -130,8 +135,9 @@ func main() {
 	service := common.NewService(config)
 	defer service.Close()
 	service.Db.Reconnect()
+
 	if accelerateTxFlag != "" && accelerateGasFlag > 0 {
-		err := txaccelerate.Accelerate(service, config, accelerateTxFlag, accelerateGasFlag)
+		err := txaccelerate.Accelerate(service, config, accelerateTxFlag, accelerateGasFlag, dataFlag, nonceFlag)
 		if err != nil {
 			log.Error(err.Error())
 		}
@@ -210,6 +216,7 @@ func main() {
 	if addArticlesFlag {
 		addWxArticlesCh := make(chan struct{}, 1)
 		addToutiaoArticlesCh := make(chan struct{}, 1)
+		addQutoutiaoArticlesCh := make(chan struct{}, 1)
 		exitChan := make(chan struct{}, 1)
 		go func() {
 			ch := make(chan os.Signal, 1)
@@ -218,6 +225,7 @@ func main() {
 			exitChan <- struct{}{}
 			close(ch)
 		}()
+		go addQutoutiaoArticles(addQutoutiaoArticlesCh, service, config)
 		go addToutiaoArticles(addToutiaoArticlesCh, service, config)
 		go addWxArticles(addWxArticlesCh, service, config)
 		for {
@@ -226,6 +234,8 @@ func main() {
 				go addWxArticles(addWxArticlesCh, service, config)
 			case <-addToutiaoArticlesCh:
 				go addToutiaoArticles(addToutiaoArticlesCh, service, config)
+			case <-addQutoutiaoArticlesCh:
+				go addQutoutiaoArticles(addQutoutiaoArticlesCh, service, config)
 			case <-exitChan:
 				close(addWxArticlesCh)
 				close(addToutiaoArticlesCh)
@@ -248,11 +258,14 @@ func main() {
 		for {
 			select {
 			case <-updateHoldersCh:
-				go func() {
+				go func(ch chan struct{}) {
+					defer func() {
+						log.Info("Sleep for 1 hour")
+						time.Sleep(1 * time.Hour)
+						ch <- struct{}{}
+					}()
 					etherscanspider.GetHolders(service)
-					time.Sleep(1 * time.Hour)
-					updateHoldersCh <- struct{}{}
-				}()
+				}(updateHoldersCh)
 			case <-exitChan:
 				close(updateHoldersCh)
 				return
@@ -398,6 +411,33 @@ func addToutiaoArticles(addToutiaoArticlesCh chan<- struct{}, service *common.Se
 		addToutiaoArticlesCh <- struct{}{}
 	}()
 	crawler := toutiaospider.NewCrawler(service, config)
+	num, err := crawler.Run()
+	if err != nil {
+		log.Error(err.Error())
+		return
+	}
+	if num == 0 {
+		return
+	}
+	err = crawler.Publish()
+	if err != nil {
+		log.Error(err.Error())
+	}
+	classifier := articleclassifier.NewClassifier(service, config)
+	err = classifier.LoadModel()
+	if err != nil {
+		log.Error(err.Error())
+		return
+	}
+	classifier.ClassifyDocs()
+}
+
+func addQutoutiaoArticles(addQutoutiaoArticlesCh chan<- struct{}, service *common.Service, config common.Config) {
+	defer func() {
+		time.Sleep(2 * time.Minute)
+		addQutoutiaoArticlesCh <- struct{}{}
+	}()
+	crawler := qutoutiaospider.NewCrawler(service, config)
 	num, err := crawler.Run()
 	if err != nil {
 		log.Error(err.Error())

@@ -25,8 +25,10 @@
 #   unused-packages = true
 
 required = ["github.com/davecgh/go-spew/spew"]
-ignored = ["github.com/bububa/solc-go"]
-# ignored = ["golang.org/x/sys/unix", "golang.org/x/crypto/pbkdf2", "golang.org/x/crypto/scrypt", "golang.org/x/crypto/ripemd160", "golang.org/x/net/websocket", "golang.org/x/net/context", "golang.org/x/tools/imports"]
+#ignored = ["github.com/bububa/solc-go"]
+#ignored = ["golang.org/x/net/html", "github.com/bububa/solc-go", "golang.org/x/sys/unix", "golang.org/x/crypto/pbkdf2", "golang.org/x/crypto/scrypt", "golang.org/x/crypto/ripemd160", "golang.org/x/net/websocket", "golang.org/x/net/context", "golang.org/x/tools/imports"]
+
+ignored = ["golang.org/x/image/math/fixed", "golang.org/x/image", "golang.org/x/image/math/f64", "golang.org/x/image/font", "golang.org/x/net/html/atom", "golang.org/x/net", "golang.org/x/net/publicsuffix", "golang.org/x/image/draw", "golang.org/x/sys/unix", "golang.org/x/crypto/pbkdf2", "golang.org/x/crypto/scrypt", "golang.org/x/crypto/ripemd160", "golang.org/x/net/websocket", "golang.org/x/net/context", "golang.org/x/tools/imports", "golang.org/x/time/rate", "golang.org/x/net/html", "golang.org/x/sys/windows"]
 
 [metadata]
 codename = "tmm"
