@@ -41,16 +41,16 @@ func ExchangeTrendHandler(c *gin.Context) {
 	query := `
 SELECT
 	SUM(tmm),
-	DATE_FORMAT(inserted_at,'%s') AS date
+	DATE(inserted_at) AS date
 FROM
 	tmm.exchange_records
 WHERE
-	inserted_at > '%s' AND inserted_at < '%s' AND status = 1 AND direction = 1
+	inserted_at > '%s' AND inserted_at <  DATE_ADD('%s', INTERVAL 60*23+59 MINUTE) AND status = 1 AND direction = 1
 GROUP BY date
 ORDER BY date 
 `
 
-	rows, _, err := db.Query(query, db.Escape(TimeFormat), db.Escape(startTime), db.Escape(endTime))
+	rows, _, err := db.Query(query, db.Escape(startTime), db.Escape(endTime))
 	if CheckErr(err, c) {
 		return
 	}

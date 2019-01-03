@@ -30,7 +30,7 @@ func ExchangeStatsHandler(c *gin.Context) {
 
 	if req.EndTime != "" {
 		endTime = req.EndTime
-		when = append(when, fmt.Sprintf(` inserted_at <= '%s' `, db.Escape(endTime)))
+		when = append(when, fmt.Sprintf(` inserted_at <  DATE_ADD('%s', INTERVAL 60*23+59 MINUTE) `, db.Escape(endTime)))
 	}
 	var top10 string
 	if req.Top10 {
@@ -45,7 +45,7 @@ SELECT
 	us.mobile AS mobile
 FROM(
 	SELECT
-		IFNULL(SUM(tmm),0) AS  tmm_add,
+		SUM(tmm) AS  tmm_add,
 		er.user_id 
 	FROM 
 		tmm.exchange_records AS er

@@ -68,13 +68,13 @@ ORDER BY tmp.date
 		query = fmt.Sprintf(query, fmt.Sprintf(`
 SELECT  
 	SUM(cny) AS _value,
-	DATE_FORMAT(inserted_at,'%s') AS date,
+	DATE(inserted_at) AS date,
 	0 AS cash
 FROM 
 	tmm.withdraw_txs 
 WHERE 
-	tx_status = 1 AND inserted_at > '%s'  AND inserted_at < '%s' 
-GROUP BY date`, TimeFormat, db.Escape(startTime), db.Escape(endTime)))
+	tx_status = 1 AND inserted_at > '%s'  AND inserted_at <  DATE_ADD('%s', INTERVAL 60*23+59 MINUTE)
+GROUP BY date`,  db.Escape(startTime), db.Escape(endTime)))
 	case UcPerson:
 		title = "UC提现人数趋势图"
 		yaxisName = "人数"
@@ -82,25 +82,25 @@ GROUP BY date`, TimeFormat, db.Escape(startTime), db.Escape(endTime)))
 		query = fmt.Sprintf(query, fmt.Sprintf(`
 SELECT  
 	COUNT(distinct user_id) AS _value,
-	DATE_FORMAT(inserted_at,'%s') AS date,
+	DATE(inserted_at) AS date,
 	0 AS cash
 FROM 
 	tmm.withdraw_txs 
 WHERE 
-	tx_status = 1 AND inserted_at > '%s'  AND inserted_at < '%s' 
-GROUP BY date`, TimeFormat, db.Escape(startTime), db.Escape(endTime)))
+	tx_status = 1 AND inserted_at > '%s'  AND inserted_at <  DATE_ADD('%s', INTERVAL 60*23+59 MINUTE)
+GROUP BY date`, db.Escape(startTime), db.Escape(endTime)))
 	case DrawCashByPoint:
 		title = "积分提现金额趋势图"
 		query = fmt.Sprintf(query, fmt.Sprintf(`
 SELECT  
 	SUM(cny) AS _value,
-	DATE_FORMAT(inserted_at,'%s') AS date,
+	DATE(inserted_at) AS date,
 	0 AS cash
 FROM 
 	tmm.point_withdraws 
 WHERE 
-	 inserted_at > '%s' AND inserted_at < '%s' 
-GROUP BY date`, TimeFormat, db.Escape(startTime), db.Escape(endTime)))
+	 inserted_at > '%s' AND inserted_at <  DATE_ADD('%s', INTERVAL 60*23+59 MINUTE)
+GROUP BY date`, db.Escape(startTime), db.Escape(endTime)))
 
 	case PointPerson:
 		title = "积分提现人数趋势图"
@@ -109,13 +109,13 @@ GROUP BY date`, TimeFormat, db.Escape(startTime), db.Escape(endTime)))
 		query = fmt.Sprintf(query, fmt.Sprintf(`
 SELECT  
 	COUNT(distinct user_id) AS _value,
-	DATE_FORMAT(inserted_at,'%s') AS date,
+	DATE(inserted_at) AS date,
 	0 AS cash
 FROM 
 	tmm.point_withdraws 
 WHERE 
-	 inserted_at > '%s' AND inserted_at < '%s'
-GROUP BY date`, TimeFormat, db.Escape(startTime), db.Escape(endTime)))
+	 inserted_at > '%s' AND inserted_at < DATE_ADD('%s', INTERVAL 60*23+59 MINUTE)
+GROUP BY date`, db.Escape(startTime), db.Escape(endTime)))
 	case TotalDrawCash_:
 		title = "提现总金额趋势图"
 		query = fmt.Sprintf(query, fmt.Sprintf(`
@@ -150,29 +150,30 @@ SELECT
 FROM(
 	SELECT
 		SUM(cny) AS _value,
-		DATE_FORMAT(inserted_at,'%s') AS date
+		DATE(inserted_at) AS date
 	FROM
 		tmm.point_withdraws
 	WHERE
-		inserted_at > '%s' AND inserted_at < '%s' 
+		inserted_at > '%s' AND inserted_at <  DATE_ADD('%s', INTERVAL 60*23+59 MINUTE)
 	GROUP BY date
 	UNION ALL
 	SELECT
 		SUM(cny)  AS _value,
-		DATE_FORMAT(inserted_at,'%s') AS date
+		DATE(inserted_at) AS date
 	FROM
 		tmm.withdraw_txs
 	WHERE
-		tx_status = 1 AND inserted_at > '%s' AND inserted_at < '%s' 
+		tx_status = 1 AND inserted_at > '%s' AND inserted_at <  DATE_ADD('%s', INTERVAL 60*23+59 MINUTE)
 	GROUP BY 
 		date
 	) AS tmp
 	GROUP BY 
 		date
 ) AS tmp  ON 1 = 1
-`, db.Escape(endTime), db.Escape(startTime), db.Escape(startTime),
-			TimeFormat, db.Escape(startTime), db.Escape(endTime),
-			TimeFormat, db.Escape(startTime), db.Escape(endTime)))
+`, 			db.Escape(endTime),
+			db.Escape(startTime), db.Escape(startTime),
+			db.Escape(startTime), db.Escape(endTime),
+			db.Escape(startTime), db.Escape(endTime)))
 	}
 	rows, _, err := db.Query(query)
 	if CheckErr(err, c) {
@@ -231,7 +232,6 @@ FROM(
 			tm = tm.AddDate(0,0,1)
 		}
 	}
-
 	data.Title.Text = title
 	data.Xaxis.Data = indexName
 	data.Xaxis.Name = "日期"

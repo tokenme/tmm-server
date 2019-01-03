@@ -34,7 +34,7 @@ func InviteStatsHandler(c *gin.Context) {
 
 	if req.EndTime != "" {
 		endTime = req.EndTime
-		when = append(when, fmt.Sprintf(` AND ic.inserted_at <= '%s'`, db.Escape(endTime)))
+		when = append(when, fmt.Sprintf(` AND ic.inserted_at <  DATE_ADD('%s', INTERVAL 60*23+59 MINUTE)`, db.Escape(endTime)))
 	}
 	var top10 string
 	if req.Top10 {

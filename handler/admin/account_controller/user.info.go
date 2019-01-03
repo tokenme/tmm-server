@@ -56,13 +56,25 @@ LEFT JOIN
 		WHERE user_id = %d
 ) AS point,
 (
-	SELECT
+SELECT
 		COUNT(distinct IF(inv.parent_id = %d,inv.user_id,NULL)) AS direct,
 		COUNT(distinct IF(inv.grand_id = %d,inv.user_id,NULL)) AS indirect,
-		COUNT(distinct IF(dev.lastping_at > DATE_SUB(NOW(),INTERVAL 1 DAY),inv.user_id,NULL)) AS active
-	FROM 
-		tmm.invite_codes  AS inv 
-	INNER JOIN tmm.devices AS dev ON (dev.user_id = inv.user_id)
+		COUNT(distinct 
+		IF(EXISTS(
+		SELECT 
+		1
+		FROM tmm.devices AS dev 
+		LEFT JOIN tmm.device_share_tasks AS sha ON (sha.device_id = dev.id AND sha.inserted_at > DATE(NOW()))
+		LEFT JOIN tmm.device_app_tasks AS app ON (app.device_id = dev.id  AND  app.inserted_at > DATE(NOW()) AND app.status = 1)
+		LEFT JOIN reading_logs AS reading ON (reading.user_id = dev.user_id  AND (reading.updated_at > DATE(NOW()) OR  reading.inserted_at > DATE(NOW())))
+		WHERE dev.user_id = inv.user_id AND ( 
+		IFNULL(sha.points,0) > 0  
+		OR IFNULL(app.points,0) > 0   OR IFNULL(reading.point,0) > 0)
+		LIMIT 1
+		),inv.user_id,NULL)
+		) AS active
+	FROM
+		tmm.invite_codes  AS inv
 	WHERE
 		inv.parent_id = %d OR inv.grand_id = %d
 ) AS inv,

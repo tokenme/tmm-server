@@ -35,10 +35,10 @@ func StatsHandler(c *gin.Context) {
 		points.yesterday_number AS point_yesterday_number,
 		tmm.today_number AS tmm_today_number,
 		tmm.yesterday_number AS tmm_yesterday_number,
-		IFNULL(points.today_cny+tmm.today_cny,0) AS today_cny,
-		IFNULL(points.yesterday_cny+tmm.yesterday_cny,0) AS yesterday_cny,
-		IFNULL(device.today_points+inv.today_bonus+reading.today_point,0) AS today_point_supply,
-		IFNULL(device.yes_points+inv.yesterday_bonus+reading.yesterday_point,0) AS yesterday_point_supply,
+		IFNULL(points.today_cny,0)+IFNULL(tmm.today_cny,0) AS today_cny,
+		IFNULL(points.yesterday_cny,0)+IFNULL(tmm.yesterday_cny,0) AS yesterday_cny,
+		IFNULL(device.today_points,0)+IFNULL(reading.today_point,0)+IFNULL(inv_bonus.today_bonus,0) AS today_point_supply,
+		IFNULL(device.yes_points,0)+IFNULL(reading.yesterday_point,0)+IFNULL(inv_bonus.yesterday_bonus,0) AS yesterday_point_supply,
 	    device.today_users AS today_users,
 		device.yes_users AS yesterday_users,
 		device.today_total AS today_task_number,
@@ -52,25 +52,25 @@ func StatsHandler(c *gin.Context) {
 FROM 
 (
 SELECT 
-		COUNT(IF(inserted_at > DATE_FORMAT(NOW(),'%Y-%m-%d'),1,NULL)) AS today_number,
-		COUNT(IF(inserted_at < DATE_FORMAT(NOW(),'%Y-%m-%d'),1,NULL)) AS yesterday_number,
-		SUM(IF(inserted_at > DATE_FORMAT(NOW(),'%Y-%m-%d'),cny,0)) AS today_cny,
-		SUM(IF(inserted_at < DATE_FORMAT(NOW(),'%Y-%m-%d'),cny,0)) AS yesterday_cny
+		COUNT(IF(inserted_at > DATE(NOW()),1,NULL)) AS today_number,
+		COUNT(IF(inserted_at < DATE(NOW()),1,NULL)) AS yesterday_number,
+		SUM(IF(inserted_at > DATE(NOW()),cny,0)) AS today_cny,
+		SUM(IF(inserted_at < DATE(NOW()),cny,0)) AS yesterday_cny
 FROM 
 		tmm.point_withdraws
 WHERE 
-		inserted_at > DATE_SUB(DATE_FORMAT(NOW(),'%Y-%m-%d'),INTERVAL 1 DAY)   
+		inserted_at > DATE_SUB(DATE(NOW()),INTERVAL 1 DAY)
 ) AS points,
 (
 SELECT 
-		COUNT(IF(inserted_at > DATE_FORMAT(NOW(),'%Y-%m-%d'),1,NULL)) AS today_number,
-		COUNT(IF(inserted_at < DATE_FORMAT(NOW(),'%Y-%m-%d'),1,NULL)) AS yesterday_number,
-		SUM(IF(inserted_at > DATE_FORMAT(NOW(),'%Y-%m-%d'),cny,0)) AS today_cny,
-		SUM(IF(inserted_at < DATE_FORMAT(NOW(),'%Y-%m-%d'),cny,0)) AS yesterday_cny
+		COUNT(IF(inserted_at > DATE(NOW()),1,NULL)) AS today_number,
+		COUNT(IF(inserted_at < DATE(NOW()),1,NULL)) AS yesterday_number,
+		SUM(IF(inserted_at > DATE(NOW()),cny,0)) AS today_cny,
+		SUM(IF(inserted_at < DATE(NOW()),cny,0)) AS yesterday_cny
 FROM 
 		tmm.withdraw_txs 
 WHERE 
-		inserted_at > DATE_SUB(DATE_FORMAT(NOW(),'%Y-%m-%d'),INTERVAL 1 DAY)   AND tx_status = 1
+		inserted_at > DATE_SUB(DATE(NOW()),INTERVAL 1 DAY)   AND tx_status = 1
 ) AS tmm,
 ( 
 SELECT 
@@ -82,63 +82,95 @@ SELECT
 		SUM(tmp.yes_users) AS yes_users
 FROM(
 	SELECT 
-			SUM(IF(sha.inserted_at > DATE_FORMAT(NOW(),'%Y-%m-%d'),sha.points,0)) AS today_points,
-			SUM(IF(sha.inserted_at < DATE_FORMAT(NOW(),'%Y-%m-%d'),sha.points,0)) AS yes_points,
-			COUNT(IF(sha.inserted_at < DATE_FORMAT(NOW(),'%Y-%m-%d'),0,NULL)) AS yes_total,
-			COUNT(IF(sha.inserted_at > DATE_FORMAT(NOW(),'%Y-%m-%d'),0,NULL)) AS today_total,
-			COUNT(distinct IF(sha.inserted_at > DATE_FORMAT(NOW(),'%Y-%m-%d'),sha.device_id,0)) AS today_users,
-			COUNT(distinct IF(sha.inserted_at < DATE_FORMAT(NOW(),'%Y-%m-%d'),sha.device_id,0)) AS yes_users
+			SUM(IF(sha.inserted_at > DATE(NOW()),sha.points,0)) AS today_points,
+			SUM(IF(sha.inserted_at < DATE(NOW()),sha.points,0)) AS yes_points,
+			COUNT(IF(sha.inserted_at < DATE(NOW()),0,NULL)) AS yes_total,
+			COUNT(IF(sha.inserted_at > DATE(NOW()),0,NULL)) AS today_total,
+			COUNT(distinct IF(sha.inserted_at > DATE(NOW()),sha.device_id,0)) AS today_users,
+			COUNT(distinct IF(sha.inserted_at < DATE(NOW()),sha.device_id,0)) AS yes_users
 
 	FROM 
 			tmm.device_share_tasks  AS sha
 	WHERE 
-			sha.inserted_at > DATE_SUB(DATE_FORMAT(NOW(),'%Y-%m-%d'),INTERVAL 1 DAY)
+			sha.inserted_at > DATE_SUB(DATE(NOW()),INTERVAL 1 DAY)
 	UNION ALL
 
 	SELECT 
-		    SUM(IF(app.inserted_at > DATE_FORMAT(NOW(),'%Y-%m-%d'),app.points,0)) AS today_points,
-			SUM(IF(app.inserted_at < DATE_FORMAT(NOW(),'%Y-%m-%d'),app.points,0)) AS yes_points,
-			COUNT(IF(app.inserted_at < DATE_FORMAT(NOW(),'%Y-%m-%d'),0,NULL)) AS yes_total,
-			COUNT(IF(app.inserted_at > DATE_FORMAT(NOW(),'%Y-%m-%d'),0,NULL)) AS today_total,
+		    SUM(IF(app.inserted_at > DATE(NOW()),app.points,0)) AS today_points,
+			SUM(IF(app.inserted_at < DATE(NOW()),app.points,0)) AS yes_points,
+			COUNT(IF(app.inserted_at < DATE(NOW()),0,NULL)) AS yes_total,
+			COUNT(IF(app.inserted_at > DATE(NOW()),0,NULL)) AS today_total,
 			0 AS today_users,
 			0 AS yes_users
 	FROM
    		    tmm.device_app_tasks AS app 
 	WHERE 
-  		    app.inserted_at > DATE_SUB(DATE_FORMAT(NOW(),'%Y-%m-%d'),INTERVAL 1 DAY)
+  		    app.inserted_at > DATE_SUB(DATE(NOW()),INTERVAL 1 DAY) AND status = 1
 	) AS tmp 
 ) AS device,
 (
 SELECT 
-	   SUM(IF(inserted_at < DATE_FORMAT(NOW(),'%Y-%m-%d '),tmm,0)) AS yesterday_tmm, 
-	   SUM(IF(inserted_at > DATE_FORMAT(NOW(),'%Y-%m-%d '),tmm,0)) AS today_tmm  
+	   SUM(IF(inserted_at < DATE(NOW()),tmm,0)) AS yesterday_tmm, 
+	   SUM(IF(inserted_at > DATE(NOW()),tmm,0)) AS today_tmm  
 FROM 
 	   tmm.exchange_records
 WHERE 
-	   direction = 1 AND inserted_at > DATE_SUB(DATE_FORMAT(NOW(),'%Y-%m-%d'),INTERVAL 1 DAY)
+	   direction = 1 AND inserted_at > DATE_SUB(DATE(NOW()),INTERVAL 1 DAY)
 )  AS exchanges,
 (
-SELECT  
-	   COUNT(IF(inv.inserted_at < DATE_FORMAT(NOW(),'%Y-%m-%d') AND dev.updated_at > ADDDATE(inv.inserted_at,INTERVAL 1 HOUR) AND inv.task_type = 0,0,NULL))  AS yesterday_active, 
-	   COUNT(IF(inv.inserted_at > DATE_FORMAT(NOW(),'%Y-%m-%d') AND dev.updated_at > ADDDATE(inv.inserted_at,INTERVAL 1 HOUR) AND inv.task_type = 0,0,NULL))  AS today_active,
-	   COUNT(IF(inv.inserted_at < DATE_FORMAT(NOW(),'%Y-%m-%d') AND inv.task_type = 0,1,NULL)) AS yesterday_invite,
-	   COUNT(IF(inv.inserted_at > DATE_FORMAT(NOW(),'%Y-%m-%d') AND inv.task_type = 0,1,NULL)) AS today_invite,
-	   SUM(IF(inv.inserted_at > DATE_FORMAT(NOW(),'%Y-%m-%d'),inv.bonus,0)) AS today_bonus,
-	   SUM(IF(inv.inserted_at < DATE_FORMAT(NOW(),'%Y-%m-%d'),inv.bonus,0)) AS yesterday_bonus
-FROM 
-	   tmm.invite_bonus AS inv  
-INNER JOIN tmm.devices AS dev ON (dev.user_id = inv.from_user_id)
-WHERE 
-	    inv.inserted_at > DATE_SUB(DATE_FORMAT(NOW(),'%Y-%m-%d'),INTERVAL 1 DAY) 
+SELECT
+	  COUNT(distinct IF(inv.inserted_at < DATE(NOW()) AND
+		EXISTS(
+		SELECT
+		1
+		FROM tmm.devices AS dev
+		LEFT JOIN tmm.device_share_tasks AS sha ON (sha.device_id = dev.id)
+		LEFT JOIN tmm.device_app_tasks AS app ON (app.device_id = dev.id AND app.status = 1)
+		LEFT JOIN reading_logs AS reading ON (reading.user_id = dev.user_id  )
+		WHERE dev.user_id = inv.from_user_id AND ( 
+		sha.inserted_at > inv.inserted_at OR 
+		app.inserted_at > inv.inserted_at OR    
+		reading.inserted_at > inv.inserted_at)
+		LIMIT 1
+		),inv.from_user_id,NULL))  AS yesterday_active,
+	  COUNT(distinct IF(inv.inserted_at > DATE(NOW()) AND
+		EXISTS(
+		SELECT
+		1
+		FROM tmm.devices AS dev
+		LEFT JOIN tmm.device_share_tasks AS sha ON (sha.device_id = dev.id)
+		LEFT JOIN tmm.device_app_tasks AS app ON (app.device_id = dev.id AND app.status = 1)
+		LEFT JOIN reading_logs AS reading ON (reading.user_id = dev.user_id  )
+		WHERE dev.user_id = inv.from_user_id AND ( 
+		sha.inserted_at > inv.inserted_at OR 
+		app.inserted_at > inv.inserted_at OR    
+		reading.inserted_at > inv.inserted_at)
+		LIMIT 1
+		),inv.from_user_id,NULL))  AS today_active,
+	   COUNT(distinct IF(inv.inserted_at < DATE(NOW()) ,inv.from_user_id,NULL)) AS yesterday_invite,
+	   COUNT(distinct IF(inv.inserted_at > DATE(NOW()) ,inv.from_user_id,NULL)) AS today_invite
+FROM
+	   tmm.invite_bonus AS inv
+WHERE
+	    inv.inserted_at > DATE_SUB(DATE(NOW()),INTERVAL 1 DAY) AND inv.task_type = 0
 ) AS inv,
 (
+SELECT 
+	SUM(IF(inv.inserted_at > DATE(NOW()),inv.bonus,0)) AS today_bonus,
+	SUM(IF(inv.inserted_at < DATE(NOW()),inv.bonus,0)) AS yesterday_bonus
+FROM
+	tmm.invite_bonus AS inv
+WHERE
+	inv.inserted_at > DATE_SUB(DATE(NOW()),INTERVAL 1 DAY) 
+) AS inv_bonus,
+(
 SELECT
-	SUM(IF(inserted_at > DATE_FORMAT(NOW(),'%Y-%m-%d'),point,0)) AS today_point,
-	SUM(IF(inserted_at < DATE_FORMAT(NOW(),'%Y-%m-%d'),point,0)) AS yesterday_point
+	SUM(IF(inserted_at > DATE(NOW()),point,0)) AS today_point,
+	SUM(IF(inserted_at < DATE(NOW()),point,0)) AS yesterday_point
 FROM
 	tmm.reading_logs
 WHERE
-	inserted_at > DATE_SUB(DATE_FORMAT(NOW(),'%Y-%m-%d'),INTERVAL 1 DAY)
+	inserted_at > DATE_SUB(DATE(NOW()),INTERVAL 1 DAY)
 ) AS reading`
 	rows, res, err := db.Query(query)
 	if CheckErr(err, c) {

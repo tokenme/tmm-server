@@ -42,42 +42,42 @@ SELECT
 	tmp.Date
 FROM(
 	SELECT
-		DATE_FORMAT(inserted_at,'%s') AS date,
-		IFNULL(SUM(points),0) AS points
+		DATE(inserted_at) AS date,
+		SUM(points) AS points
 	FROM 
 		tmm.device_share_tasks
 	WHERE 
-		inserted_at > '%s' AND inserted_at < '%s'
+		inserted_at > '%s' AND inserted_at <  DATE_ADD('%s', INTERVAL 60*23+59 MINUTE)
 	GROUP BY 
 		date
 	UNION ALL
 	SELECT	
-		DATE_FORMAT(inserted_at,'%s') AS date,
-		IFNULL(SUM(points),0) AS points
+		DATE(inserted_at) AS date,
+		SUM(points) AS points
 	FROM
 		tmm.device_app_tasks
 	WHERE
-		inserted_at > '%s' AND status = 1 AND inserted_at < '%s'
+		inserted_at > '%s' AND status = 1 AND inserted_at <  DATE_ADD('%s', INTERVAL 60*23+59 MINUTE)
 	GROUP BY 
 		date
 	UNION ALL
 	SELECT
-		DATE_FORMAT(inserted_at,'%s') AS date,	
-		IFNULL(SUM(point),0) AS points
+		DATE(inserted_at) AS date,	
+		SUM(point) AS points
 	FROM
 		tmm.reading_logs
 	WHERE 
-		inserted_at > '%s' AND inserted_at < '%s'
+		inserted_at > '%s' AND inserted_at <  DATE_ADD('%s', INTERVAL 60*23+59 MINUTE)
 	GROUP BY 
 		date
 	UNION ALL
 	SELECT
-		DATE_FORMAT(inserted_at,'%s') AS date,	
-		IFNULL(SUM(bonus),0) AS points
+		DATE(inserted_at) AS date,	
+		SUM(bonus) AS points
 	FROM
 		tmm.invite_bonus
 	WHERE 
-		inserted_at > '%s' AND inserted_at < '%s'
+		inserted_at > '%s' AND inserted_at <  DATE_ADD('%s', INTERVAL 60*23+59 MINUTE)
 	GROUP BY
 		date
 ) AS tmp
@@ -85,10 +85,10 @@ GROUP BY tmp.date
 ORDER BY tmp.date  
 	`
 	rows, _, err := db.Query(query,
-		db.Escape(TimeFormat), db.Escape(startTime), db.Escape(endTime),
-		db.Escape(TimeFormat), db.Escape(startTime), db.Escape(endTime),
-		db.Escape(TimeFormat), db.Escape(startTime), db.Escape(endTime),
-		db.Escape(TimeFormat), db.Escape(startTime), db.Escape(endTime))
+		db.Escape(startTime), db.Escape(endTime),
+		db.Escape(startTime), db.Escape(endTime),
+		db.Escape(startTime), db.Escape(endTime),
+		db.Escape(startTime), db.Escape(endTime))
 	if CheckErr(err, c) {
 		return
 	}

@@ -118,19 +118,19 @@ SELECT
 FROM (
 SELECT
 	inv.parent_id AS id,
-	COUNT(distinct IF(dev.lastping_at > DATE_SUB(NOW(),INTERVAL 1 DAY),inv.user_id,NULL))   AS online,
-	COUNT(distinct IF(dev.lastping_at < DATE_SUB(NOW(),INTERVAL 1 DAY),inv.user_id,NULL))   AS offline
+	COUNT(distinct IF(dev.lastping_at > DATE(NOW()),inv.user_id,NULL))   AS online,
+	COUNT(distinct IF(IFNULL(dev.lastping_at,DATE_SUB(NOW(),INTERVAL 1 DAY)) < DATE(NOW()),inv.user_id,NULL))   AS offline
 FROM 	
 	invite_codes AS inv 
-INNER JOIN tmm.devices AS dev ON (dev.user_id = inv.user_id)
+LEFT JOIN tmm.devices AS dev ON (dev.user_id = inv.user_id)
 GROUP BY  id UNION ALL
 SELECT 
 	inv.grand_id AS id,
-	COUNT(distinct IF(dev.lastping_at > DATE_SUB(NOW(),INTERVAL 1 DAY),inv.user_id,NULL))   AS online,
-	COUNT(distinct IF(dev.lastping_at < DATE_SUB(NOW(),INTERVAL 1 DAY),inv.user_id,NULL))   AS offline
+	COUNT(distinct IF(dev.lastping_at > DATE(NOW()),inv.user_id,NULL))   AS online,
+	COUNT(distinct IF(dev.lastping_at < DATE(NOW()),inv.user_id,NULL))   AS offline
 FROM 	
 	invite_codes AS inv 
-INNER JOIN tmm.devices AS dev ON (dev.user_id = inv.user_id)
+LEFT JOIN tmm.devices AS dev ON (dev.user_id = inv.user_id)
 GROUP BY  id
 ) AS tmp 
 GROUP BY tmp.id

@@ -68,7 +68,7 @@ FROM (
 		FROM (
 			SELECT 
 				sha.device_id, 
-				IFNULL(SUM(sha.points),0) AS points
+				SUM(sha.points) AS points
 			FROM 
 				tmm.device_share_tasks AS sha	
 			WHERE 
@@ -77,7 +77,7 @@ FROM (
 				sha.device_id UNION ALL
 			SELECT 
 				app.device_id, 
-				IFNULL(SUM(app.points),0) AS points
+				SUM(app.points) AS points
 			FROM 
 				tmm.device_app_tasks AS app   
 			WHERE

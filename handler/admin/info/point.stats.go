@@ -36,9 +36,9 @@ func PointStatsHandler(c *gin.Context) {
 
 	if req.EndTime != "" {
 		endTime = req.EndTime
-		shareWhen = append(shareWhen, fmt.Sprintf(" AND sha.inserted_at <= '%s' ", db.Escape(endTime)))
-		appTaskWhen = append(appTaskWhen, fmt.Sprintf(" AND  app.inserted_at <= '%s' ", db.Escape(endTime)))
-		when = append(when, fmt.Sprintf("AND  inserted_at <= '%s' ", db.Escape(endTime)))
+		shareWhen = append(shareWhen, fmt.Sprintf(" AND sha.inserted_at < DATE_ADD('%s', INTERVAL 60*23+59 MINUTE) ", db.Escape(endTime)))
+		appTaskWhen = append(appTaskWhen, fmt.Sprintf(" AND  app.inserted_at < DATE_ADD('%s', INTERVAL 60*23+59 MINUTE) ", db.Escape(endTime)))
+		when = append(when, fmt.Sprintf("AND  inserted_at < DATE_ADD('%s', INTERVAL 60*23+59 MINUTE) ", db.Escape(endTime)))
 	}
 
 	if req.Top10 {
@@ -59,7 +59,7 @@ LEFT JOIN (
 	LEFT JOIN (
 	SELECT 
 		 sha.device_id, 
-		 IFNULL(SUM(sha.points),0) AS points
+		 SUM(sha.points) AS points
 	FROM 
 		 tmm.device_share_tasks AS sha	
 	WHERE 
@@ -68,7 +68,7 @@ LEFT JOIN (
        sha.device_id UNION ALL
 	SELECT 
 		 app.device_id, 
-		 IFNULL(SUM(app.points),0) AS points
+		 SUM(app.points) AS points
 	FROM 
 		 tmm.device_app_tasks AS app   
 	WHERE

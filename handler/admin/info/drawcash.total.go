@@ -48,8 +48,8 @@ FROM (
 FROM(
 		SELECT
             tx.user_id, 
-			IFNULL(SUM( tx.cny ),0) AS cny,		 
-			IFNULL(SUM(tx.tmm),0)  AS tmm,		
+			SUM( tx.cny) AS cny,		 
+			SUM(tx.tmm)  AS tmm,		
 			0    AS points,				
 			COUNT(1) AS total 
         FROM
@@ -60,9 +60,9 @@ FROM(
             tx.user_id UNION ALL
         SELECT
             pw.user_id, 
-			IFNULL(SUM( pw.cny ),0) AS cny,
+			SUM( pw.cny ) AS cny,
 			SUM(0)  AS tmm,
-			IFNULL(SUM(pw.points),0) AS points,
+			SUM(pw.points) AS points,
 			COUNT(1) AS total 
         FROM
             tmm.point_withdraws AS pw

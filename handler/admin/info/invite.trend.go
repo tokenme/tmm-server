@@ -38,20 +38,33 @@ func InviteTrendHandler(c *gin.Context) {
 	query := `
 SELECT
 	%s,
-	DATE_FORMAT(inv.inserted_at,'%s') AS date
+	DATE(inv.inserted_at) AS date
 FROM 
 	tmm.invite_bonus AS inv
-INNER JOIN tmm.devices AS dev ON(dev.user_id = inv.from_user_id)
-WHERE inv.inserted_at > '%s'  AND task_type = 0 AND inv.inserted_at < '%s'
+WHERE inv.inserted_at > '%s'  AND task_type = 0 AND inv.inserted_at <  DATE_ADD('%s', INTERVAL 60*23+59 MINUTE)
 GROUP BY date
 	`
 	var data Data
 	if req.Type == 1 {
 		data.Title.Text = "好友活跃数量趋势图"
-		query = fmt.Sprintf(query, "COUNT(distinct IF(dev.updated_at > ADDDATE(inv.inserted_at,INTERVAL 1 HOUR),inv.from_user_id,NULL))", db.Escape(TimeFormat), db.Escape(startTime), db.Escape(endTime))
+		query = fmt.Sprintf(query, `COUNT(distinct 
+		IF(EXISTS(
+		SELECT 
+		10
+		FROM tmm.devices AS dev 
+		LEFT JOIN tmm.device_share_tasks AS sha ON (sha.device_id = dev.id )
+		LEFT JOIN tmm.device_app_tasks AS app ON (app.device_id = dev.id  AND app.status = 1)
+		LEFT JOIN reading_logs AS reading ON (reading.user_id = dev.user_id )
+		WHERE dev.user_id = inv.from_user_id AND ( 
+		sha.inserted_at > inv.inserted_at OR 
+		app.inserted_at > inv.inserted_at OR    
+		reading.inserted_at > inv.inserted_at  )
+		LIMIT 1
+		)	,inv.from_user_id,NULL)
+		)`, db.Escape(startTime), db.Escape(endTime))
 	} else {
 		data.Title.Text = "拉新好友数趋势图"
-		query = fmt.Sprintf(query, "COUNT(distinct inv.from_user_id)", TimeFormat, db.Escape(startTime), db.Escape(endTime))
+		query = fmt.Sprintf(query, "COUNT(distinct inv.from_user_id)", db.Escape(startTime), db.Escape(endTime))
 	}
 	rows, _, err := db.Query(query)
 	if CheckErr(err, c) {
