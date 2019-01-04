@@ -69,6 +69,10 @@ func BindHandler(c *gin.Context) {
 	if Check(len(deviceId) == 0, "not found", c) {
 		return
 	}
+	_, _, err = db.Query(`INSERT IGNORE INTO tmm.user_devices (user_id, device_id) VALUES (%d, '%s')`, user.Id, db.Escape(deviceId))
+	if CheckErr(err, c) {
+		return
+	}
 	_, ret, err := db.Query(`UPDATE tmm.devices SET user_id=%d WHERE id='%s' AND user_id=0`, user.Id, deviceId)
 	if CheckErr(err, c) {
 		return

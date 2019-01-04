@@ -28,7 +28,11 @@ func UnbindHandler(c *gin.Context) {
 	if Check(req.Id == "", "invalid request", c) {
 		return
 	}
-	_, _, err := db.Query(`UPDATE tmm.devices SET user_id=0 WHERE user_id=%d AND id='%s'`, user.Id, req.Id)
+	_, _, err := db.Query(`INSERT IGNORE INTO tmm.user_devices (user_id, device_id) VALUES (%d, '%s')`, user.Id, db.Escape(req.Id))
+	if CheckErr(err, c) {
+		return
+	}
+	_, _, err = db.Query(`UPDATE tmm.devices SET user_id=0 WHERE user_id=%d AND id='%s'`, user.Id, req.Id)
 	if CheckErr(err, c) {
 		log.Error(err.Error())
 		return
