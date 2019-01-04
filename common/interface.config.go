@@ -127,9 +127,12 @@ type CoinbaseAPIConfig struct {
 }
 
 type ContactConfig struct {
-	Telegram string `required:"true"`
-	Wechat   string `required:"true"`
-	Website  string `required:"true"`
+	Telegram        string `required:"true"`
+	Wechat          string `required:"true"`
+    QQGroupId       string `required:"true"`
+    QQAndroidKey    string `required:"true"`
+    QQIOSKey        string `required:"true"`
+	Website         string `required:"true"`
 }
 
 type AliyunConfig struct {
