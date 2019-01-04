@@ -87,7 +87,7 @@ ORDER BY date
 			tm = tm.AddDate(0,0,1)
 		}
 	}
-	data.Title.Text = "积分兑换趋势图"
+	data.Title.Text = "积分兑换"
 	data.Xaxis.Data = indexName
 	data.Xaxis.Name = "日期"
 	data.Yaxis.Name = "UC"
