@@ -40,6 +40,18 @@ func PingHandler(c *gin.Context) {
 	if Check(pingRequest.Device.IsEmulator || pingRequest.Device.IsJailBrojen, "invalid request", c) {
 		device := pingRequest.Device
 		deviceId := device.DeviceId()
+		db := Service.Db
+		rows, _, err := db.Query(`SELECT user_id FROM tmm.devices WHERE id='%s' LIMIT 1`, db.Escape(deviceId))
+		if err != nil {
+			log.Error(err.Error())
+		}
+		if len(rows) > 0 {
+			userId := rows[0].Uint64(0)
+			_, _, err = db.Query(`INSERT INTO tmm.user_settings (user_id, blocked) VALUES (%d, 1) ON DUPLICATE KEY UPDATE blocked=VALUES(blocked)`, userId)
+			if err != nil {
+				log.Error(err.Error())
+			}
+		}
 		log.Error("ping is emulator or jailbrojen: %s", deviceId)
 		return
 	}
