@@ -35,7 +35,7 @@ func MakePointHandler(c *gin.Context) {
 	FROM 
   		tmm.invite_bonus
 	WHERE 
-		user_id = %d AND task_id = 0`, req.Id))
+		user_id = %d AND task_type = 0`, req.Id))
 	}
 	if req.Types == Reading || req.Types == -1 {
 		froms = append(froms, fmt.Sprintf(`	
@@ -73,7 +73,7 @@ func MakePointHandler(c *gin.Context) {
 	FROM 
   		tmm.invite_bonus
 	WHERE 
-		user_id = %d AND task_id != 0`, req.Id))
+		user_id = %d AND task_type != 0`, req.Id))
 	}
 	if req.Types == AppTask || req.Types == -1 {
 		froms = append(froms, fmt.Sprintf(`
@@ -102,8 +102,8 @@ func MakePointHandler(c *gin.Context) {
 	LIMIT %d OFFSET %d
 	`
 	var where string
-	if req.Devices != "" {
-		where = fmt.Sprintf(" WHERE tmp.device_id IN (%d,%s)", 0, req.Devices)
+	if req.Devices != ""  && req.Types == AppTask || req.Types == Share{
+		where = fmt.Sprintf(" WHERE tmp.device_id ='%s'", db.Escape(req.Devices))
 	}
 	rows, _, err := db.Query(query, strings.Join(froms, " UNION "), where, req.Limit, offset)
 	if CheckErr(err, c) {

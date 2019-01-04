@@ -45,4 +45,10 @@ func InfoRouter(r *gin.Engine) {
 	{
 		InfoGroup.GET(`/stats/stats`, info.StatsHandler)
 	}
+	{
+		InfoGroup.GET(`/trend/drawcash`,info.DrawCashTrendHandler)
+		InfoGroup.GET(`/trend/exchange`,info.ExchangeTrendHandler)
+		InfoGroup.GET(`/trend/point`,info.PointTrendHandler)
+		InfoGroup.GET(`/trend/invite`,info.InviteTrendHandler)
+	}
 }

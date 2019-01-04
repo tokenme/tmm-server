@@ -31,7 +31,7 @@ func FriendsHandler(c *gin.Context) {
 		req.Limit = 10
 	}
 	if req.Page > 0 {
-		offset = (req.Page - 1) * offset
+		offset = (req.Page - 1) * req.Limit
 	}
 	var totalquery, query string
 	query = `
@@ -43,8 +43,6 @@ func FriendsHandler(c *gin.Context) {
 		tmm.invite_codes AS inv
 	INNER JOIN 
 		ucoin.users AS u ON u.id = inv.user_id 
-	INNER JOIN 
-		tmm.devices AS dev ON dev.user_id = inv.user_id
 	LEFT JOIN 
 		tmm.wx AS wx ON wx.user_id = inv.user_id 
 	WHERE %s
@@ -57,8 +55,6 @@ func FriendsHandler(c *gin.Context) {
 		tmm.invite_codes AS inv
 	INNER JOIN 
 		ucoin.users AS u ON u.id = inv.user_id 
-	INNER JOIN 
-		tmm.devices AS dev ON dev.user_id = inv.user_id
 	LEFT JOIN 
 		tmm.wx AS wx ON wx.user_id = inv.user_id 
 	WHERE 
@@ -79,7 +75,17 @@ func FriendsHandler(c *gin.Context) {
 		totalquery = fmt.Sprintf(totalquery, online)
 
 	case Active:
-		active := fmt.Sprintf(" (inv.parent_id = %d OR inv.grand_id = %d)  AND dev.updated_at > DATE_SUB(NOW(),INTERVAL 1 DAY) ", req.Id, req.Id)
+		active := fmt.Sprintf(` (inv.parent_id = %d OR inv.grand_id = %d)  AND EXISTS(
+		SELECT 
+		1
+		FROM tmm.devices AS dev 
+		LEFT JOIN tmm.device_share_tasks AS sha ON (sha.device_id = dev.id AND sha.inserted_at > DATE(NOW()))
+		LEFT JOIN tmm.device_app_tasks AS app ON (app.device_id = dev.id  AND  app.inserted_at > DATE(NOW()) AND app.status = 1)
+		LEFT JOIN reading_logs AS reading ON (reading.user_id = dev.user_id  AND (reading.updated_at > DATE(NOW()) OR  reading.inserted_at > DATE(NOW())))
+		WHERE dev.user_id = inv.user_id AND ( 
+		IFNULL(sha.points,0) > 0  
+		OR IFNULL(app.points,0) > 0   OR IFNULL(reading.point,0) > 0)
+		LIMIT 1 )`, req.Id, req.Id)
 		query = fmt.Sprintf(query, active, req.Limit, offset)
 		totalquery = fmt.Sprintf(totalquery, active)
 	default:

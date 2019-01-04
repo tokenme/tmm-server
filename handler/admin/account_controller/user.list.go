@@ -102,7 +102,7 @@ SELECT
 	COUNT(IF(direction = 1,0,NULL)) AS point_to_tmm_times,
 	COUNT(IF(direction = -1,0,NULL)) AS tmm_to_point_times,
 	SUM(IF(direction = 1 ,tmm,0)) AS point_to_tmm,
-	SUM(IF(direction = 1 ,points,0)) AS tmm_to_point
+	SUM(IF(direction = -1 ,points,0)) AS tmm_to_point
 FROM 
 	tmm.exchange_records 
 WHERE 
@@ -118,19 +118,19 @@ SELECT
 FROM (
 SELECT
 	inv.parent_id AS id,
-	COUNT(distinct IF(dev.lastping_at > DATE_SUB(NOW(),INTERVAL 1 DAY),inv.user_id,NULL))   AS online,
-	COUNT(distinct IF(dev.lastping_at < DATE_SUB(NOW(),INTERVAL 1 DAY),inv.user_id,NULL))   AS offline
+	COUNT(distinct IF(dev.lastping_at > DATE(NOW()),inv.user_id,NULL))   AS online,
+	COUNT(distinct IF(IFNULL(dev.lastping_at,DATE_SUB(NOW(),INTERVAL 1 DAY)) < DATE(NOW()),inv.user_id,NULL))   AS offline
 FROM 	
 	invite_codes AS inv 
-INNER JOIN tmm.devices AS dev ON (dev.user_id = inv.user_id)
+LEFT JOIN tmm.devices AS dev ON (dev.user_id = inv.user_id)
 GROUP BY  id UNION ALL
 SELECT 
 	inv.grand_id AS id,
-	COUNT(distinct IF(dev.lastping_at > DATE_SUB(NOW(),INTERVAL 1 DAY),inv.user_id,NULL))   AS online,
-	COUNT(distinct IF(dev.lastping_at < DATE_SUB(NOW(),INTERVAL 1 DAY),inv.user_id,NULL))   AS offline
+	COUNT(distinct IF(dev.lastping_at > DATE(NOW()),inv.user_id,NULL))   AS online,
+	COUNT(distinct IF(dev.lastping_at < DATE(NOW()),inv.user_id,NULL))   AS offline
 FROM 	
 	invite_codes AS inv 
-INNER JOIN tmm.devices AS dev ON (dev.user_id = inv.user_id)
+LEFT JOIN tmm.devices AS dev ON (dev.user_id = inv.user_id)
 GROUP BY  id
 ) AS tmp 
 GROUP BY tmp.id

@@ -48,7 +48,7 @@ FROM (
 FROM(
 		SELECT
             tx.user_id, 
-			SUM( tx.cny ) AS cny,		 
+			SUM( tx.cny) AS cny,		 
 			SUM(tx.tmm)  AS tmm,		
 			0    AS points,				
 			COUNT(1) AS total 

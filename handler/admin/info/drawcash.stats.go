@@ -43,7 +43,7 @@ func DrawCashStatsHandler(c *gin.Context) {
 	query := `SELECT 
 	us.id AS id ,
 	wx.nick AS nickname , 
-	tmp.cny AS cny,
+	IFNULL(tmp.cny,0) AS cny,
 	us.mobile AS mobile
 FROM (
  SELECT 
@@ -51,7 +51,8 @@ FROM (
  SUM(cny) AS cny
 FROM(
 	SELECT
-            tx.user_id, SUM( tx.cny ) AS cny
+            tx.user_id, 
+			SUM( tx.cny ) AS cny
         FROM
             tmm.withdraw_txs AS tx
 		WHERE
@@ -59,7 +60,8 @@ FROM(
         GROUP BY
             tx.user_id UNION ALL
         SELECT
-            pw.user_id, SUM( pw.cny ) AS cny
+            pw.user_id, 
+			SUM( pw.cny ) AS cny
         FROM
             tmm.point_withdraws AS pw
         WHERE 

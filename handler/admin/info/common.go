@@ -85,6 +85,7 @@ type StatsRequest struct {
 	EndTime   string `form:"end_date",json:"end_date" `
 	Top10     bool   `form:"top_10",json:"top_10"`
 	Hours     int    `form:"hours" ,json:"hours"`
+	Type      int    `form:"type"`
 }
 
 type Good struct {
@@ -111,6 +112,7 @@ type Title struct {
 type Series struct {
 	Data []string `json:"data"`
 	Name string   `json:"name"`
+	Type string `json:"type,omitempty"`
 }
 
 type StatsData struct {
@@ -133,14 +135,13 @@ type StatsList struct {
 func GetPercentList(valueList []string) (PercentList []string) {
 	var total float64
 	for _, value := range valueList {
-		v, _ := strconv.Atoi(value)
-
+		v ,_:= strconv.ParseFloat(value, 64)
 		total += float64(v)
 	}
 
 	for _, value := range valueList {
-		v, _ := strconv.Atoi(value)
-		percent := float64(v) / total
+		v ,_:= strconv.ParseFloat(value, 64)
+		percent :=  v / total
 		PercentList = append(PercentList, fmt.Sprintf("%.2f", percent*100))
 	}
 
