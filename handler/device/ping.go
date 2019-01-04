@@ -38,7 +38,9 @@ func PingHandler(c *gin.Context) {
 		return
 	}
 	if Check(pingRequest.Device.IsEmulator || pingRequest.Device.IsJailBrojen, "invalid request", c) {
-		log.Error("ping is emulator or jailbrojen")
+		device := pingRequest.Device
+		deviceId := device.DeviceId()
+		log.Error("ping is emulator or jailbrojen: %s", deviceId)
 		return
 	}
 
