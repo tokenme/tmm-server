@@ -56,9 +56,7 @@ func ReadingHandler(c *gin.Context) {
 	if Check(payload.Ts < time.Now().Add(-10*time.Minute).Unix() || payload.Ts > time.Now().Add(10*time.Minute).Unix(), "expired request", c) {
 		return
 	}
-	if Check(payload.Duration <= 12, "read too fast", c) {
-		return
-	}
+
 	db := Service.Db
 	device := common.DeviceRequest{
 		Idfa: req.Idfa,
@@ -69,6 +67,15 @@ func ReadingHandler(c *gin.Context) {
 	if Check(len(deviceId) == 0, "not found", c) {
 		return
 	}
+
+	if Check(payload.Duration <= 12, "read too fast", c) {
+		_, _, err = db.Query(`INSERT INTO tmm.reading_logs (user_id, task_id, ts, point) VALUES (%d, %d, %d ,0) ON DUPLICATE KEY UPDATE ts=ts+VALUES(ts)`, user.Id, payload.TaskId, payload.Duration)
+		if err != nil {
+			log.Error(err.Error())
+		}
+		return
+	}
+
 	rows, _, err := db.Query(`SELECT 1 FROM tmm.share_tasks WHERE id=%d LIMIT 1`, payload.TaskId)
 	if CheckErr(err, c) {
 		return
