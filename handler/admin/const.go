@@ -28,16 +28,6 @@ type AddRequest struct {
 	Cid           []int           `json:"cid" form:"cid"`
 }
 
-type ShareAppRequest struct {
-	Title         string          `json:"title" form:"title" binding:"required"`
-	BundleId      string          `json:"bundle_id" form:"bundle_id" binding:"required"`
-	Link          string          `json:"link" form:"link" binding:"required"`
-	Size          string          `json:"size" form:"size"`
-	Points        decimal.Decimal `json:"points" form:"points" binding:"required"`
-	Bonus         decimal.Decimal `json:"bonus" form:"bonus" binding:"required"`
-	Image         string          `json:"image" form:"image"`
-}
-
 type Users struct {
 	Point                decimal.Decimal  `json:"point"`
 	InviteBonus          decimal.Decimal  `json:"invite_bonus,omitempty"`

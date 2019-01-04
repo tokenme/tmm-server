@@ -167,27 +167,32 @@ LIMIT 1`
 						log.Error(err.Error())
 					}
 				}
-				query = `SELECT id, inviter_id, user_id FROM
-(SELECT
-d.id,
-ic.parent_id AS inviter_id,
-ic.user_id
-FROM tmm.invite_codes AS ic
-LEFT JOIN tmm.devices AS d ON (d.user_id=ic.parent_id)
-LEFT JOIN tmm.devices AS d2 ON (d2.user_id=ic.user_id)
-WHERE d2.id='%s' AND ic.parent_id > 0
-ORDER BY d.lastping_at DESC LIMIT 1) AS t1
-UNION
-SELECT id, inviter_id, user_id FROM
-(SELECT
-d.id,
-ic.grand_id AS inviter_id,
-ic.user_id
-FROM tmm.invite_codes AS ic
-LEFT JOIN tmm.devices AS d ON (d.user_id=ic.grand_id)
-LEFT JOIN tmm.devices AS d2 ON (d2.user_id=ic.user_id)
-WHERE d2.id='%s' AND ic.grand_id > 0
-ORDER BY d.lastping_at DESC LIMIT 1) AS t2`
+				query = `SELECT t.id, t.inviter_id, t.user_id FROM
+(SELECT id, inviter_id, user_id FROM
+    (SELECT
+    d.id,
+    ic.parent_id AS inviter_id,
+    ic.user_id
+    FROM tmm.invite_codes AS ic
+    LEFT JOIN tmm.devices AS d ON (d.user_id=ic.parent_id)
+    LEFT JOIN tmm.devices AS d2 ON (d2.user_id=ic.user_id)
+    WHERE d2.id='%s' AND ic.parent_id > 0
+    ORDER BY d.lastping_at DESC LIMIT 1) AS t1
+    UNION
+    SELECT id, inviter_id, user_id FROM
+    (SELECT
+    d.id,
+    ic.grand_id AS inviter_id,
+    ic.user_id
+    FROM tmm.invite_codes AS ic
+    LEFT JOIN tmm.devices AS d ON (d.user_id=ic.grand_id)
+    LEFT JOIN tmm.devices AS d2 ON (d2.user_id=ic.user_id)
+    WHERE d2.id='%s' AND ic.grand_id > 0
+    ORDER BY d.lastping_at DESC LIMIT 1) AS t2
+) AS t
+LEFT JOIN tmm.wx AS wx ON (wx.user_id=t.inviter_id)
+LEFT JOIN tmm.wx AS wx2 ON (wx2.user_id=t.user_id)
+WHERE ISNULL(wx.open_id) OR ISNULL(wx2.open_id) OR wx.open_id!=wx2.open_id`
 				rows, _, err = db.Query(query, db.Escape(deviceId), db.Escape(deviceId))
 				if err != nil {
 					log.Error(err.Error())

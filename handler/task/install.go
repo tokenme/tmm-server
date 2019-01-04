@@ -111,25 +111,30 @@ WHERE
 		}
 		bonus, _ = decimal.NewFromString(rows[0].Str(0))
 
-		query = `SELECT id, user_id FROM
-(SELECT
-d.id,
-d.user_id
-FROM tmm.devices AS d
-LEFT JOIN tmm.invite_codes AS ic ON (ic.parent_id=d.user_id)
-WHERE ic.user_id = %d AND d.user_id > 0
-AND NOT EXISTS (SELECT 1 FROM tmm.invite_bonus AS ib WHERE ib.user_id=d.user_id AND ib.from_user_id=ic.user_id AND task_type=2 AND task_id=%d LIMIT 1)
-ORDER BY d.lastping_at DESC LIMIT 1) AS t1
-UNION
-SELECT id, user_id FROM
-(SELECT
-d.id,
-d.user_id
-FROM tmm.devices AS d
-LEFT JOIN tmm.invite_codes AS ic ON (ic.grand_id=d.user_id)
-WHERE ic.user_id = %d AND d.user_id > 0
-AND NOT EXISTS (SELECT 1 FROM tmm.invite_bonus AS ib WHERE ib.user_id=d.user_id AND ib.from_user_id=ic.user_id AND task_type=2 AND task_id=%d LIMIT 1)
-ORDER BY d.lastping_at DESC LIMIT 1) AS t2`
+		query = `SELECT t.id, t.inviter_id, t.user_id FROM
+(SELECT id, user_id FROM
+    (SELECT
+    d.id,
+    d.user_id
+    FROM tmm.devices AS d
+    LEFT JOIN tmm.invite_codes AS ic ON (ic.parent_id=d.user_id)
+    WHERE ic.user_id = %d AND d.user_id > 0
+    AND NOT EXISTS (SELECT 1 FROM tmm.invite_bonus AS ib WHERE ib.user_id=d.user_id AND ib.from_user_id=ic.user_id AND task_type=2 AND task_id=%d LIMIT 1)
+    ORDER BY d.lastping_at DESC LIMIT 1) AS t1
+    UNION
+    SELECT id, user_id FROM
+    (SELECT
+    d.id,
+    d.user_id
+    FROM tmm.devices AS d
+    LEFT JOIN tmm.invite_codes AS ic ON (ic.grand_id=d.user_id)
+    WHERE ic.user_id = %d AND d.user_id > 0
+    AND NOT EXISTS (SELECT 1 FROM tmm.invite_bonus AS ib WHERE ib.user_id=d.user_id AND ib.from_user_id=ic.user_id AND task_type=2 AND task_id=%d LIMIT 1)
+    ORDER BY d.lastping_at DESC LIMIT 1) AS t2
+) AS t
+LEFT JOIN tmm.wx AS wx ON (wx.user_id=t.inviter_id)
+LEFT JOIN tmm.wx AS wx2 ON (wx2.user_id=t.user_id)
+WHERE ISNULL(wx.open_id) OR ISNULL(wx2.open_id) OR wx.open_id!=wx2.open_id`
 		rows, _, err = db.Query(query, user.Id, req.TaskId, user.Id, req.TaskId)
 		if CheckErr(err, c) {
 			return
