@@ -102,7 +102,7 @@ ON DUPLICATE KEY UPDATE blocked=VALUES(blocked);`
 	query = `INSERT INTO tmm.user_settings (user_id, blocked)
 SELECT DISTINCT d.user_id, 1 FROM tmm.devices AS d
 WHERE
-    (NOT EXISTS(SELECT 1 FROM tmm.device_apps AS da WHERE da.device_id=d.id LIMIT 1) OR d.system_version IS NULL)
+    NOT EXISTS(SELECT 1 FROM tmm.device_apps AS da WHERE da.device_id=d.id LIMIT 1)
     AND NOT EXISTS(SELECT 1 FROM tmm.user_settings AS us WHERE us.user_id=d.user_id AND us.blocked=1 LIMIT 1)
     AND d.user_id>0
 ON DUPLICATE KEY UPDATE blocked=VALUES(blocked)`
