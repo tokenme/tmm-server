@@ -53,7 +53,10 @@ func ReadingHandler(c *gin.Context) {
 		log.Error(err.Error())
 		return
 	}
-	if Check(payload.Ts < time.Now().Add(-10 * time.Minute).Unix() || payload.Ts > time.Now().Add(10 * time.Minute).Unix(), "expired request", c) {
+	if Check(payload.Ts < time.Now().Add(-10*time.Minute).Unix() || payload.Ts > time.Now().Add(10*time.Minute).Unix(), "expired request", c) {
+		return
+	}
+	if Check(payload.Duration <= 12, "read too fast", c) {
 		return
 	}
 	db := Service.Db
@@ -86,7 +89,7 @@ func ReadingHandler(c *gin.Context) {
 	if CheckErr(err, c) {
 		return
 	}
-	_, _, err = db.Query(`INSERT INTO tmm.reading_logs (user_id, task_id, ts, point) VALUES (%d, %d, %d ,%s) ON DUPLICATE KEY UPDATE ts=ts+VALUES(ts),point=point+VALUES(point)`, user.Id, payload.TaskId, payload.Duration,payload.Points.String())
+	_, _, err = db.Query(`INSERT INTO tmm.reading_logs (user_id, task_id, ts, point) VALUES (%d, %d, %d ,%s) ON DUPLICATE KEY UPDATE ts=ts+VALUES(ts),point=point+VALUES(point)`, user.Id, payload.TaskId, payload.Duration, payload.Points.String())
 	if err != nil {
 		log.Error(err.Error())
 	}
