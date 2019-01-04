@@ -3,6 +3,7 @@ package task
 import (
 	"fmt"
 	//"github.com/davecgh/go-spew/spew"
+	"github.com/garyburd/redigo/redis"
 	"github.com/gin-gonic/gin"
 	"github.com/mkideal/log"
 	"github.com/shopspring/decimal"
@@ -17,8 +18,10 @@ import (
 )
 
 const (
-	WX_AUTH_GATEWAY = "https://open.weixin.qq.com/connect/oauth2/authorize?appid=%s&redirect_uri=%s&response_type=code&scope=snsapi_base&state=%s#wechat_redirect"
-	WX_AUTH_URL     = "https://jkgj-isv.isvjcloud.com/rest/m/u/weauth"
+	WX_AUTH_GATEWAY                = "https://open.weixin.qq.com/connect/oauth2/authorize?appid=%s&redirect_uri=%s&response_type=code&scope=snsapi_base&state=%s#wechat_redirect"
+	WX_AUTH_URL                    = "https://jkgj-isv.isvjcloud.com/rest/m/u/weauth"
+	MaxUserRateLimitCounter  int64 = 10
+	MaxUserRateLimitDuration       = 2
 )
 
 type ShareData struct {
@@ -34,7 +37,7 @@ type ShareData struct {
 }
 
 func ShareHandler(c *gin.Context) {
-    var trackId string
+	var trackId string
 	code := c.DefaultQuery("code", "null")
 	taskId, deviceId, err := common.DecryptShareTaskLink(c.Param("encryptedTaskId"), c.Param("encryptedDeviceId"), Config)
 	if CheckErr(err, c) {
@@ -43,24 +46,50 @@ func ShareHandler(c *gin.Context) {
 	if Check(taskId == 0 || deviceId == "", "not found", c) {
 		return
 	}
-
 	db := Service.Db
-    query := `
-        SELECT us.blocked, us.block_whitelist
+	var (
+		isBlocked     bool
+		isRateLimited bool
+		userId        uint64
+	)
+	{
+		query := `
+        SELECT d.user_id, us.blocked, us.block_whitelist
         FROM tmm.devices AS d
         INNER JOIN tmm.user_settings AS us ON d.user_id = us.user_id
-        WHERE d.id = "%s"
-          AND us.blocked = 1
-          AND us.block_whitelist = 0
+        WHERE d.id = "%s" LIMIT 1
     `
-    rows, _, err := db.Query(query, deviceId)
-	if CheckErr(err, c) {
-		return
+		rows, _, err := db.Query(query, deviceId)
+		if CheckErr(err, c) {
+			return
+		}
+		if len(rows) > 0 {
+			row := rows[0]
+			userId = row.Uint64(0)
+			isBlocked = row.Int(1) == 1 && row.Int(2) == 0
+		}
+	}
+
+	if userId > 0 {
+		task := common.ShareTask{}
+		key := task.UserRateLimitKey(userId)
+		redisConn := Service.Redis.Master.Get()
+		defer redisConn.Close()
+		counter, _ := redis.Int64(redisConn.Do("INCR", key))
+		if counter <= 1 {
+			_, err := redisConn.Do("EXPIRE", key, MaxUserRateLimitDuration)
+			if err != nil {
+				log.Error(err.Error())
+			}
+		} else if counter >= MaxUserRateLimitCounter {
+			log.Warn("RateLimit for user:%d, counter:%d", userId, counter)
+			isRateLimited = true
+		}
 	}
 
 	mpClient := wechatmp.NewClient(Config.Wechat.AppId, Config.Wechat.AppSecret, Service, c)
 	isWx := strings.Contains(strings.ToLower(c.Request.UserAgent()), "micromessenger")
-	if isWx && len(rows) == 0 {
+	if isWx && !isBlocked && !isRateLimited {
 		if len(code) > 0 && code != "null" {
 			oauthAccessToken, err := mpClient.GetOAuthAccessToken(code)
 			if err != nil {
@@ -84,7 +113,7 @@ func ShareHandler(c *gin.Context) {
 		}
 	}
 
-	query = `SELECT
+	query := `SELECT
     st.id,
     st.title,
     st.summary,
@@ -102,7 +131,7 @@ LEFT JOIN tmm.devices AS d ON (d.id=dst.device_id)
 LEFT JOIN tmm.invite_codes AS ic ON (ic.user_id=d.user_id)
 WHERE st.id=%d
 LIMIT 1`
-	rows, _, err = db.Query(query, db.Escape(deviceId), taskId)
+	rows, _, err := db.Query(query, db.Escape(deviceId), taskId)
 	if CheckErr(err, c) {
 		return
 	}
