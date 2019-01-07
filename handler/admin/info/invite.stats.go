@@ -42,7 +42,7 @@ func InviteStatsHandler(c *gin.Context) {
 	}
 	query := `
 	SELECT
-		wx.user_id AS id ,
+		us.id AS id ,
 		wx.nick AS nickname,
 		COUNT(*) AS total,
 		us.mobile AS mobile,
