@@ -64,7 +64,7 @@ ORDER BY tmp.date
 	yaxisName := "金额"
 	switch req.Type {
 	case DrawCashByUc:
-		title = "UC提现金额趋势图"
+		title = "UC提现金额"
 		query = fmt.Sprintf(query, fmt.Sprintf(`
 SELECT  
 	SUM(cny) AS _value,
@@ -76,7 +76,7 @@ WHERE
 	tx_status = 1 AND inserted_at > '%s'  AND inserted_at <  DATE_ADD('%s', INTERVAL 60*23+59 MINUTE)
 GROUP BY date`,  db.Escape(startTime), db.Escape(endTime)))
 	case UcPerson:
-		title = "UC提现人数趋势图"
+		title = "UC提现人数"
 		yaxisName = "人数"
 		seriesName = "人数"
 		query = fmt.Sprintf(query, fmt.Sprintf(`
@@ -90,7 +90,7 @@ WHERE
 	tx_status = 1 AND inserted_at > '%s'  AND inserted_at <  DATE_ADD('%s', INTERVAL 60*23+59 MINUTE)
 GROUP BY date`, db.Escape(startTime), db.Escape(endTime)))
 	case DrawCashByPoint:
-		title = "积分提现金额趋势图"
+		title = "积分提现金额"
 		query = fmt.Sprintf(query, fmt.Sprintf(`
 SELECT  
 	SUM(cny) AS _value,
@@ -103,7 +103,7 @@ WHERE
 GROUP BY date`, db.Escape(startTime), db.Escape(endTime)))
 
 	case PointPerson:
-		title = "积分提现人数趋势图"
+		title = "积分提现人数"
 		yaxisName = "人数"
 		seriesName = "人数"
 		query = fmt.Sprintf(query, fmt.Sprintf(`
@@ -117,7 +117,7 @@ WHERE
 	 inserted_at > '%s' AND inserted_at < DATE_ADD('%s', INTERVAL 60*23+59 MINUTE)
 GROUP BY date`, db.Escape(startTime), db.Escape(endTime)))
 	case TotalDrawCash_:
-		title = "提现总金额趋势图"
+		title = "提现总金额"
 		query = fmt.Sprintf(query, fmt.Sprintf(`
 SELECT 
 	IFNULL(tmp._value,0) AS _value,

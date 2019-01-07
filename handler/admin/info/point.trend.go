@@ -126,7 +126,7 @@ ORDER BY tmp.date
 		}
 	}
 
-	data.Title.Text = "积分发放趋势图"
+	data.Title.Text = "积分发放"
 	data.Xaxis.Data = indexName
 	data.Xaxis.Name = "日期"
 	data.Yaxis.Name = "积分"

@@ -112,7 +112,7 @@ type Title struct {
 type Series struct {
 	Data []string `json:"data"`
 	Name string   `json:"name"`
-	Type string `json:"type,omitempty"`
+	Type string   `json:"type,omitempty"`
 }
 
 type StatsData struct {
@@ -125,6 +125,8 @@ type StatsData struct {
 	TotalFinishTask     int    `json:"total_finish_task"`
 	InviteNumber        int    `json:"invite_number"`
 	Active              int    `json:"active"`
+	NewUsers            int    `json:"new_users"`
+	AllActiveUsers      int    `json:"all_active_users"`
 }
 
 type StatsList struct {
@@ -135,13 +137,13 @@ type StatsList struct {
 func GetPercentList(valueList []string) (PercentList []string) {
 	var total float64
 	for _, value := range valueList {
-		v ,_:= strconv.ParseFloat(value, 64)
+		v, _ := strconv.ParseFloat(value, 64)
 		total += float64(v)
 	}
 
 	for _, value := range valueList {
-		v ,_:= strconv.ParseFloat(value, 64)
-		percent :=  v / total
+		v, _ := strconv.ParseFloat(value, 64)
+		percent := v / total
 		PercentList = append(PercentList, fmt.Sprintf("%.2f", percent*100))
 	}
 

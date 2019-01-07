@@ -46,7 +46,7 @@ GROUP BY date
 	`
 	var data Data
 	if req.Type == 1 {
-		data.Title.Text = "好友活跃数量趋势图"
+		data.Title.Text = "好友活跃数"
 		query = fmt.Sprintf(query, `COUNT(distinct 
 		IF(EXISTS(
 		SELECT 
@@ -63,7 +63,7 @@ GROUP BY date
 		)	,inv.from_user_id,NULL)
 		)`, db.Escape(startTime), db.Escape(endTime))
 	} else {
-		data.Title.Text = "拉新好友数趋势图"
+		data.Title.Text = "拉新好友数"
 		query = fmt.Sprintf(query, "COUNT(distinct inv.from_user_id)", db.Escape(startTime), db.Escape(endTime))
 	}
 	rows, _, err := db.Query(query)
