@@ -25,9 +25,8 @@ func EditAccountHandler(c *gin.Context) {
 	var err error
 	if req.Ban {
 		_, _, err = db.Query(query, req.Id, 1, 0)
-
 	} else {
-		_, _, err = db.Query(query, req.Id, 0, 1)
+		_, _, err = db.Query(query, req.Id, 1, 1)
 	}
 	if CheckErr(err, c) {
 		return

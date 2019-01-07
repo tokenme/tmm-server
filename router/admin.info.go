@@ -54,5 +54,7 @@ func InfoRouter(r *gin.Engine) {
 		InfoGroup.GET(`/trend/task`, info.TaskTrendHandler)
 		InfoGroup.GET(`/trend/app`, info.AppTrendHandler)
 		InfoGroup.GET(`/trend/share`, info.ShareTrendHandler)
+		InfoGroup.GET(`/trend/uc`, info.UcTrendHandler)
+		InfoGroup.GET(`/trend/stats`, info.UserActiveTrendHandler)
 	}
 }
