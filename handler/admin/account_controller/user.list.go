@@ -141,7 +141,7 @@ WHERE
 GROUP BY 
 	id
 ORDER BY 
-	id  ,cny DESC 
+	id  DESC
 LIMIT %d OFFSET %d
 
 `
