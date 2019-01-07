@@ -38,7 +38,6 @@ type ShareData struct {
 
 func ShareHandler(c *gin.Context) {
 	var trackId string
-	code := c.DefaultQuery("code", "null")
 	taskId, deviceId, err := common.DecryptShareTaskLink(c.Param("encryptedTaskId"), c.Param("encryptedDeviceId"), Config)
 	if CheckErr(err, c) {
 		return
@@ -90,6 +89,7 @@ func ShareHandler(c *gin.Context) {
 	mpClient := wechatmp.NewClient(Config.Wechat.AppId, Config.Wechat.AppSecret, Service, c)
 	isWx := strings.Contains(strings.ToLower(c.Request.UserAgent()), "micromessenger")
 	if isWx && !isBlocked && !isRateLimited {
+		code := c.DefaultQuery("code", "null")
 		if len(code) > 0 && code != "null" {
 			oauthAccessToken, err := mpClient.GetOAuthAccessToken(code)
 			if err != nil {

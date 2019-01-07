@@ -5,8 +5,8 @@ import (
 	"github.com/dvwright/xss-mw"
 	"github.com/getsentry/raven-go"
 	"github.com/gin-gonic/gin"
-	"github.com/tokenme/tmm/handler"
 	"github.com/tokenme/tmm/common"
+	"github.com/tokenme/tmm/handler"
 	"github.com/tokenme/tmm/middlewares/sentry"
 	"net/http"
 	"strconv"
@@ -32,13 +32,13 @@ func NewRouter(templatePath string, config common.Config) *gin.Engine {
 		return
 	})
 	r.GET("/contact/list", handler.ApiSignPassFunc(), func(c *gin.Context) {
-        var qqKey string
-        platform := c.Request.Header.Get("tmm-platform")
-        if platform == "ios" {
-            qqKey = config.Contact.QQIOSKey
-        } else {
-            qqKey = config.Contact.QQAndroidKey
-        }
+		var qqKey string
+		platform := c.Request.Header.Get("tmm-platform")
+		if platform == "ios" {
+			qqKey = config.Contact.QQIOSKey
+		} else {
+			qqKey = config.Contact.QQAndroidKey
+		}
 		c.JSON(http.StatusOK, []gin.H{{
 			"name":  "telegram",
 			"value": config.Contact.Telegram,
@@ -86,7 +86,8 @@ func NewRouter(templatePath string, config common.Config) *gin.Engine {
 	inviteRouter(r)
 	goodRouter(r)
 	adRouter(r)
-    operationRouter(r)
+	redpacketRouter(r)
+	operationRouter(r)
 	AdminRouter(r)
 	return r
 }
