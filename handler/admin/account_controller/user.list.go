@@ -90,11 +90,11 @@ SELECT
 	ex.tmm_to_point AS tmm_to_point,
 	IFNULL(inv.online,0) AS online,
 	IFNULL(inv.offline,0) AS offline,
-	IF(us_set.block_whitelist = NULL,0,IF(us_set.block_whitelist=us_set.block_whitelist,0,1)) AS blocked
+	IF(us_set.user_id > 0,IF(us_set.blocked = us_set.block_whitelist,0,1),0) AS blocked
 FROM 
 	ucoin.users AS u
 LEFT JOIN tmm.wx AS wx ON (wx.user_id = u.id)
-LEFT JOIN tmm.user_settings AS us_set ON (us_set.user_id = u.id)
+LEFT JOIN tmm.user_settings AS us_set ON (us_set.user_id = u.id )
 LEFT JOIN (
 SELECT 
 	user_id,

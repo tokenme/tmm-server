@@ -52,12 +52,12 @@ FROM(
 		date
 	UNION ALL
 	SELECT	
-		DATE(inserted_at) AS date,
-		SUM(points) AS points
+		DATE(app.inserted_at) AS date,
+		SUM(app.points) AS points
 	FROM
-		tmm.device_app_tasks
+		tmm.device_app_tasks AS app
 	WHERE
-		inserted_at > '%s' AND status = 1 AND inserted_at <  DATE_ADD('%s', INTERVAL 60*23+59 MINUTE)
+		app.inserted_at > '%s' AND app.status = 1 AND app.inserted_at <  DATE_ADD('%s', INTERVAL 60*23+59 MINUTE) 
 	GROUP BY 
 		date
 	UNION ALL

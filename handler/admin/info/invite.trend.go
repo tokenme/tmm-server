@@ -38,33 +38,110 @@ func InviteTrendHandler(c *gin.Context) {
 	query := `
 SELECT
 	%s,
-	DATE(inv.inserted_at) AS date
+	DATE(u.created) AS date
 FROM 
-	tmm.invite_bonus AS inv
-WHERE inv.inserted_at > '%s'  AND task_type = 0 AND inv.inserted_at <  DATE_ADD('%s', INTERVAL 60*23+59 MINUTE)
+	ucoin.users AS u
+	INNER JOIN tmm.invite_codes AS inv_code ON (inv_code.user_id = u.id AND inv_code.parent_id > 0)
+WHERE u.created > '%s'   AND u.created <  DATE_ADD('%s', INTERVAL 60*23+59 MINUTE)
 GROUP BY date
 	`
 	var data Data
 	if req.Type == 1 {
 		data.Title.Text = "好友活跃数"
-		query = fmt.Sprintf(query, `COUNT(distinct 
+		query = fmt.Sprintf(query, fmt.Sprintf(`COUNT(distinct 
 		IF(EXISTS(
 		SELECT 
-		10
+		1
 		FROM tmm.devices AS dev 
-		LEFT JOIN tmm.device_share_tasks AS sha ON (sha.device_id = dev.id )
-		LEFT JOIN tmm.device_app_tasks AS app ON (app.device_id = dev.id  AND app.status = 1)
-		LEFT JOIN reading_logs AS reading ON (reading.user_id = dev.user_id )
-		WHERE dev.user_id = inv.from_user_id AND ( 
-		sha.inserted_at > inv.inserted_at OR 
-		app.inserted_at > inv.inserted_at OR    
-		reading.inserted_at > inv.inserted_at  )
+		LEFT JOIN tmm.device_share_tasks AS sha 
+	ON (sha.device_id = dev.id AND sha.inserted_at > '%s' AND sha.inserted_at <DATE_ADD('%s', INTERVAL 60*23+59 MINUTE))
+		LEFT JOIN tmm.device_app_tasks AS app 
+	ON (app.device_id = dev.id  AND app.inserted_at > '%s' AND app.inserted_at <DATE_ADD('%s', INTERVAL 60*23+59 MINUTE))
+		LEFT JOIN tmm.reading_logs AS reading 
+	ON (reading.user_id = dev.user_id AND (
+		(reading.inserted_at > '%s' AND reading.inserted_at <DATE_ADD('%s', INTERVAL 60*23+59 MINUTE))
+	OR  (reading.inserted_at > '%s' AND reading.inserted_at <DATE_ADD('%s', INTERVAL 60*23+59 MINUTE))))
+		LEFT JOIN tmm.daily_bonus_logs AS daily ON (daily.user_id = dev.user_id AND updated_on >= '%s'  AND updated_on < DATE_ADD('%s', INTERVAL 60*23+59 MINUTE)) 
+		WHERE dev.user_id = u.id AND (
+		sha.task_id > 0 OR 
+		app.task_id > 0 OR 
+		reading.point > 0 OR
+		daily.user_id > 0
+		)
 		LIMIT 1
-		)	,inv.from_user_id,NULL)
-		)`, db.Escape(startTime), db.Escape(endTime))
-	} else {
+		),u.id,NULL)
+		)`, db.Escape(startTime), db.Escape(endTime),
+		db.Escape(startTime), db.Escape(endTime),
+		db.Escape(startTime), db.Escape(endTime),
+		db.Escape(startTime), db.Escape(endTime),
+		db.Escape(startTime), db.Escape(endTime)),
+		db.Escape(startTime), db.Escape(endTime),)
+	} else if req.Type == 0 {
 		data.Title.Text = "拉新好友数"
-		query = fmt.Sprintf(query, "COUNT(distinct inv.from_user_id)", db.Escape(startTime), db.Escape(endTime))
+		query = fmt.Sprintf(query, "COUNT(1)",db.Escape(startTime),db.Escape(endTime))
+	}else {
+		data.Title.Text = "用户活跃"
+		query =fmt.Sprintf(`
+	SELECT 
+		tmp.value AS value,
+		tmp.date AS date
+	FROM (
+		SELECT 
+		COUNT(DISTINCT tmp.user_id) AS value,
+		tmp.date AS date
+	FROM 
+	(
+		SELECT  
+	dev.user_id AS user_id ,
+	DATE(sha.inserted_at) AS date 
+	FROM 
+	  tmm.device_share_tasks  AS sha 
+	INNER JOIN tmm.devices AS dev ON dev.id = sha.device_id
+	WHERE sha.inserted_at > '%s' AND sha.inserted_at < DATE_ADD('%s', INTERVAL 60*23+59 MINUTE)
+	GROUP BY user_id,date
+	UNION ALL
+	SELECT 
+		dev.user_id AS user_id ,
+		DATE(app.inserted_at) AS date 
+	FROM 
+		tmm.device_app_tasks  AS app 
+	INNER JOIN tmm.devices AS dev ON dev.id = app.device_id
+	WHERE app.inserted_at > '%s' AND app.inserted_at < DATE_ADD('%s', INTERVAL 60*23+59 MINUTE)  
+	GROUP BY user_id,date
+	UNION ALL 
+	SELECT 
+		user_id  AS user_id ,
+		DATE(reading.inserted_at) AS date 
+	FROM 
+		tmm.reading_logs AS reading 
+	WHERE reading.inserted_at > '%s' AND reading.inserted_at < DATE_ADD('%s', INTERVAL 60*23+59 MINUTE)
+	GROUP BY user_id,date
+	UNION ALL 
+	SELECT
+		user_id   AS user_id ,
+		DATE(reading.updated_at) AS date 
+	FROM 
+		tmm.reading_logs AS reading 
+	WHERE reading.updated_at > '%s' AND reading.updated_at < DATE_ADD('%s', INTERVAL 60*23+59 MINUTE)
+	UNION ALL 
+	SELECT 
+		user_id  AS user_id ,
+		DATE(updated_on) AS date 
+	FROM 
+		daily_bonus_logs
+	WHERE updated_on >= '%s' AND  updated_on <= DATE_ADD('%s', INTERVAL 60*23+59 MINUTE)
+	GROUP BY user_id,date
+	) AS tmp 
+	GROUP BY tmp.date 
+	) AS tmp
+	GROUP BY date 
+`,
+db.Escape(startTime),db.Escape(endTime),
+db.Escape(startTime),db.Escape(endTime),
+db.Escape(startTime),db.Escape(endTime),
+db.Escape(startTime),db.Escape(endTime),
+db.Escape(startTime),db.Escape(endTime),)
+
 	}
 	rows, _, err := db.Query(query)
 	if CheckErr(err, c) {
