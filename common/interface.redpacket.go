@@ -113,11 +113,9 @@ type RedpacketRecipient struct {
 type RecipientsSorter []*RedpacketRecipient
 
 func NewRecipientsSorter(m []*RedpacketRecipient) RecipientsSorter {
-
 	ms := make(RecipientsSorter, 0, len(m))
 	ms = append(ms, m...)
 	return ms
-
 }
 
 func (ms RecipientsSorter) Len() int {
@@ -125,7 +123,7 @@ func (ms RecipientsSorter) Len() int {
 }
 
 func (ms RecipientsSorter) Less(i, j int) bool {
-	return ms[i].IsSelf || ms[i].Tmm.LessThan(ms[j].Tmm)
+	return ms[j].IsSelf || !ms[i].IsSelf && ms[i].Tmm.LessThan(ms[j].Tmm)
 }
 
 func (ms RecipientsSorter) Swap(i, j int) {
