@@ -170,10 +170,10 @@ func ShowHandler(c *gin.Context) {
 
 	if recipient.Wechat != nil {
 		data.Title = fmt.Sprintf("快来抢%s的红包", data.Nick)
-		data.ShareTitle = data.Title
 		data.RecipientUnionId = recipient.Wechat.UnionId
 		data.RecipientNick = recipient.GetShowName()
 		data.RecipientAvatar = recipient.GetAvatar(Config.CDNUrl)
+		data.ShareTitle = fmt.Sprintf("快来抢%s的红包", data.RecipientNick)
 	} else if user.Id > 0 {
 		data.ShareTitle = fmt.Sprintf("快来抢%s的红包", data.Nick)
 		data.RecipientUserId = c.Param("encryptedUserId")

@@ -82,18 +82,18 @@ func SubmitHandler(c *gin.Context) {
 		}
 		resp.Nick = user.GetShowName()
 		resp.Avatar = user.GetAvatar(Config.CDNUrl)
-		_, ret, err = db.Query(`UPDATE tmm.redpacket_recipients SET user_id=%d, union_id=%s, nick='%s', avatar='%s', submited_at=NOW() WHERE redpacket_id=%d AND (user_id IS NULL OR union_id IS NULL) LIMIT 1`, user.Id, unionId, db.Escape(nick), db.Escape(resp.Avatar), packetId)
+		_, ret, err = db.Query(`UPDATE tmm.redpacket_recipients SET user_id=%d, union_id=%s, nick='%s', avatar='%s', submited_at=NOW() WHERE redpacket_id=%d AND (user_id IS NULL AND union_id IS NULL) LIMIT 1`, user.Id, unionId, db.Escape(nick), db.Escape(resp.Avatar), packetId)
 	} else {
 		userId := "NULL"
 		{
-			rows, _, _ := db.Query(`SELECT u.id FROM tmm.wx AS wx INNER JOIN ucoin.users AS u ON (u.id=wx.id) WHERE wx.union_id='%s' LIMIT 1`, req.UnionId)
+			rows, _, _ := db.Query(`SELECT u.id FROM tmm.wx AS wx INNER JOIN ucoin.users AS u ON (u.id=wx.user_id) WHERE wx.union_id='%s' LIMIT 1`, req.UnionId)
 			if len(rows) > 0 {
 				userId = fmt.Sprintf("%d", rows[0].Uint64(0))
 			}
 		}
 		resp.Nick = req.Nick
 		resp.Avatar = req.Avatar
-		_, ret, err = db.Query(`UPDATE tmm.redpacket_recipients SET user_id=%s, union_id='%s', nick='%s', avatar='%s', submited_at=NOW() WHERE redpacket_id=%d AND (user_id IS NULL OR union_id IS NULL) LIMIT 1`, userId, db.Escape(req.UnionId), db.Escape(resp.Nick), db.Escape(resp.Avatar), packetId)
+		_, ret, err = db.Query(`UPDATE tmm.redpacket_recipients SET user_id=%s, union_id='%s', nick='%s', avatar='%s', submited_at=NOW() WHERE redpacket_id=%d AND (user_id IS NULL AND union_id IS NULL) LIMIT 1`, userId, db.Escape(req.UnionId), db.Escape(resp.Nick), db.Escape(resp.Avatar), packetId)
 	}
 
 	if err != nil && err.(*mysql.Error).Code == mysql.ER_DUP_ENTRY {

@@ -149,16 +149,16 @@
     margin: 5px 0;
   }
   #recipients .price {
-    font-size: 11px;
+    font-size: 0.75rem;
     font-weight: normal;
     color: gray;
   }
   #recipients .media-content {
     overflow:hidden;
-    border-bottom: #ddd 1px solid;
   }
   #recipients .column.nick {
-    line-height:3.5em;
+    line-height:3.5rem;
+    font-size: 0.75rem;
   }
   .loader {
     box-sizing: border-box;
@@ -278,17 +278,22 @@
     {{ end }}
   <script type="text/javascript">
     var submitting = false;
+    var recipientUnionId = '{{ .RecipientUnionId }}';
+    var recipientUserId = '{{ .RecipientUserId }}';
+    var recipientNick = '{{ .RecipientNick }}';
+    var recipientAvatar = '{{ .RecipientAvatar }}';
+    var packetId = '{{ .PacketId }}';
     function checkHongbao() {
       var loader = document.getElementById('loader');
       loader.setAttribute('class', 'columns is-mobile is-centered');
       if (submitting) return;
       submitting = true;
       axios.post('/redpacket/submit', {
-        union_id: '{{ .RecipientUnionId }}',
-        recipient_id: '{{ .RecipientUserId }}',
-        nick: '{{ .RecipientNick }}',
-        avatar: '{{ .RecipientAvatar }}',
-        redpacket_id: '{{ .PacketId }}',
+        union_id: recipientUnionId,
+        recipient_id: recipientUserId,
+        nick: recipientNick,
+        avatar: recipientAvatar,
+        redpacket_id: packetId,
       }).then(function (response) {
         submitting = false;
         loader.setAttribute('class', 'columns is-mobile is-centered is-invisible');
