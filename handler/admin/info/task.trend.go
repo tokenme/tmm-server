@@ -65,7 +65,7 @@ FROM(
 		SELECT 
 			DATE(app.inserted_at) AS date ,
 			dev.user_id AS user_id,
-			COUNT(IF(app.status = 1,1,NULL)) AS times
+			COUNT(1) AS times
 		FROM 
 			tmm.device_app_tasks  AS app 
 		INNER JOIN 

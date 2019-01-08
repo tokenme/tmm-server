@@ -78,64 +78,52 @@ WHERE
 ) AS tmm,
 ( 
 SELECT 
-		COUNT(IF(tmp.today_total > 0,0,NULL)) AS today_users,
-		COUNT(IF(tmp.yes_total > 0,0,NULL)) AS yes_users,
-		SUM(tmp.today_points) AS today_points,
-		SUM(tmp.yes_points) AS yes_points,
-		SUM(tmp.yes_total) AS yes_total,
-		SUM(tmp.today_total) AS today_total
-FROM(
-	SELECT 
-	dev.user_id AS user_id,
-	IFNULL(SUM(tmp.today_total),0) + IFNULL(reading.today_times,0) AS today_total,
-	IFNULL(SUM(tmp.yes_total),0) + IFNULL(reading.yesterday_times,0) AS yes_total,
-	IFNULL(SUM(tmp.yes_points),0) + IFNULL(reading.yesterday_point,0) AS yes_points,
-	IFNULL(SUM(tmp.today_points),0) + IFNULL(reading.today_point,0) AS today_points
-FROM
-	tmm.devices AS dev
-LEFT JOIN(
-	SELECT 
-		sha.device_id,
-		SUM(IF(sha.inserted_at > DATE(NOW()),sha.points,0)) AS today_points,
-		SUM(IF(sha.inserted_at < DATE(NOW()),sha.points,0)) AS yes_points,
-		COUNT(IF(sha.inserted_at < DATE(NOW()),0,NULL)) AS yes_total,
-		COUNT(IF(sha.inserted_at > DATE(NOW()),0,NULL)) AS today_total
-	FROM 
-		tmm.device_share_tasks  AS sha
-	WHERE 
-		sha.inserted_at > DATE_SUB(DATE(NOW()),INTERVAL 1 DAY) 
-	GROUP BY sha.device_id 
-	UNION ALL
-	SELECT 
-		app.device_id,
-		SUM(IF(app.inserted_at > DATE(NOW()),app.points,0)) AS today_points,
-		SUM(IF(app.inserted_at < DATE(NOW()),app.points,0)) AS yes_points,
-		COUNT(IF(app.inserted_at < DATE(NOW()),0,NULL)) AS yes_total,
-		COUNT(IF(app.inserted_at > DATE(NOW()),0,NULL)) AS today_total
-	FROM
-		tmm.device_app_tasks AS app 
-	WHERE 
-		app.inserted_at > DATE_SUB(DATE(NOW()),INTERVAL 1 DAY) AND status = 1
-	GROUP BY 
-		app.device_id
-	) AS tmp ON (tmp.device_id = dev.id)
-	LEFT JOIN (
-	SELECT
-		user_id,
-		SUM(IF(inserted_at > DATE(NOW()),point,0)) AS today_point,
-		SUM(IF(inserted_at < DATE(NOW()),point,0)) AS yesterday_point,
-		COUNT(IF(inserted_at > DATE(NOW()),0,NULL)) AS today_times,
-		COUNT(IF(inserted_at < DATE(NOW()),0,NULL)) AS yesterday_times
-	FROM
-		tmm.reading_logs
-	WHERE
-		inserted_at > DATE_SUB(DATE(NOW()),INTERVAL 1 DAY)
-	GROUP BY 
-		user_id
-	) AS reading ON (reading.user_id = dev.user_id)
-	GROUP BY 
-		dev.user_id
-	) AS tmp  
+	SUM(IF(tmp.date < DATE(NOW()),tmp.times,0)) AS  yes_total,
+	SUM(IF(tmp.date >= DATE(NOW()),tmp.times,0)) AS  today_total,
+	SUM(IF(tmp.date < DATE(NOW()),tmp.points,0)) AS  yes_points,
+	SUM(IF(tmp.date >= DATE(NOW()),tmp.points,0)) AS  today_points,
+	COUNT( DISTINCT IF(tmp.date >= DATE(NOW()),tmp.user_id,NULL)) AS  today_users,
+	COUNT( DISTINCT IF(tmp.date < DATE(NOW()),tmp.user_id,NULL)) AS  yes_users
+FROM (
+SELECT 		
+			DATE(sha.inserted_at) AS date,
+			dev.user_id AS user_id ,
+			COUNT(1) AS times,
+			SUM(sha.points) AS points
+		FROM 
+			tmm.device_share_tasks  AS sha 
+		INNER JOIN 
+			tmm.devices AS dev ON  (dev.id = sha.device_id)
+		WHERE 
+			sha.inserted_at > DATE_SUB(DATE(NOW()),INTERVAL 1 DAY)
+		GROUP BY 
+			date,dev.user_id 
+	UNION ALL 
+		SELECT 
+			DATE(app.inserted_at) AS date ,
+			dev.user_id AS user_id,
+			COUNT(1) AS times,
+			SUM(IF(app.status = 1,app.points,0)) AS points
+		FROM 
+			tmm.device_app_tasks  AS app 
+		INNER JOIN 
+			tmm.devices AS dev ON  (dev.id = app.device_id)
+		WHERE 
+			app.inserted_at > DATE_SUB(DATE(NOW()),INTERVAL 1 DAY)
+		GROUP BY date,dev.user_id 
+	UNION ALL 
+		SELECT 
+			DATE(inserted_at) AS date,
+			user_id AS user_id ,
+			COUNT(1) AS times,
+			SUM(point)
+		FROM 
+			reading_logs 
+		WHERE 
+			inserted_at > DATE_SUB(DATE(NOW()),INTERVAL 1 DAY)
+		GROUP BY 
+			date,user_id 
+			) AS tmp 
 ) AS device,
 (
 SELECT 
@@ -144,7 +132,7 @@ SELECT
 FROM 
 	   tmm.exchange_records
 WHERE 
-	   direction = 1 AND inserted_at > DATE_SUB(DATE(NOW()),INTERVAL 1 DAY)
+	   direction = 1 AND inserted_at > DATE_SUB(DATE(NOW()),INTERVAL 1 DAY) AND status = 1
 )  AS exchanges,
 (
 SELECT 
@@ -200,29 +188,52 @@ WHERE
 	u.created > DATE_SUB(DATE(NOW()),INTERVAL 1 DAY)
 ) AS users,
 (
-SELECT
-	COUNT(distinct IF(
-	sha.inserted_at > DATE(NOW()) OR 
-	app.inserted_at > DATE(NOW()) OR 
-	reading.inserted_at > DATE(NOW()) OR 
-	reading.updated_at > DATE(NOW())   OR 
-	daily.updated_on >= DATE(NOW())
-	,dev.user_id,NULL)) AS today_active,
-	COUNT(distinct IF(
-	sha.inserted_at < DATE(NOW()) OR 
-	app.inserted_at < DATE(NOW()) OR 
-	reading.inserted_at < DATE(NOW()) OR 
-	reading.updated_at < DATE(NOW())  OR 
-	daily.updated_on <= DATE(NOW())
-	,dev.user_id,NULL)) AS yesterday_active
-FROM 
-	tmm.devices AS dev
-LEFT JOIN tmm.device_share_tasks AS sha ON (sha.device_id = dev.id AND sha.inserted_at > DATE_SUB(DATE(NOW()),INTERVAL 1 DAY))
-LEFT JOIN tmm.device_app_tasks AS app ON (app.device_id = dev.id  AND app.inserted_at > DATE_SUB(DATE(NOW()),INTERVAL 1 DAY) )
-LEFT JOIN tmm.reading_logs AS reading ON (reading.user_id = dev.user_id AND (reading.inserted_at > DATE_SUB(DATE(NOW()),INTERVAL 1 DAY) OR reading.updated_at > DATE_SUB(DATE(NOW()),INTERVAL 1 DAY)))
-LEFT JOIN tmm.daily_bonus_logs AS daily ON (daily.user_id = dev.user_id AND daily.updated_on >= DATE_SUB(DATE(NOW()),INTERVAL 1 DAY) )
-WHERE
-	dev.updated_at > DATE_SUB(DATE(NOW()),INTERVAL 1 DAY)
+SELECT 
+	COUNT(DISTINCT IF(tmp.date < DATE(NOW()),tmp.user_id,NULL)) AS yesterday_active,
+	COUNT(DISTINCT IF(tmp.date >= DATE(NOW()),tmp.user_id,NULL)) AS today_active
+FROM (
+ SELECT  
+	dev.user_id AS user_id ,
+	DATE(sha.inserted_at) AS date 
+	FROM 
+	  tmm.device_share_tasks  AS sha 
+	INNER JOIN tmm.devices AS dev ON dev.id = sha.device_id
+	WHERE sha.inserted_at > DATE_SUB(DATE(NOW()),INTERVAL 1 DAY)
+	GROUP BY user_id,date
+	UNION ALL
+	SELECT 
+		dev.user_id AS user_id ,
+		DATE(app.inserted_at) AS date 
+	FROM 
+		tmm.device_app_tasks  AS app 
+	INNER JOIN tmm.devices AS dev ON dev.id = app.device_id
+	WHERE app.inserted_at > DATE_SUB(DATE(NOW()),INTERVAL 1 DAY)
+	GROUP BY user_id,date
+	UNION ALL 
+	SELECT 
+		user_id  AS user_id ,
+		DATE(reading.inserted_at) AS date 
+	FROM 
+		tmm.reading_logs AS reading 
+	WHERE reading.inserted_at > DATE_SUB(DATE(NOW()),INTERVAL 1 DAY) 
+	GROUP BY user_id,date
+	UNION ALL 
+	SELECT
+		user_id   AS user_id ,
+		DATE(reading.updated_at) AS date 
+	FROM 
+		tmm.reading_logs AS reading 
+	WHERE reading.updated_at > DATE_SUB(DATE(NOW()),INTERVAL 1 DAY)
+	UNION ALL 
+	SELECT 
+		user_id  AS user_id ,
+		DATE(updated_on) AS date 
+	FROM 
+		daily_bonus_logs
+	WHERE updated_on >= DATE_SUB(DATE(NOW()),INTERVAL 1 DAY) 
+	GROUP BY user_id,date
+	) AS tmp 
+	
 ) AS active
 
 `
