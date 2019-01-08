@@ -71,10 +71,14 @@ func ShowHandler(c *gin.Context) {
 				if err != nil {
 					log.Error(err.Error())
 				} else {
+					avatar := userInfo.Avatar
+					if strings.HasPrefix(avatar, "http://") {
+						avatar = strings.Replace(avatar, "http://", "https://", -1)
+					}
 					recipient.Wechat = &common.Wechat{
 						UnionId: userInfo.UnionId,
 						Nick:    userInfo.Nick,
-						Avatar:  userInfo.Avatar,
+						Avatar:  avatar,
 					}
 					recipientUnionId = userInfo.UnionId
 					rows, _, err := db.Query(`SELECT user_id FROM tmm.wx AS wx WHERE union_id='%s' LIMIT 1`, db.Escape(recipientUnionId))
@@ -108,9 +112,13 @@ func ShowHandler(c *gin.Context) {
 			}
 			wxNick := rows[0].Str(3)
 			if wxNick != "" {
+				avatar := rows[0].Str(4)
+				if strings.HasPrefix(avatar, "http://") {
+					avatar = strings.Replace(avatar, "http://", "https://", -1)
+				}
 				user.Wechat = &common.Wechat{
 					Nick:   wxNick,
-					Avatar: rows[0].Str(4),
+					Avatar: avatar,
 				}
 			}
 		}
@@ -119,7 +127,7 @@ func ShowHandler(c *gin.Context) {
 		return
 	}
 	rows, _, err := db.Query(`SELECT
-        rp.id, rp.message, rp.tmm, rp.recipients, rp.creator, IFNULL(u.country_code, 0), IFNULL(u.mobile, ""), IFNULL(u.avatar, ""), wx.nick, wx.avatar
+        rp.id, rp.message, rp.tmm, rp.recipients, rp.creator, IFNULL(u.country_code, 0), IFNULL(u.mobile, ""), IFNULL(u.avatar, ""), wx.nick, wx.avatar, rp.online_status
         FROM tmm.redpackets AS rp
         LEFT JOIN ucoin.users AS u ON (u.id=rp.creator)
         LEFT JOIN tmm.wx AS wx ON (wx.user_id=u.id)
@@ -132,6 +140,7 @@ func ShowHandler(c *gin.Context) {
 	}
 	row := rows[0]
 	tmm, _ := decimal.NewFromString(row.Str(2))
+	maxRecipients := row.Int(3)
 	creator := common.User{
 		Id:          row.Uint64(4),
 		CountryCode: row.Uint(5),
@@ -145,6 +154,7 @@ func ShowHandler(c *gin.Context) {
 			Avatar: row.Str(9),
 		}
 	}
+	onlineStatus := row.Int(10)
 	currentUrl := fmt.Sprintf("%s%s", Config.ShareBaseUrl, c.Request.URL.String())
 	jsConfig, err := mpClient.GetJSConfig(currentUrl)
 	if err != nil {
@@ -193,19 +203,26 @@ func ShowHandler(c *gin.Context) {
 	tmmPrice := common.GetTMMPrice(Service, Config, common.MarketPrice)
 	rate := forex.Rate(Service, "USD", "CNY")
 	tmmPrice = tmmPrice.Mul(rate)
-	data.Cash = tmmPrice.Mul(data.Tmm).RoundBank(2)
+	data.Cash = tmmPrice.Mul(data.Tmm).RoundBank(4)
 	recipients, err := getRecipients(packetId, recipientUserId, recipientUnionId, Service)
-	var submitted bool
+	submitted := len(recipients) >= maxRecipients
 	for _, receipt := range recipients {
-		receipt.Cash = tmmPrice.Mul(receipt.Tmm).RoundBank(2)
+		receipt.Cash = tmmPrice.Mul(receipt.Tmm).RoundBank(4)
 		if recipientUserId > 0 && recipientUserId == receipt.UserId || recipientUnionId != "" && receipt.UnionId == recipientUnionId {
 			submitted = true
+		}
+	}
+	if onlineStatus == 1 && len(recipients) >= maxRecipients {
+		_, _, err := db.Query(`UPDATE tmm.redpackets SET online_status=-1 WHERE id=%d`, packetId)
+		if err != nil {
+			log.Error(err.Error())
 		}
 	}
 	if submitted {
 		data.Recipients = recipients
 	}
 	data.NotSubmitted = !submitted
+
 	c.HTML(http.StatusOK, "redpacket.tmpl", data)
 }
 
@@ -225,11 +242,15 @@ func getRecipients(id uint64, userId uint64, unionId string, service *common.Ser
 		tmm, _ := decimal.NewFromString(row.Str(4))
 		uid := row.Uint64(0)
 		unid := row.Str(1)
+		avatar := row.Str(3)
+		if strings.HasPrefix(avatar, "http://") {
+			avatar = strings.Replace(avatar, "http://", "https://", -1)
+		}
 		rr := &common.RedpacketRecipient{
 			UserId:  uid,
 			UnionId: unid,
 			Nick:    row.Str(2),
-			Avatar:  row.Str(3),
+			Avatar:  avatar,
 			Tmm:     tmm,
 			IsSelf:  userId == uid || unionId == unid,
 		}

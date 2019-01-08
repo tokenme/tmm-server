@@ -3,7 +3,6 @@ package main
 import (
 	//"github.com/tokenme/tmm/tools/orderbook-server"
 	//"github.com/tokenme/tmm/tools/transferwatcher"
-	//"github.com/shopspring/decimal"
 	"flag"
 	"fmt"
 	"github.com/davecgh/go-spew/spew"
@@ -12,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jinzhu/configor"
 	"github.com/mkideal/log"
+	"github.com/shopspring/decimal"
 	"github.com/tokenme/tmm/common"
 	"github.com/tokenme/tmm/handler"
 	"github.com/tokenme/tmm/router"
@@ -57,6 +57,8 @@ func main() {
 		activeBonusFlag            bool
 		fixInviteBonusFlag         bool
 		redpacketFlag              bool
+		redpacketTokensFlag        int64
+		redpacketRecipientsFlag    uint
 	)
 
 	os.Setenv("CONFIGOR_ENV_PREFIX", "-")
@@ -86,6 +88,8 @@ func main() {
 	flag.BoolVar(&activeBonusFlag, "active-bonus", false, "enable check active bonus")
 	flag.BoolVar(&redpacketFlag, "redpacket", false, "enable redpacket service")
 	flag.BoolVar(&fixInviteBonusFlag, "fix-invite-bonus", false, "enable fix invite bonus")
+	flag.Int64Var(&redpacketTokensFlag, "rp-tokens", 0, "set redpacket tokens")
+	flag.UintVar(&redpacketRecipientsFlag, "rp-users", 0, "set redpacket recipients")
 	flag.Parse()
 
 	configor.New(&configor.Config{Verbose: configFlag.Debug, ErrorOnUnmatchedKeys: true, Environment: "production"}).Load(&config, configPath)
@@ -214,6 +218,16 @@ func main() {
 			return
 		}
 		classifier.ClassifyDocs()
+		return
+	}
+
+	if redpacketTokensFlag > 0 && redpacketRecipientsFlag > 0 {
+		rp, err := common.NewRedpacket(service, 0, decimal.New(redpacketTokensFlag, 0), redpacketRecipientsFlag)
+		if err != nil {
+			log.Error(err.Error())
+		} else {
+			log.Info("New Redpacket:%d, Token:%s, Recipients:%d", rp.Id, rp.Tmm.String(), rp.Recipients)
+		}
 		return
 	}
 

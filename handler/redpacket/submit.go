@@ -12,6 +12,7 @@ import (
 	"github.com/tokenme/tmm/utils"
 	"github.com/ziutek/mymysql/mysql"
 	"net/http"
+	"strings"
 )
 
 type SubmitRequest struct {
@@ -72,7 +73,7 @@ func SubmitHandler(c *gin.Context) {
 			if wxUnionId != "" {
 				user.Wechat = &common.Wechat{
 					Nick:   rows[0].Str(4),
-					Avatar: rows[0].Str(4),
+					Avatar: rows[0].Str(5),
 				}
 				unionId = fmt.Sprintf("'%s'", db.Escape(wxUnionId))
 				nick = user.GetShowName()
@@ -81,7 +82,11 @@ func SubmitHandler(c *gin.Context) {
 			}
 		}
 		resp.Nick = user.GetShowName()
-		resp.Avatar = user.GetAvatar(Config.CDNUrl)
+		avatar := user.GetAvatar(Config.CDNUrl)
+		if strings.HasPrefix(avatar, "http://") {
+			avatar = strings.Replace(avatar, "http://", "https://", -1)
+		}
+		resp.Avatar = avatar
 		_, ret, err = db.Query(`UPDATE tmm.redpacket_recipients SET user_id=%d, union_id=%s, nick='%s', avatar='%s', submited_at=NOW() WHERE redpacket_id=%d AND (user_id IS NULL AND union_id IS NULL) LIMIT 1`, user.Id, unionId, db.Escape(nick), db.Escape(resp.Avatar), packetId)
 	} else {
 		userId := "NULL"
@@ -91,8 +96,12 @@ func SubmitHandler(c *gin.Context) {
 				userId = fmt.Sprintf("%d", rows[0].Uint64(0))
 			}
 		}
+		avatar := req.Avatar
+		if strings.HasPrefix(avatar, "http://") {
+			avatar = strings.Replace(avatar, "http://", "https://", -1)
+		}
 		resp.Nick = req.Nick
-		resp.Avatar = req.Avatar
+		resp.Avatar = avatar
 		_, ret, err = db.Query(`UPDATE tmm.redpacket_recipients SET user_id=%s, union_id='%s', nick='%s', avatar='%s', submited_at=NOW() WHERE redpacket_id=%d AND (user_id IS NULL AND union_id IS NULL) LIMIT 1`, userId, db.Escape(req.UnionId), db.Escape(resp.Nick), db.Escape(resp.Avatar), packetId)
 	}
 
@@ -136,7 +145,7 @@ func SubmitHandler(c *gin.Context) {
 	rate := forex.Rate(Service, "USD", "CNY")
 	tmmPrice = tmmPrice.Mul(rate)
 	for _, receipt := range recipients {
-		receipt.Cash = tmmPrice.Mul(receipt.Tmm).RoundBank(2)
+		receipt.Cash = tmmPrice.Mul(receipt.Tmm).RoundBank(4)
 	}
 	c.JSON(http.StatusOK, recipients)
 }
