@@ -1,6 +1,9 @@
 package main
 
 import (
+	//"github.com/tokenme/tmm/tools/orderbook-server"
+	//"github.com/tokenme/tmm/tools/transferwatcher"
+	//"github.com/shopspring/decimal"
 	"flag"
 	"fmt"
 	"github.com/davecgh/go-spew/spew"
@@ -13,14 +16,12 @@ import (
 	"github.com/tokenme/tmm/handler"
 	"github.com/tokenme/tmm/router"
 	"github.com/tokenme/tmm/tools/articleclassifier"
-	"github.com/tokenme/tmm/tools/gc"
-	//"github.com/tokenme/tmm/tools/orderbook-server"
-	"github.com/tokenme/tmm/tools/tmmwithdraw"
-	"github.com/tokenme/tmm/tools/tokenprofile"
-	//"github.com/tokenme/tmm/tools/transferwatcher"
 	"github.com/tokenme/tmm/tools/etherscanspider"
+	"github.com/tokenme/tmm/tools/gc"
 	"github.com/tokenme/tmm/tools/invitebonus"
 	"github.com/tokenme/tmm/tools/qutoutiaospider"
+	"github.com/tokenme/tmm/tools/tmmwithdraw"
+	"github.com/tokenme/tmm/tools/tokenprofile"
 	"github.com/tokenme/tmm/tools/toutiaospider"
 	"github.com/tokenme/tmm/tools/txaccelerate"
 	"github.com/tokenme/tmm/tools/videospider"

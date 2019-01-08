@@ -107,4 +107,27 @@ type RedpacketRecipient struct {
 	UnionId string          `json:"-"`
 	Tmm     decimal.Decimal `json:"tmm"`
 	Cash    decimal.Decimal `json:"cash"`
+	IsSelf  bool            `json:"-"`
+}
+
+type RecipientsSorter []*RedpacketRecipient
+
+func NewRecipientsSorter(m []*RedpacketRecipient) RecipientsSorter {
+
+	ms := make(RecipientsSorter, 0, len(m))
+	ms = append(ms, m...)
+	return ms
+
+}
+
+func (ms RecipientsSorter) Len() int {
+	return len(ms)
+}
+
+func (ms RecipientsSorter) Less(i, j int) bool {
+	return ms[i].IsSelf || ms[i].Tmm.LessThan(ms[j].Tmm)
+}
+
+func (ms RecipientsSorter) Swap(i, j int) {
+	ms[i], ms[j] = ms[j], ms[i]
 }

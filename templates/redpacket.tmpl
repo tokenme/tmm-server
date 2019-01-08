@@ -1,0 +1,369 @@
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui">
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<meta name="renderer" content="webkit">
+<meta property="og:type" content="website"/>
+<meta name="description" content="{{ .Message }}" />
+<meta property="og:title" content="{{ .Title }}"/>
+<meta property="og:image" content="{{ .ShareImage }}"/>
+<link rel="stylesheet" href="https://static.tianxi100.com/bluma.min.css" />
+<link href="https://cdn.bootcss.com/animate.css/3.5.2/animate.min.css" rel="stylesheet"/>
+<link href="https://cdn.bootcss.com/loaders.css/0.1.2/loaders.min.css" rel="stylesheet" />
+<title>{{ .Title }}</title>
+<style>
+  body {
+    margin: 0; padding:0;
+  }
+
+  .hongbao-container {
+    text-align: center;
+    width: 100%;
+    margin: 0 auto;
+    height: 100%;
+    position: absolute;
+    color: white;
+    min-height: 500px;
+  }
+  .hongbao{
+    height:100%;
+    background: #A5423A;
+    left: 0;
+    top: 0;
+    border-radius: 10px;
+    margin: 0 auto;
+  }
+  .topcontent{
+    height: 300px;
+    border: 1px solid #BD503A;
+    background-color: #BD503A;
+    border-radius: 10px 10px 50% 50% / 10px 10px 15% 15%;
+  }
+
+  .avatar_hb{
+    position: relative;
+  }
+  .avatar_hb span{
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    -webkit-transform: rotate(45deg);
+        -ms-transform: rotate(45deg);
+            transform: rotate(45deg);
+    font-size: 2em;
+    font-weight: bolder;
+  }
+  .avatar_hb img{
+    border: 1px solid #bdbdbd;
+    border-radius: 50%;
+    overflow: hidden;
+    margin-top: 10%;
+    width: 60px;
+    height: 60px;
+    border: orange solid 1px;
+    background-color: lightgray;
+  }
+  .topcontent .text{
+    margin: 15px 0;
+    color: #bdbdbd;
+  }
+  .topcontent .description{
+    margin: 20px 0;
+    font-size: 22px;
+    font-weight: 600;
+  }
+
+  .chai{
+    width: 100px;
+    height: 100px;
+    border: 1px solid #FFA73A;
+    background-color: #FFA73A;
+    border-radius: 50%;
+    color: #fff;
+    font-size: 20px;
+    display: inline-block;
+    margin-top: -50px;
+    box-shadow: 0px 4px 0px 0px rgba(0, 0, 0, 0.2);
+  }
+  .chai a{
+      margin-top: 35px;
+      display: inline-block;
+      color: white;
+  }
+
+  .inner {
+    text-align: center;
+    width: 100%;
+    margin: 0 auto;
+    background-color: #fafafa;
+    padding-bottom: 30px;
+  }
+  .inner-top{
+    height: 80px;
+    border: 1px solid #BD503A;
+    background-color: #BD503A;
+    border-radius: 0 0 80% 80%/0 0 100% 100%;
+  }
+  .inner-top h2{
+    margin: 25px 0;
+    font-weight: normal;
+    font-size:13px;
+    color:white;
+  }
+
+  .avatar_inner img{
+    border: 1px solid #bdbdbd;
+    border-radius: 50%;
+    overflow: hidden;
+    margin-top: -18px;
+    width: 60px;
+    height: 60px;
+    border: orange solid 1px;
+    background-color: lightgray;
+  }
+  .inner .description{
+    margin: 10px 0;
+    font-size: 16px;
+    font-weight: normal;
+  }
+  .inner .totalToken{
+    margin: 55px 0 10px 0;
+    font-size: 32px;
+    font-weight: 600;
+  }
+  .inner .totalToken sub {
+    font-size:12px;
+    font-weight:normal;
+  }
+  .inner .totalToken .price {
+    font-size: 12px;
+    font-weight: normal;
+    color: gray;
+  }
+  #recipients {
+    margin: 10px;
+  }
+  #recipients figure {
+    margin: 5px 0;
+  }
+  #recipients .price {
+    font-size: 11px;
+    font-weight: normal;
+    color: gray;
+  }
+  #recipients .media-content {
+    overflow:hidden;
+    border-bottom: #ddd 1px solid;
+  }
+  #recipients .column.nick {
+    line-height:3.5em;
+  }
+  .loader {
+    box-sizing: border-box;
+    display: flex;
+    flex: 0 1 auto;
+    flex-direction: column;
+    flex-grow: 1;
+    flex-shrink: 0;
+    flex-basis: 25%;
+    max-width: 25%;
+    height: 200px;
+    align-items: center;
+    justify-content: center;
+    perspective: 500px;
+  }
+</style>
+</head>
+<body>
+  <div id="cover" class="hongbao-container">
+    <div class="hongbao">
+      <div class="topcontent">
+        <div class="avatar_hb">
+              <img src="{{ .Avatar }}">
+          </div>
+          <span class="text">{{ .Nick }}</span>
+          <div class="description">{{ .Message }}</div>
+      </div>
+      <div class="chai">
+        <a href="javascript:void(0);" onclick="checkHongbao()">拆红包</a>
+        <div id="loader" class="columns is-mobile is-centered is-invisible">
+          <div class="column is-narrow">
+            <div class="ball-scale-multiple">
+              <div></div>
+              <div></div>
+              <div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="inner" class="inner">
+    <div class="inner-top">
+      <h2>{{ .Nick }}</h2>
+      <div class="avatar_inner">
+        <img src="{{ .Avatar }}">
+      </div>
+    </div>
+    <div class="totalToken">
+      {{ .Tmm }}<sub>UC</sub>
+      <div class="price">
+        ≈ {{ .Cash }}元
+      </div>
+    </div>
+    <div class="description">{{ .Message }}</div>
+  </div>
+  <div id="innerList" class="content">
+    <a class="button is-medium is-fullwidth is-success" href="https://ucoin.io/app/download">去UCoin钱包提现</a>
+    <ol id="recipients">
+    {{ range .Recipients }}
+      <li class="media">
+        <div class="media-left">
+          <figure class="image is-48x48">
+            <img src="{{ .Avatar }}" class="is-rounded"/>
+          </figure>
+        </div>
+        <div class="media-content">
+          <div class="content">
+            <div class="columns is-mobile">
+              <div class="column nick">
+                {{ .Nick }}
+              </div>
+              <div class="column has-text-right">
+                {{ .Tmm }} UC
+                <div class="price">≈ {{ .Cash }}元</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </li>
+    {{ end }}
+    </ol>
+  </div>
+  <script src="https://cdn.bootcss.com/axios/0.18.0/axios.min.js"></script>
+  {{ if .JSConfig.Sign }}
+    <script src="https://res.wx.qq.com/open/js/jweixin-1.4.0.js"></script>
+    <script>
+      try {
+        var jsConfig = {
+          debug: false,
+          appId: {{ .AppId }},
+          timestamp: {{ .JSConfig.Timestamp }},
+          nonceStr: {{ .JSConfig.Nonce }},
+          signature: {{ .JSConfig.Sign }},
+          jsApiList: ['updateAppMessageShareData','updateTimelineShareData']
+        };
+        wx.config(jsConfig);
+        wx.ready(function () {
+          var shareAppMessageData = {
+            title: {{ .ShareTitle }},
+            desc: {{ .Message }},
+            link: {{ .ShareLink }},
+            imgUrl: {{ .ShareImage }},
+            success: function () {}
+          };
+          wx.updateAppMessageShareData(shareAppMessageData);
+          var shareTimelineData = {
+            title: {{ .ShareTitle }},
+            link: {{ .ShareLink }},
+            imgUrl: {{ .ShareImage }},
+            success: function () {}
+          };
+          wx.updateTimelineShareData(shareTimelineData);
+        });
+      } catch (e) {}
+    </script>
+    {{ end }}
+  <script type="text/javascript">
+    var submitting = false;
+    function checkHongbao() {
+      var loader = document.getElementById('loader');
+      loader.setAttribute('class', 'columns is-mobile is-centered');
+      if (submitting) return;
+      submitting = true;
+      axios.post('/redpacket/submit', {
+        union_id: '{{ .RecipientUnionId }}',
+        recipient_id: '{{ .RecipientUserId }}',
+        nick: '{{ .RecipientNick }}',
+        avatar: '{{ .RecipientAvatar }}',
+        redpacket_id: '{{ .PacketId }}',
+      }).then(function (response) {
+        submitting = false;
+        loader.setAttribute('class', 'columns is-mobile is-centered is-invisible');
+        renderRecipients(response.data);
+        toggleView(false);
+      }).catch(function (error) {
+        console.log(error);
+        submitting = false;
+        loader.setAttribute('class', 'columns is-mobile is-centered is-invisible');
+      });
+      return false;
+    }
+
+    function renderRecipients(recipients) {
+      var dom = document.getElementById('recipients');
+      var list = dom.getElementsByTagName('li');
+      for (var i=0; i<list.length; i++) {
+        list[i].remove();
+      }
+      for (var i=0; i<recipients.length; i++) {
+        var li = document.createElement('li');
+        li.setAttribute('class', 'media');
+        var mediaLeft = document.createElement('div');
+        mediaLeft.setAttribute('class', 'media-left');
+        var figure = document.createElement('figure');
+        figure.setAttribute('class', 'image is-48x48');
+        var img = document.createElement('img');
+        img.setAttribute('src', recipients[i].avatar);
+        img.setAttribute('class', 'is-rounded')
+        figure.appendChild(img);
+        mediaLeft.appendChild(figure);
+        var mediaContent = document.createElement('div');
+        mediaContent.setAttribute('class', 'media-content');
+        var content = document.createElement('div');
+        content.setAttribute('class', 'content');
+        var columns = document.createElement('div');
+        columns.setAttribute('class', 'columns is-mobile');
+        var nick = document.createElement('div');
+        nick.setAttribute('class', 'column nick');
+        nick.innerText = recipients[i].nick;
+        var valueColumn = document.createElement('div');
+        valueColumn.setAttribute('class', 'column has-text-right');
+        valueColumn.innerText = recipients[i].tmm + 'UC';
+        var price = document.createElement('div');
+        price.setAttribute('class', 'price');
+        price.innerText = '≈ ' + recipients[i].cash + '元';
+        valueColumn.appendChild(price);
+        columns.appendChild(nick);
+        columns.appendChild(valueColumn);
+        content.appendChild(columns);
+        mediaContent.appendChild(content);
+        li.appendChild(mediaLeft);
+        li.appendChild(mediaContent);
+        dom.appendChild(li);
+      }
+    }
+    function toggleView(covered) {
+      var inner = document.getElementById('inner');
+      var innerList = document.getElementById('innerList');
+      var cover = document.getElementById('cover');
+      if (covered) {
+        inner.setAttribute('class', 'inner is-invisible');
+        innerList.setAttribute('class', ' animated fadeOut is-invisible');
+        cover.setAttribute('class', 'hongbao-container animated zoomIn');
+      } else {
+        inner.setAttribute('class', 'inner animated slideInDown');
+        innerList.setAttribute('class', 'animated slideInUp');
+        cover.setAttribute('class', 'hongbao-container animated is-invisible');
+      }
+    }
+    {{ if .NotSubmitted }}
+    toggleView(true);
+    {{ else }}
+    toggleView(false);
+    {{ end }}
+  </script>
+</body>
+</html>
