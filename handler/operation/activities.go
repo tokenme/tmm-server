@@ -15,6 +15,7 @@ func ActivitiesHandler(c *gin.Context) {
         SELECT a.id,
             a.row_id,
             a.image,
+            a.share_image,
             a.online_status,
             a.title,
             a.link,
@@ -36,12 +37,13 @@ func ActivitiesHandler(c *gin.Context) {
             Id:             row.Uint64(0),
             RowId:          row.Uint(1),
             Image:          row.Str(2),
-            OnlineStatus:   int8(row.Int(3)),
-            Title:          row.Str(4),
-            Link:           row.Str(5),
-            Width:          row.Uint(6),
-            Height:         row.Uint(7),
-            Action:         row.Str(8),
+            ShareImage:     row.Str(3),
+            OnlineStatus:   int8(row.Int(4)),
+            Title:          row.Str(5),
+            Link:           row.Str(6),
+            Width:          row.Uint(7),
+            Height:         row.Uint(8),
+            Action:         row.Str(9),
         }
         activities = append(activities, activity)
     }

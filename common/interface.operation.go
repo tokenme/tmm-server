@@ -9,6 +9,7 @@ type Activity struct {
 	OnlineStatus    int8        `json:"online_status"`
     Title           string      `json:"title"`
     Image           string      `json:"image"`
+    ShareImage      string      `json:"share_image,omitempty"`
     Link            string      `json:"link,omitempty"`
 	Width           uint        `json:"width,omitempty"`
 	Height          uint        `json:"height,omitempty"`
