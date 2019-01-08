@@ -48,9 +48,7 @@ FROM(
 		SUM(tmp.times) AS '%s',
 		tmp.date AS date,
 		COUNT(DISTINCT tmp.user_id) AS '%s'
-	FROM 
-		ucoin.users  AS u 
-	LEFT JOIN (
+	FROM (
 		SELECT 		
 			DATE(sha.inserted_at) AS date ,
 			dev.user_id AS user_id ,
@@ -60,20 +58,20 @@ FROM(
 		INNER JOIN 
 			tmm.devices AS dev ON  (dev.id = sha.device_id)
 		WHERE 
-			sha.inserted_at > '%s' AND sha.inserted_at < DATE_ADD('%s', INTERVAL 60*23+59 MINUTE)
+			sha.inserted_at > '%s' AND sha.inserted_at < DATE_ADD('%s', INTERVAL 60*23+59 MINUTE) 
 		GROUP BY 
 			date,dev.user_id 
 	UNION ALL 
 		SELECT 
 			DATE(app.inserted_at) AS date ,
 			dev.user_id AS user_id,
-			COUNT(1) AS times
+			COUNT(IF(app.status = 1,1,NULL)) AS times
 		FROM 
 			tmm.device_app_tasks  AS app 
 		INNER JOIN 
 			tmm.devices AS dev ON  (dev.id = app.device_id)
 		WHERE 
-			app.inserted_at > '%s' AND app.inserted_at < DATE_ADD('%s', INTERVAL 60*23+59 MINUTE)
+			app.inserted_at > '%s' AND app.inserted_at < DATE_ADD('%s', INTERVAL 60*23+59 MINUTE) 
 		GROUP BY date,dev.user_id 
 	UNION ALL 
 		SELECT 
@@ -86,7 +84,7 @@ FROM(
 			inserted_at > '%s' AND inserted_at < DATE_ADD('%s', INTERVAL 60*23+59 MINUTE)
 		GROUP BY 
 			date,user_id 
-	) AS tmp ON (tmp.user_id = u.id)
+	) AS tmp
 	GROUP BY 
 		date `
 	var data TrendData
