@@ -145,13 +145,18 @@ ORDER BY %s %s`
 			rp, err := getRedpacket(Service, Config)
 			if err == nil {
 				rpLink, _ := rp.GetLink(Config, user.Id)
+				msg := rp.Message
+				if msg == "" {
+					msg = "大吉大利，恭喜发财"
+				}
 				task := &common.ShareTask{
+					Summary: msg,
 					Creative: &common.Creative{
+						Title:  "UCoin红包，快来抢",
 						Image:  "https://ucoin.tianxi100.com/redpacket-banner.jpg",
 						Link:   rpLink,
 						Width:  800,
 						Height: 229,
-						Title:  rp.Message,
 					},
 				}
 				tasks = append(tasks, task)

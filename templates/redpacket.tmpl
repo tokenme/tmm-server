@@ -55,7 +55,13 @@
     <div class="description">{{ .Message }}</div>
   </div>
   <div id="innerList" class="content">
+    {{ if .InApp }}
+    <div class="notification is-success is-fullwidth">
+        独乐乐不如众乐乐, 分享到微信。
+    </div>
+    {{ else }}
     <a class="button is-medium is-fullwidth is-success" href="https://ucoin.io/app/download">去UCoin钱包提现</a>
+    {{ end }}
     <ol id="recipients">
     {{ range .Recipients }}
       <li class="media">

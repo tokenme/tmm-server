@@ -39,6 +39,7 @@ type ShowData struct {
 	RecipientAvatar  string                       `json:"recipient_avatar"`
 	Recipients       []*common.RedpacketRecipient `json:"recipients"`
 	NotSubmitted     bool                         `json:"not_submitted"`
+	InApp            bool
 }
 
 func ShowHandler(c *gin.Context) {
@@ -189,6 +190,7 @@ func ShowHandler(c *gin.Context) {
 		data.RecipientUserId = c.Param("encryptedUserId")
 		data.RecipientNick = user.GetShowName()
 		data.RecipientAvatar = user.GetAvatar(Config.CDNUrl)
+		data.InApp = true
 	}
 
 	if recipientUserId > 0 {
