@@ -20,6 +20,7 @@ import (
 	"github.com/tokenme/tmm/tools/gc"
 	"github.com/tokenme/tmm/tools/invitebonus"
 	"github.com/tokenme/tmm/tools/qutoutiaospider"
+	"github.com/tokenme/tmm/tools/redpacket"
 	"github.com/tokenme/tmm/tools/tmmwithdraw"
 	"github.com/tokenme/tmm/tools/tokenprofile"
 	"github.com/tokenme/tmm/tools/toutiaospider"
@@ -55,6 +56,7 @@ func main() {
 		ucoinHoldersFlag           bool
 		activeBonusFlag            bool
 		fixInviteBonusFlag         bool
+		redpacketFlag              bool
 	)
 
 	os.Setenv("CONFIGOR_ENV_PREFIX", "-")
@@ -82,6 +84,7 @@ func main() {
 	flag.BoolVar(&addArticlesFlag, "add-articles", false, "enable add articles")
 	flag.BoolVar(&ucoinHoldersFlag, "update-holders", false, "enable update ucoin holders")
 	flag.BoolVar(&activeBonusFlag, "active-bonus", false, "enable check active bonus")
+	flag.BoolVar(&redpacketFlag, "redpacket", false, "enable redpacket service")
 	flag.BoolVar(&fixInviteBonusFlag, "fix-invite-bonus", false, "enable fix invite bonus")
 	flag.Parse()
 
@@ -335,6 +338,10 @@ func main() {
 		if activeBonusFlag {
 			go activeBonusService.Start()
 		}
+		redpacketService := redpacket.NewService(service, config, handler.GlobalLock)
+		if redpacketFlag {
+			go redpacketService.Start()
+		}
 		//gin.DisableBindValidation()
 		templatePath := path.Join(config.Template, "./*")
 		log.Info("Template path: %s", templatePath)
@@ -354,6 +361,9 @@ func main() {
 		}
 		if activeBonusFlag {
 			activeBonusService.Stop()
+		}
+		if redpacketFlag {
+			redpacketService.Stop()
 		}
 	} else {
 		exitChan := make(chan struct{}, 1)
