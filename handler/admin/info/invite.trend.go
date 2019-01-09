@@ -42,7 +42,7 @@ SELECT
 FROM 
 	ucoin.users AS u
 	INNER JOIN tmm.invite_codes AS inv_code ON (inv_code.user_id = u.id AND inv_code.parent_id > 0)
-WHERE u.created > '%s'   AND u.created <  DATE_ADD('%s', INTERVAL 60*23+59 MINUTE)
+WHERE u.created > '%s'   AND u.created <  DATE_ADD('%s', INTERVAL 1 DAY)
 GROUP BY date
 	`
 	var data Data
@@ -54,14 +54,14 @@ GROUP BY date
 		1
 		FROM tmm.devices AS dev 
 		LEFT JOIN tmm.device_share_tasks AS sha 
-	ON (sha.device_id = dev.id AND sha.inserted_at > '%s' AND sha.inserted_at <DATE_ADD('%s', INTERVAL 60*23+59 MINUTE))
+	ON (sha.device_id = dev.id AND sha.inserted_at > '%s' AND sha.inserted_at <DATE_ADD('%s', INTERVAL 1 DAY))
 		LEFT JOIN tmm.device_app_tasks AS app 
-	ON (app.device_id = dev.id  AND app.inserted_at > '%s' AND app.inserted_at <DATE_ADD('%s', INTERVAL 60*23+59 MINUTE))
+	ON (app.device_id = dev.id  AND app.inserted_at > '%s' AND app.inserted_at <DATE_ADD('%s', INTERVAL 1 DAY))
 		LEFT JOIN tmm.reading_logs AS reading 
 	ON (reading.user_id = dev.user_id AND (
-		(reading.inserted_at > '%s' AND reading.inserted_at <DATE_ADD('%s', INTERVAL 60*23+59 MINUTE))
-	OR  (reading.inserted_at > '%s' AND reading.inserted_at <DATE_ADD('%s', INTERVAL 60*23+59 MINUTE))))
-		LEFT JOIN tmm.daily_bonus_logs AS daily ON (daily.user_id = dev.user_id AND updated_on >= '%s'  AND updated_on < DATE_ADD('%s', INTERVAL 60*23+59 MINUTE)) 
+		(reading.inserted_at > '%s' AND reading.inserted_at <DATE_ADD('%s', INTERVAL 1 DAY))
+	OR  (reading.inserted_at > '%s' AND reading.inserted_at <DATE_ADD('%s', INTERVAL 1 DAY))))
+		LEFT JOIN tmm.daily_bonus_logs AS daily ON (daily.user_id = dev.user_id AND updated_on >= '%s'  AND updated_on < DATE_ADD('%s', INTERVAL 1 DAY)) 
 		WHERE dev.user_id = u.id AND (
 		sha.task_id > 0 OR 
 		app.task_id > 0 OR 
@@ -97,7 +97,7 @@ GROUP BY date
 	FROM 
 	  tmm.device_share_tasks  AS sha 
 	INNER JOIN tmm.devices AS dev ON dev.id = sha.device_id
-	WHERE sha.inserted_at > '%s' AND sha.inserted_at < DATE_ADD('%s', INTERVAL 60*23+59 MINUTE)
+	WHERE sha.inserted_at > '%s' AND sha.inserted_at < DATE_ADD('%s', INTERVAL 1 DAY)
 	GROUP BY user_id,date
 	UNION ALL
 	SELECT 
@@ -106,7 +106,7 @@ GROUP BY date
 	FROM 
 		tmm.device_app_tasks  AS app 
 	INNER JOIN tmm.devices AS dev ON dev.id = app.device_id
-	WHERE app.inserted_at > '%s' AND app.inserted_at < DATE_ADD('%s', INTERVAL 60*23+59 MINUTE)  
+	WHERE app.inserted_at > '%s' AND app.inserted_at < DATE_ADD('%s', INTERVAL 1 DAY)  
 	GROUP BY user_id,date
 	UNION ALL 
 	SELECT 
@@ -114,7 +114,7 @@ GROUP BY date
 		DATE(reading.inserted_at) AS date 
 	FROM 
 		tmm.reading_logs AS reading 
-	WHERE reading.inserted_at > '%s' AND reading.inserted_at < DATE_ADD('%s', INTERVAL 60*23+59 MINUTE)
+	WHERE reading.inserted_at > '%s' AND reading.inserted_at < DATE_ADD('%s', INTERVAL 1 DAY)
 	GROUP BY user_id,date
 	UNION ALL 
 	SELECT
@@ -122,14 +122,14 @@ GROUP BY date
 		DATE(reading.updated_at) AS date 
 	FROM 
 		tmm.reading_logs AS reading 
-	WHERE reading.updated_at > '%s' AND reading.updated_at < DATE_ADD('%s', INTERVAL 60*23+59 MINUTE)
+	WHERE reading.updated_at > '%s' AND reading.updated_at < DATE_ADD('%s', INTERVAL 1 DAY)
 	UNION ALL 
 	SELECT 
 		user_id  AS user_id ,
 		DATE(updated_on) AS date 
 	FROM 
 		daily_bonus_logs
-	WHERE updated_on >= '%s' AND  updated_on <= DATE_ADD('%s', INTERVAL 60*23+59 MINUTE)
+	WHERE updated_on >= '%s' AND  updated_on <= DATE_ADD('%s', INTERVAL 1 DAY)
 	GROUP BY user_id,date
 	) AS tmp 
 	GROUP BY tmp.date 

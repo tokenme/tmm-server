@@ -29,7 +29,7 @@ func UserTrendHandler(c *gin.Context) {
 		COUNT(1)
 	FROM 
 		ucoin.users
-	WHERE created > DATE('%s')   AND created< DATE_ADD('%s', INTERVAL 60*23+59 MINUTE)
+	WHERE created > DATE('%s')   AND created< DATE_ADD('%s', INTERVAL 1 DAY)
 	GROUP BY date
 	ORDER BY date
 `

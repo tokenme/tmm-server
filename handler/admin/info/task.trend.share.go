@@ -54,7 +54,7 @@ FROM(
 	INNER JOIN 
 		tmm.devices AS dev ON ( dev.id = sha.device_id )
 	WHERE 
-		sha.inserted_at > '%s'  AND sha.inserted_at < DATE_ADD('%s', INTERVAL 60*23+59 MINUTE)
+		sha.inserted_at > '%s'  AND sha.inserted_at < DATE_ADD('%s', INTERVAL 1 DAY)
 	GROUP BY date
 	`, startTime, endTime)
 		query = fmt.Sprintf(query, shareArticleUser)
@@ -67,7 +67,7 @@ FROM(
 	FROM 
 		tmm.device_share_tasks AS sha
 	WHERE 
-		sha.inserted_at > '%s'  AND sha.inserted_at < DATE_ADD('%s', INTERVAL 60*23+59 MINUTE)
+		sha.inserted_at > '%s'  AND sha.inserted_at < DATE_ADD('%s', INTERVAL 1 DAY)
 	GROUP BY date 
 	`, startTime, endTime)
 		query = fmt.Sprintf(query, shareArticleNumber)

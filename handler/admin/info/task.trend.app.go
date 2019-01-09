@@ -69,7 +69,7 @@ FROM(
 	) AS beforeData ON 1 = 1
 	WHERE 
 		app.status = 1  AND app.inserted_at > '%s' 
-		AND app.inserted_at < DATE_ADD('%s', INTERVAL 60*23+59 MINUTE) 
+		AND app.inserted_at < DATE_ADD('%s', INTERVAL 1 DAY) 
 	GROUP BY 
 		date 
 	`

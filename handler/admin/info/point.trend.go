@@ -47,7 +47,7 @@ FROM(
 	FROM 
 		tmm.device_share_tasks
 	WHERE 
-		inserted_at > '%s' AND inserted_at <  DATE_ADD('%s', INTERVAL 60*23+59 MINUTE)
+		inserted_at > '%s' AND inserted_at <  DATE_ADD('%s', INTERVAL 1 DAY)
 	GROUP BY 
 		date
 	UNION ALL
@@ -57,7 +57,7 @@ FROM(
 	FROM
 		tmm.device_app_tasks AS app
 	WHERE
-		app.inserted_at > '%s' AND app.status = 1 AND app.inserted_at <  DATE_ADD('%s', INTERVAL 60*23+59 MINUTE) 
+		app.inserted_at > '%s' AND app.status = 1 AND app.inserted_at <  DATE_ADD('%s', INTERVAL 1 DAY) 
 	GROUP BY 
 		date
 	UNION ALL
@@ -67,7 +67,7 @@ FROM(
 	FROM
 		tmm.reading_logs
 	WHERE 
-		inserted_at > '%s' AND inserted_at <  DATE_ADD('%s', INTERVAL 60*23+59 MINUTE)
+		inserted_at > '%s' AND inserted_at <  DATE_ADD('%s', INTERVAL 1 DAY)
 	GROUP BY 
 		date
 	UNION ALL
@@ -77,7 +77,7 @@ FROM(
 	FROM
 		tmm.invite_bonus
 	WHERE 
-		inserted_at > '%s' AND inserted_at <  DATE_ADD('%s', INTERVAL 60*23+59 MINUTE)
+		inserted_at > '%s' AND inserted_at <  DATE_ADD('%s', INTERVAL 1 DAY)
 	GROUP BY
 		date
 ) AS tmp

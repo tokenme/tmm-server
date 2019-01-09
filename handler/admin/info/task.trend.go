@@ -58,7 +58,7 @@ FROM(
 		INNER JOIN 
 			tmm.devices AS dev ON  (dev.id = sha.device_id)
 		WHERE 
-			sha.inserted_at > '%s' AND sha.inserted_at < DATE_ADD('%s', INTERVAL 60*23+59 MINUTE) 
+			sha.inserted_at > '%s' AND sha.inserted_at < DATE_ADD('%s', INTERVAL 1 DAY) 
 		GROUP BY 
 			date,dev.user_id 
 	UNION ALL 
@@ -71,7 +71,7 @@ FROM(
 		INNER JOIN 
 			tmm.devices AS dev ON  (dev.id = app.device_id)
 		WHERE 
-			app.inserted_at > '%s' AND app.inserted_at < DATE_ADD('%s', INTERVAL 60*23+59 MINUTE) 
+			app.inserted_at > '%s' AND app.inserted_at < DATE_ADD('%s', INTERVAL 1 DAY) 
 		GROUP BY date,dev.user_id 
 	UNION ALL 
 		SELECT 
@@ -81,7 +81,7 @@ FROM(
 		FROM 
 			reading_logs 
 		WHERE 
-			inserted_at > '%s' AND inserted_at < DATE_ADD('%s', INTERVAL 60*23+59 MINUTE)
+			inserted_at > '%s' AND inserted_at < DATE_ADD('%s', INTERVAL 1 DAY)
 		GROUP BY 
 			date,user_id 
 	) AS tmp
