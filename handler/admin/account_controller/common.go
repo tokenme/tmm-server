@@ -37,6 +37,25 @@ var typeMap = map[int]string{
 	AppTask: "安装app",
 }
 
+const (
+	ShareBonus = 1
+	AppBonus   = 2
+)
+
+const (
+	DirectFirend = iota
+	InDirectFirend
+)
+
+var InviteMap = map[int]string{
+	ShareBonus: "好友贡献(文章)",
+	AppBonus:   "好友贡献(app)",
+}
+var FirendMap = map[int]string{
+	DirectFirend:   "直接好友",
+	InDirectFirend: "间接好友",
+}
+
 type Task struct {
 	Type   string `json:"type"`
 	Pay    string `json:"pay"`
@@ -46,9 +65,9 @@ type Task struct {
 }
 
 type PageOptions struct {
-	Id      int `form:"id"`
-	Page    int `form:"page"`
-	Limit   int `form:"limit"`
-	Types   int `form:"type"`
+	Id      int    `form:"id"`
+	Page    int    `form:"page"`
+	Limit   int    `form:"limit"`
+	Types   int    `form:"type"`
 	Devices string `form:"devices"`
 }

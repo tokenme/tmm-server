@@ -31,7 +31,8 @@ func MakePointHandler(c *gin.Context) {
 		bonus AS point,
 		inserted_at AS inserted_at,	
 		1 AS type ,
-		0  AS device_id
+		0  AS device_id,
+		0  AS invite_bonus_types 
 	FROM 
   		tmm.invite_bonus
 	WHERE 
@@ -43,7 +44,8 @@ func MakePointHandler(c *gin.Context) {
 		point AS point,
 		inserted_at AS inserted_at,
 		0 AS type,
-		0 AS device_id 
+		0 AS device_id,
+		0  AS invite_bonus_types 
 	FROM 
  		tmm.reading_logs
  	WHERE
@@ -55,7 +57,8 @@ func MakePointHandler(c *gin.Context) {
 		sha.points AS point,
 		sha.inserted_at AS inserted_at,
 		2 AS type,
-		sha.device_id AS device_id 
+		sha.device_id AS device_id,
+		0  AS invite_bonus_types 
 	FROM 
 		tmm.device_share_tasks AS sha
 	INNER JOIN tmm.devices AS dev ON (dev.id = sha.device_id)
@@ -69,11 +72,12 @@ func MakePointHandler(c *gin.Context) {
 		bonus AS point,
 		inserted_at AS inserted_at,	
 		3 AS type ,
-		0  AS device_id 
+		0  AS device_id,
+		task_type  AS invite_bonus_types
 	FROM 
   		tmm.invite_bonus
 	WHERE 
-		user_id = %d AND task_type != 0`, req.Id))
+		user_id = %d AND task_type != 0 AND task_type != 3`, req.Id))
 	}
 	if req.Types == AppTask || req.Types == -1 {
 		froms = append(froms, fmt.Sprintf(`
@@ -81,7 +85,8 @@ func MakePointHandler(c *gin.Context) {
 		app.points AS point,
 		app.inserted_at AS inserted_at,
 		4 AS type, 
-		app.device_id AS device_id
+		app.device_id AS device_id,
+		0  AS invite_bonus_types 
 	FROM
 		tmm.device_app_tasks AS app
 	INNER JOIN tmm.devices AS dev ON (dev.id = app.device_id)
@@ -92,7 +97,8 @@ func MakePointHandler(c *gin.Context) {
 	SELECT 
 		IFNULL(tmp.point,0) AS point,
 		tmp.inserted_at AS inserted_at,
-		tmp.type  AS type
+		tmp.type  AS type,
+		tmp.invite_bonus_types AS invite_bonus_types
 	FROM(
 		%s
 	) AS tmp
@@ -102,7 +108,7 @@ func MakePointHandler(c *gin.Context) {
 	LIMIT %d OFFSET %d
 	`
 	var where string
-	if req.Devices != ""  && req.Types == AppTask || req.Types == Share{
+	if req.Devices != "" && req.Types == AppTask || req.Types == Share {
 		where = fmt.Sprintf(" WHERE tmp.device_id ='%s'", db.Escape(req.Devices))
 	}
 	rows, _, err := db.Query(query, strings.Join(froms, " UNION "), where, req.Limit, offset)
@@ -110,11 +116,17 @@ func MakePointHandler(c *gin.Context) {
 		return
 	}
 	var taskList []*Task
+	var taskType string
 	for _, row := range rows {
+		if row.Int(3) != 0 {
+			taskType =  InviteMap[row.Int(3)]
+		}else{
+			taskType = typeMap[row.Int(2)]
+		}
 		task := &Task{
 			Get:    fmt.Sprintf("+%.2f积分", row.Float(0)),
 			When:   row.Str(1),
-			Type:   typeMap[row.Int(2)],
+			Type:   taskType,
 			Status: TaskSuccessful,
 		}
 		taskList = append(taskList, task)

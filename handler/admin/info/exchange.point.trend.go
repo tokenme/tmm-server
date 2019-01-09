@@ -45,7 +45,7 @@ SELECT
 FROM
 	tmm.exchange_records
 WHERE
-	inserted_at > '%s' AND inserted_at <  DATE_ADD('%s', INTERVAL 60*23+59 MINUTE) AND status = 1 AND direction = 1
+	inserted_at > '%s' AND inserted_at <  DATE_ADD('%s', INTERVAL 1 DAY) AND status = 1 AND direction = 1
 GROUP BY date
 ORDER BY date 
 `
