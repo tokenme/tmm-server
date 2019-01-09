@@ -91,7 +91,7 @@ func UpdateHandler(c *gin.Context) {
 		paymentPasswd := commonutils.Sha1(fmt.Sprintf("%s%s%s", user.Salt, req.PaymentPasswd, user.Salt))
 		updateFields = append(updateFields, fmt.Sprintf("payment_passwd='%s'", db.Escape(paymentPasswd)))
 	} else if req.InviterCode > 0 {
-		_, ret, err := db.Query(`UPDATE tmm.invite_codes AS t1, tmm.invite_codes AS t2 SET t1.parent_id=t2.user_id, t1.grand_id=t2.parent_id WHERE (t1.parent_id!=t2.user_id OR t1.grand_id!=t2.parent_id) AND t2.user_id!=t1.user_id AND t2.parent_id!= t1.user_id AND t2.id != t1.id AND t2.id=%d AND t1.user_id=%d`, req.InviterCode, user.Id)
+		_, ret, err := db.Query(`UPDATE tmm.invite_codes AS t1, tmm.invite_codes AS t2 SET t1.parent_id=t2.user_id, t1.grand_id=t2.parent_id WHERE (t1.parent_id!=t2.user_id OR t1.grand_id!=t2.parent_id) AND t2.user_id!=t1.user_id AND t2.parent_id!= t1.user_id AND t1.parent_id=0 AND t2.id != t1.id AND t2.id=%d AND t1.user_id=%d`, req.InviterCode, user.Id)
 		if CheckErr(err, c) {
 			log.Error(err.Error())
 			raven.CaptureError(err, nil)
@@ -178,7 +178,22 @@ ORDER BY ul.id DESC LIMIT 1
 		}
 	} else if req.WxUnionId != "" {
 		expires := time.Unix(req.WxExpires/1000, 0)
-		_, _, err := db.Query(`INSERT INTO tmm.wx (user_id, union_id, open_id, nick, avatar, gender, access_token, expires) VALUES (%d, '%s', '%s', '%s', '%s', %d, '%s', '%s') ON DUPLICATE KEY UPDATE union_id=VALUES(union_id), open_id=VALUES(open_id), nick=VALUES(nick), avatar=VALUES(avatar), gender=VALUES(gender), access_token=VALUES(access_token), expires=VALUES(expires)`, user.Id, db.Escape(req.WxUnionId), db.Escape(req.WxOpenId), db.Escape(req.WxNick), db.Escape(req.WxAvatar), req.WxGender, db.Escape(req.WxToken), expires.Format("2006-01-02 15:04:05"))
+		rows, _, err := db.Query(`SELECT union_id FROM tmm.wx WHERE user_id=%d LIMIT 1`, user.Id)
+		if CheckErr(err, c) {
+			return
+		}
+		if len(rows) > 0 {
+			unionId := rows[0].Str(0)
+			if unionId == req.WxUnionId {
+				_, _, err := db.Query(`UPDATE tmm.wx SET nick='%s', avatar='%s', gender=%d, access_token='%s', expires='%s' WHERE user_id=%d`, db.Escape(req.WxNick), db.Escape(req.WxAvatar), req.WxGender, db.Escape(req.WxToken), expires.Format("2006-01-02 15:04:05"), user.Id)
+				if CheckErr(err, c) {
+					return
+				}
+			}
+			c.JSON(http.StatusOK, APIResponse{Msg: "ok"})
+			return
+		}
+		_, _, err = db.Query(`INSERT INTO tmm.wx (user_id, union_id, open_id, nick, avatar, gender, access_token, expires) VALUES (%d, '%s', '%s', '%s', '%s', %d, '%s', '%s') ON DUPLICATE KEY UPDATE union_id=VALUES(union_id), open_id=VALUES(open_id), nick=VALUES(nick), avatar=VALUES(avatar), gender=VALUES(gender), access_token=VALUES(access_token), expires=VALUES(expires)`, user.Id, db.Escape(req.WxUnionId), db.Escape(req.WxOpenId), db.Escape(req.WxNick), db.Escape(req.WxAvatar), req.WxGender, db.Escape(req.WxToken), expires.Format("2006-01-02 15:04:05"))
 		if CheckErr(err, c) {
 			log.Error(err.Error())
 			raven.CaptureError(err, nil)
