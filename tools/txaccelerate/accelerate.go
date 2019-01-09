@@ -60,6 +60,14 @@ func Accelerate(service *common.Service, config common.Config, tx string, gas in
 	if err != nil {
 		log.Println(err.Error())
 	}
+	_, _, err = db.Query(`UPDATE tmm.invite_bonus SET tmm_tx='%s' WHERE tmm_tx='%s' AND tx_status=2`, newTransaction.Hash().Hex(), tx)
+	if err != nil {
+		log.Println(err.Error())
+	}
+	_, _, err = db.Query(`UPDATE tmm.redpacket_recipients SET tx='%s' WHERE tx='%s' AND tx_status=2`, newTransaction.Hash().Hex(), tx)
+	if err != nil {
+		log.Println(err.Error())
+	}
 	log.Println("Tx: " + newTransaction.Hash().Hex())
 	return nil
 }

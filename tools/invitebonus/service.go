@@ -284,6 +284,42 @@ AND NOT EXISTS (SELECT 1 FROM tmm.user_settings AS us3 WHERE us3.user_id=ic.gran
 			log.Info("Transferred: %d, %s", userId, receipt)
 		}
 	}
+
+	query = `SELECT ib.user_id, ib.tmm, u.wallet_addr
+FROM tmm.invite_bonus AS ib
+INNER JOIN ucoin.users AS u ON (u.id=ib.user_id)
+WHERE
+ib.user_id=ib.from_user_id
+AND ib.tmm>0
+AND ib.tmm_tx=''
+AND ib.task_type=0
+AND NOT EXISTS (SELECT 1 FROM tmm.user_settings AS us WHERE us.user_id=ib.user_id AND us.blocked=1 AND us.block_whitelist=0 LIMIT 1)`
+	rows, _, err = db.Query(query)
+	if err != nil {
+		log.Error(err.Error())
+		return
+	}
+	for _, row := range rows {
+		userId := row.Uint64(0)
+		tokenAmount, err := decimal.NewFromString(row.Str(1))
+		if err != nil {
+			log.Error(err.Error())
+			continue
+		}
+		userWallet := row.Str(2)
+		log.Info("Transfer: %d", userId)
+		receipt, err := this.transferToken(userWallet, tokenAmount, ctx)
+		if err != nil {
+			log.Error("Bonus Transfer failed")
+			continue
+		}
+		_, _, err = db.Query(`UPDATE tmm.invite_bonus SET tmm_tx='%s' WHERE user_id=from_user_id AND task_type=0 AND tmm>0 AND tmm_tx='' AND user_id=%d`, db.Escape(receipt), userId)
+		if err != nil {
+			log.Error(err.Error())
+			continue
+		}
+		log.Info("Transferred: %d, %s", userId, receipt)
+	}
 }
 
 func (this *Service) PushMsg(userId uint64, bonus decimal.Decimal) {

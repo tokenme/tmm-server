@@ -91,18 +91,30 @@ func ShareHandler(c *gin.Context) {
 	if isWx && !isBlocked && !isRateLimited {
 		code := c.DefaultQuery("code", "null")
 		if len(code) > 0 && code != "null" {
-			oauthAccessToken, err := mpClient.GetOAuthAccessToken(code)
-			if err != nil {
-				log.Error(err.Error())
-			} else if len(oauthAccessToken.Openid) > 0 {
-				now := time.Now()
-				cryptOpenid := common.CryptOpenid{
-					Openid: oauthAccessToken.Openid,
-					Ts:     now.Unix(),
-				}
-				trackId, err = cryptOpenid.Encode([]byte(Config.YktApiSecret))
+			redisConn := Service.Redis.Master.Get()
+			defer redisConn.Close()
+			codeKey := common.WxCodeKey(code)
+			openId, _ := redis.String(redisConn.Do("GET", codeKey))
+			if openId != "" {
+				log.Error("Wechat code used, openId:%s", openId)
+			} else {
+				oauthAccessToken, err := mpClient.GetOAuthAccessToken(code)
 				if err != nil {
 					log.Error(err.Error())
+				} else if len(oauthAccessToken.Openid) > 0 {
+					_, err = redisConn.Do("SETEX", codeKey, 60*2, oauthAccessToken.Openid)
+					if err != nil {
+						log.Error(err.Error())
+					}
+					now := time.Now()
+					cryptOpenid := common.CryptOpenid{
+						Openid: oauthAccessToken.Openid,
+						Ts:     now.Unix(),
+					}
+					trackId, err = cryptOpenid.Encode([]byte(Config.YktApiSecret))
+					if err != nil {
+						log.Error(err.Error())
+					}
 				}
 			}
 		} else if code == "null" {

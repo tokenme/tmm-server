@@ -120,6 +120,10 @@ func (this ShareTask) UserRateLimitKey(uid uint64) string {
 	return fmt.Sprintf("st-%d-rate", uid)
 }
 
+func WxCodeKey(code string) string {
+	return fmt.Sprintf("wxcode-%s", code)
+}
+
 type AppTask struct {
 	Id            uint64          `json:"id"`
 	Creator       uint64          `json:"creator",omitempty`

@@ -30,7 +30,9 @@ func WithdrawHandler(c *gin.Context) {
 	var userWithdraw common.UserWithdraw
 	if len(rows) > 0 {
 		userWithdraw.Points, _ = decimal.NewFromString(rows[0].Str(0))
-		userWithdraw.TMM, _ = decimal.NewFromString(rows[1].Str(0))
+		if len(rows) > 1 {
+			userWithdraw.TMM, _ = decimal.NewFromString(rows[1].Str(0))
+		}
 	}
 	currency := c.Query("currency")
 	if currency == "" {

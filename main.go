@@ -346,8 +346,7 @@ func main() {
 		}
 		activeBonusService := invitebonus.NewService(service, config, handler.GlobalLock)
 		if fixInviteBonusFlag {
-			activeBonusService.FixBonus()
-			return
+			go activeBonusService.FixBonus()
 		}
 		if activeBonusFlag {
 			go activeBonusService.Start()
