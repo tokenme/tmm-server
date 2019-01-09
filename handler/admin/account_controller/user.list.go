@@ -1,14 +1,14 @@
 package account_controller
 
 import (
-	"github.com/gin-gonic/gin"
-	. "github.com/tokenme/tmm/handler"
 	"fmt"
-	"strings"
-	"net/http"
-	"github.com/tokenme/tmm/handler/admin"
+	"github.com/gin-gonic/gin"
 	"github.com/shopspring/decimal"
+	. "github.com/tokenme/tmm/handler"
+	"github.com/tokenme/tmm/handler/admin"
+	"net/http"
 	"strconv"
+	"strings"
 )
 
 type withdrawType int
@@ -145,21 +145,8 @@ LIMIT %d OFFSET %d
 `
 	totalQuery := `
 SELECT
-	u.id AS id,
-	wx.nick AS nick,
-	u.mobile AS mobile,
-	cny.total AS cny_total,
-	IFNULL(cny.cny,0)  AS  cny,
-	point.total AS point_total,
-	IFNULL(point.point,0) AS point,
-	ex.exchange_total AS exchange_total,
-	ex.point_to_tmm_times AS point_to_tmm_times,
-	ex.tmm_to_point_times AS tmm_to_point_times,
-	IFNULL(ex.point_to_tmm,0) AS point_to_tmm,
-	ex.tmm_to_point AS tmm_to_point,
-	IFNULL(inv.online,0) AS online,
-	IFNULL(inv.offline,0) AS offline,
-	IF(us_set.user_id > 0,IF(us_set.blocked = us_set.block_whitelist,0,1),0) AS blocked
+	IF(us_set.user_id > 0,IF(us_set.blocked = us_set.block_whitelist,0,1),0) AS blocked,
+	u.id
 FROM 
 	ucoin.users AS u
 LEFT JOIN tmm.wx AS wx ON (wx.user_id = u.id)
@@ -436,19 +423,19 @@ LEFT JOIN (
 		where = append(where, fmt.Sprintf(" AND cny.total >= %d", search.WithDrawNumberOfTimes))
 	}
 	if search.WithDrawAmount != 0 {
-		where = append(where, fmt.Sprintf(" AND cny >= %d", search.WithDrawAmount))
+		where = append(where, fmt.Sprintf(" AND cny.cny >= %d", search.WithDrawAmount))
 	}
 	if search.ExchangePointToUc != 0 {
-		where = append(where, fmt.Sprintf(` AND point_to_tmm_times >= %d `, search.ExchangePointToUc))
+		where = append(where, fmt.Sprintf(` AND ex.point_to_tmm_times >= %d `, search.ExchangePointToUc))
 	}
 	if search.ExchangePointToUcAmount != 0 {
-		where = append(where, fmt.Sprintf(` AND point_to_tmm >= %d`, search.ExchangePointToUcAmount))
+		where = append(where, fmt.Sprintf(` AND ex.point_to_tmm >= %d`, search.ExchangePointToUcAmount))
 	}
 	if search.ExchangeUcToPoint != 0 {
-		where = append(where, fmt.Sprintf(` AND tmm_to_point_times >= %d`, search.ExchangeUcToPoint))
+		where = append(where, fmt.Sprintf(` AND ex.tmm_to_point_times >= %d`, search.ExchangeUcToPoint))
 	}
 	if search.ExchangeUcToPointAmount != 0 {
-		where = append(where, fmt.Sprintf(` AND tmm_to_point >= %d`, search.ExchangeUcToPointAmount))
+		where = append(where, fmt.Sprintf(` AND ex.tmm_to_point >= %d`, search.ExchangeUcToPointAmount))
 	}
 	if search.MakePointTimes != 0 {
 		where = append(where, fmt.Sprintf(` AND point.total >= %d`, search.MakePointTimes))
@@ -457,13 +444,15 @@ LEFT JOIN (
 		where = append(where, fmt.Sprintf(` AND IFNULL(point.point,1) / IFNULL(point._day,1) >= %d`, search.MakePointDay))
 	}
 	if search.OnlineBFNumber != 0 {
-		where = append(where, fmt.Sprintf(` AND online >= %d`, search.OnlineBFNumber))
+		where = append(where, fmt.Sprintf(` AND inv.online >= %d`, search.OnlineBFNumber))
 	}
 	if search.OffLineBfNumber != 0 {
-		where = append(where, fmt.Sprintf(` AND offline >= %d`, search.OffLineBfNumber))
+		where = append(where, fmt.Sprintf(` AND inv.offline >= %d`, search.OffLineBfNumber))
 	}
 	if search.IsWhiteList {
-		where = append(where, fmt.Sprintf(`  AND blocked = %d `, 1))
+		where = append(where, fmt.Sprintf(`  AND IF(us_set.user_id > 0,IF(us_set.blocked = us_set.block_whitelist,0,1),0) = %d `, 1))
+	} else {
+		where = append(where, fmt.Sprintf(`  AND IF(us_set.user_id > 0,IF(us_set.blocked = us_set.block_whitelist,0,1),0) = %d `, 0))
 	}
 	rows, res, err := db.Query(query, strings.Join(when, " "),
 		strings.Join(leftJoin, " "), strings.Join(where, " "), limit, offset)
