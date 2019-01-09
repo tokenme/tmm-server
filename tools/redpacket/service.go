@@ -104,18 +104,20 @@ func (this *Service) CheckTransferBonus(ctx context.Context) error {
 		this.transferBonusCh <- struct{}{}
 	}()
 	db := this.service.Db
-	_, _, err := db.Query(`UPDATE tmm.redpacket_recipients AS rr,
-(SELECT rr.id, wx.user_id, wx.union_id
-FROM tmm.redpacket_recipients AS rr
-INNER JOIN tmm.wx ON (wx.union_id=rr.union_id)
-WHERE rr.user_id IS NULL) AS t
-SET rr.user_id=t.user_id
-WHERE rr.id=t.id`)
-	if err != nil {
-		log.Error(err.Error())
-		return err
-	}
-	rows, _, err := db.Query(`SELECT rb.id, u.wallet_addr, rb.tmm, u.id FROM tmm.redpacket_recipients AS rb INNER JOIN ucoin.users AS u ON (u.id=rb.user_id) WHERE rb.tx='' ORDER BY rb.id ASC LIMIT 1000`)
+	query := `SELECT
+    rb.id AS id, u.wallet_addr AS wallet, rb.tmm AS tmm, u.id AS user_id
+FROM tmm.redpacket_recipients AS rb
+INNER JOIN ucoin.users AS u ON (u.id=rb.user_id)
+WHERE rb.tx=''
+UNION
+SELECT
+    rb.id AS id, u.wallet_addr AS wallet, rb.tmm AS tmm, u.id AS user_id
+FROM tmm.redpacket_recipients AS rb
+INNER JOIN tmm.wx AS wx ON (wx.union_id=rb.union_id)
+INNER JOIN ucoin.users AS u ON (u.id=wx.user_id)
+WHERE rb.user_id IS NULL AND rb.tx=''
+ORDER BY id ASC LIMIT 1000`
+	rows, _, err := db.Query(query)
 	if err != nil {
 		log.Error(err.Error())
 		return err
