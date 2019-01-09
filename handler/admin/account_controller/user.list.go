@@ -1,14 +1,14 @@
 package account_controller
 
 import (
-	"github.com/gin-gonic/gin"
-	. "github.com/tokenme/tmm/handler"
 	"fmt"
-	"strings"
-	"net/http"
-	"github.com/tokenme/tmm/handler/admin"
+	"github.com/gin-gonic/gin"
 	"github.com/shopspring/decimal"
+	. "github.com/tokenme/tmm/handler"
+	"github.com/tokenme/tmm/handler/admin"
+	"net/http"
 	"strconv"
+	"strings"
 )
 
 type withdrawType int
@@ -24,9 +24,6 @@ const (
 	invite
 	reading
 	share
-)
-const (
-	TimeFormat = `%Y-%m-%d`
 )
 
 type SearchOptions struct {
@@ -91,6 +88,7 @@ SELECT
 	IFNULL(inv.online,0) AS online,
 	IFNULL(inv.offline,0) AS offline,
 	IF(us_set.user_id > 0,IF(us_set.blocked = us_set.block_whitelist,0,1),0) AS blocked
+	
 FROM 
 	ucoin.users AS u
 LEFT JOIN tmm.wx AS wx ON (wx.user_id = u.id)
@@ -127,7 +125,7 @@ GROUP BY  id UNION ALL
 SELECT 
 	inv.grand_id AS id,
 	COUNT(distinct IF(dev.lastping_at > DATE(NOW()),inv.user_id,NULL))   AS online,
-	COUNT(distinct IF(dev.lastping_at < DATE(NOW()),inv.user_id,NULL))   AS offline
+	COUNT(distinct IF(IFNULL(dev.lastping_at,DATE_SUB(NOW(),INTERVAL 1 DAY)) < DATE(NOW()),inv.user_id,NULL))   AS offline
 FROM 	
 	invite_codes AS inv 
 LEFT JOIN tmm.devices AS dev ON (dev.user_id = inv.user_id)
@@ -145,6 +143,61 @@ ORDER BY
 LIMIT %d OFFSET %d
 
 `
+	totalQuery := `
+SELECT
+	IF(us_set.user_id > 0,IF(us_set.blocked = us_set.block_whitelist,0,1),0) AS blocked,
+	u.id
+FROM 
+	ucoin.users AS u
+LEFT JOIN tmm.wx AS wx ON (wx.user_id = u.id)
+LEFT JOIN tmm.user_settings AS us_set ON (us_set.user_id = u.id )
+LEFT JOIN (
+SELECT 
+	user_id,
+	COUNT(1) AS exchange_total,
+	COUNT(IF(direction = 1,0,NULL)) AS point_to_tmm_times,
+	COUNT(IF(direction = -1,0,NULL)) AS tmm_to_point_times,
+	SUM(IF(direction = 1 ,tmm,0)) AS point_to_tmm,
+	SUM(IF(direction = -1 ,points,0)) AS tmm_to_point
+FROM 
+	tmm.exchange_records 
+WHERE 
+	status = 1 %s
+GROUP BY 
+	user_id 
+) AS ex ON (ex.user_id = u.id)
+LEFT JOIN (
+SELECT 
+	tmp.id AS id,
+	SUM(tmp.online) AS online,
+	SUM(tmp.offline) AS offline
+FROM (
+SELECT
+	inv.parent_id AS id,
+	COUNT(distinct IF(dev.lastping_at > DATE(NOW()),inv.user_id,NULL))   AS online,
+	COUNT(distinct IF(IFNULL(dev.lastping_at,DATE_SUB(NOW(),INTERVAL 1 DAY)) < DATE(NOW()),inv.user_id,NULL))   AS offline
+FROM 	
+	invite_codes AS inv 
+LEFT JOIN tmm.devices AS dev ON (dev.user_id = inv.user_id)
+GROUP BY  id UNION ALL
+SELECT 
+	inv.grand_id AS id,
+	COUNT(distinct IF(dev.lastping_at > DATE(NOW()),inv.user_id,NULL))   AS online,
+	COUNT(distinct IF(IFNULL(dev.lastping_at,DATE_SUB(NOW(),INTERVAL 1 DAY)) < DATE(NOW()),inv.user_id,NULL))   AS offline
+FROM 	
+	invite_codes AS inv 
+LEFT JOIN tmm.devices AS dev ON (dev.user_id = inv.user_id)
+GROUP BY  id
+) AS tmp 
+GROUP BY tmp.id
+) AS inv ON (inv.id = u.id)
+%s 
+WHERE 
+    1 = 1 %s
+GROUP BY 
+	id
+ORDER BY 
+	id  DESC`
 	var leftJoin []string
 	var when []string
 	var where []string
@@ -242,7 +295,7 @@ LEFT JOIN (
 			device_id, 
 			SUM(points) AS points,
 			COUNT(1) AS total,
-			DATE_FORMAT(inserted_at,'%s') AS date
+			DATE(inserted_at) AS date
 		FROM 
 			tmm.device_share_tasks
 		WHERE 
@@ -253,7 +306,7 @@ LEFT JOIN (
 			device_id, 
 			SUM(points) AS points,
 			COUNT(1) AS total,
-			DATE_FORMAT(inserted_at,'%s') AS date
+			DATE(inserted_at) AS date
 		FROM 
 			tmm.device_app_tasks   
 		WHERE
@@ -287,8 +340,8 @@ LEFT JOIN (
 	) AS read_ ON (read_.user_id = dev.user_id)
 	GROUP BY 
 		dev.user_id
-) AS point ON (point.id = u.id)`, TimeFormat, strings.Join(when, ` `),
-			TimeFormat, strings.Join(when, ` `), strings.Join(when, ` `),strings.Join(when,` `)))
+) AS point ON (point.id = u.id)`, strings.Join(when, ` `),
+			strings.Join(when, ` `), strings.Join(when, ` `), strings.Join(when, ` `)))
 	case invite:
 		leftJoin = append(leftJoin, fmt.Sprintf(` 
 LEFT JOIN (
@@ -296,14 +349,14 @@ LEFT JOIN (
 		SUM(bonus) AS point,
 		user_id AS id ,
 		COUNT(1) AS total,
-		COUNT(distinct DATE_FORMAT(inserted_at,'%s')) AS _day
+		COUNT(distinct DATE(inserted_at)) AS _day
 	FROM 
 		tmm.invite_bonus 
 	WHERE
-		task_id = 0 %s
+		task_type = 0 %s
 	GROUP BY 
 		user_id
-) AS point ON (point.id = u.id)`, TimeFormat, strings.Join(when, " ")))
+) AS point ON (point.id = u.id)`, strings.Join(when, " ")))
 	case reading:
 		leftJoin = append(leftJoin, fmt.Sprintf(`
 LEFT JOIN (
@@ -311,39 +364,48 @@ LEFT JOIN (
 		user_id AS id,
 		SUM(point) AS point,
 		COUNT(1)  AS total,
-		COUNT(distinct DATE_FORMAT(inserted_at,'%s')) AS _day
+		COUNT(distinct DATE(inserted_at)) AS _day
 	FROM 
 		tmm.reading_logs 
 	WHERE 
 		1 = 1 %s
 	GROUP BY 
 	  user_id
-) AS point ON (point.id = u.id)`, TimeFormat, strings.Join(when, " ")))
+) AS point ON (point.id = u.id)`, strings.Join(when, " ")))
 	case share:
 		leftJoin = append(leftJoin, fmt.Sprintf(`
 LEFT JOIN (
 	SELECT 
 		dev.user_id AS id,
-		tmp.points AS point,
-		tmp.total AS total,
-		COUNT(distinct DATE_FORMAT(inserted_at,'%s')) AS _day
+		SUM(tmp.points) AS point,
+		COUNT(1) AS total,
+		COUNT(distinct DATE(tmp._date)) AS _day
 	FROM 
 		tmm.devices AS dev  
 	LEFT JOIN (
 		SELECT 
-			SUM(points) AS points,
-			device_id  AS id ,
-			COUNT(1) AS total
+			sha.points AS points,
+			dev.user_id  AS id ,
+			sha.inserted_at AS _date
 		FROM 
-			tmm.device_share_tasks
+			tmm.device_share_tasks AS sha 
+		INNER JOIN tmm.devices AS dev ON dev.id = sha.device_id 
 		WHERE 	
     		1 = 1 %s
 		GROUP BY 
 			id
-	) AS tmp ON (tmp.id = dev.id)
+		UNION ALL 
+		SELECT
+			bonus AS points,
+			user_id AS id,
+			inserted_at AS _date
+		FROM 
+			tmm.invite_bonus 
+		WHERE task_type != 0 AND bonus > 0 AND %s 
+	) AS tmp ON (tmp.id = dev.user_id)
 	GROUP BY 
 	user_id
-) AS point ON (point.id = u.id)`, TimeFormat, strings.Join(when, "")))
+) AS point ON (point.id = u.id)`, strings.Join(when, ""), strings.Join(when, "")))
 	default:
 		c.JSON(http.StatusOK, admin.Response{
 			Code:    0,
@@ -361,19 +423,19 @@ LEFT JOIN (
 		where = append(where, fmt.Sprintf(" AND cny.total >= %d", search.WithDrawNumberOfTimes))
 	}
 	if search.WithDrawAmount != 0 {
-		where = append(where, fmt.Sprintf(" AND cny >= %d", search.WithDrawAmount))
+		where = append(where, fmt.Sprintf(" AND cny.cny >= %d", search.WithDrawAmount))
 	}
 	if search.ExchangePointToUc != 0 {
-		where = append(where, fmt.Sprintf(` AND point_to_tmm_times >= %d `, search.ExchangePointToUc))
+		where = append(where, fmt.Sprintf(` AND ex.point_to_tmm_times >= %d `, search.ExchangePointToUc))
 	}
 	if search.ExchangePointToUcAmount != 0 {
-		where = append(where, fmt.Sprintf(` AND point_to_tmm >= %d`, search.ExchangePointToUcAmount))
+		where = append(where, fmt.Sprintf(` AND ex.point_to_tmm >= %d`, search.ExchangePointToUcAmount))
 	}
 	if search.ExchangeUcToPoint != 0 {
-		where = append(where, fmt.Sprintf(` AND tmm_to_point_times >= %d`, search.ExchangeUcToPoint))
+		where = append(where, fmt.Sprintf(` AND ex.tmm_to_point_times >= %d`, search.ExchangeUcToPoint))
 	}
 	if search.ExchangeUcToPointAmount != 0 {
-		where = append(where, fmt.Sprintf(` AND tmm_to_point >= %d`, search.ExchangeUcToPointAmount))
+		where = append(where, fmt.Sprintf(` AND ex.tmm_to_point >= %d`, search.ExchangeUcToPointAmount))
 	}
 	if search.MakePointTimes != 0 {
 		where = append(where, fmt.Sprintf(` AND point.total >= %d`, search.MakePointTimes))
@@ -382,13 +444,15 @@ LEFT JOIN (
 		where = append(where, fmt.Sprintf(` AND IFNULL(point.point,1) / IFNULL(point._day,1) >= %d`, search.MakePointDay))
 	}
 	if search.OnlineBFNumber != 0 {
-		where = append(where, fmt.Sprintf(` AND online >= %d`, search.OnlineBFNumber))
+		where = append(where, fmt.Sprintf(` AND inv.online >= %d`, search.OnlineBFNumber))
 	}
 	if search.OffLineBfNumber != 0 {
-		where = append(where, fmt.Sprintf(` AND offline >= %d`, search.OffLineBfNumber))
+		where = append(where, fmt.Sprintf(` AND inv.offline >= %d`, search.OffLineBfNumber))
 	}
 	if search.IsWhiteList {
-		where = append(where, fmt.Sprintf(`  AND blocked = %d `, 1))
+		where = append(where, fmt.Sprintf(`  AND IF(us_set.user_id > 0,IF(us_set.blocked = us_set.block_whitelist,0,1),0) = %d `, 1))
+	} else {
+		where = append(where, fmt.Sprintf(`  AND IF(us_set.user_id > 0,IF(us_set.blocked = us_set.block_whitelist,0,1),0) = %d `, 0))
 	}
 	rows, res, err := db.Query(query, strings.Join(when, " "),
 		strings.Join(leftJoin, " "), strings.Join(where, " "), limit, offset)
@@ -420,7 +484,7 @@ LEFT JOIN (
 		}
 		user := &admin.Users{
 			Point:                point.Ceil(),
-			DrawCash:             fmt.Sprintf("%.2f",row.Float(res.Map(`cny`))),
+			DrawCash:             fmt.Sprintf("%.2f", row.Float(res.Map(`cny`))),
 			ExchangeCount:        row.Int(res.Map(`point_to_tmm_times`)),
 			OnlineBFNumber:       row.Int(res.Map(`online`)),
 			OffLineBFNumber:      row.Int(res.Map(`offline`)),
@@ -433,9 +497,10 @@ LEFT JOIN (
 		List = append(List, user)
 	}
 	var total int
-	rows, _, err = db.Query(`SELECT COUNT(id) FROM  ucoin.users`)
-	if err == nil || len(rows) != 0 {
-		total = rows[0].Int(0)
+	rows, _, err = db.Query(totalQuery, strings.Join(when, " "),
+		strings.Join(leftJoin, " "), strings.Join(where, " "))
+	if len(rows) != 0 {
+		total = len(rows)
 	}
 	c.JSON(http.StatusOK, admin.Response{
 		Code:    0,

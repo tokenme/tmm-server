@@ -73,7 +73,7 @@ SELECT
 FROM 
 	tmm.withdraw_txs 
 WHERE 
-	tx_status = 1 AND inserted_at > '%s'  AND inserted_at <  DATE_ADD('%s', INTERVAL 60*23+59 MINUTE)
+	tx_status = 1 AND inserted_at > '%s'  AND inserted_at <  DATE_ADD('%s', INTERVAL 1 DAY)
 GROUP BY date`,  db.Escape(startTime), db.Escape(endTime)))
 	case UcPerson:
 		title = "UC提现人数"
@@ -87,7 +87,7 @@ SELECT
 FROM 
 	tmm.withdraw_txs 
 WHERE 
-	tx_status = 1 AND inserted_at > '%s'  AND inserted_at <  DATE_ADD('%s', INTERVAL 60*23+59 MINUTE)
+	tx_status = 1 AND inserted_at > '%s'  AND inserted_at <  DATE_ADD('%s', INTERVAL 1 DAY)
 GROUP BY date`, db.Escape(startTime), db.Escape(endTime)))
 	case DrawCashByPoint:
 		title = "积分提现金额"
@@ -99,7 +99,7 @@ SELECT
 FROM 
 	tmm.point_withdraws 
 WHERE 
-	 inserted_at > '%s' AND inserted_at <  DATE_ADD('%s', INTERVAL 60*23+59 MINUTE)
+	 inserted_at > '%s' AND inserted_at <  DATE_ADD('%s', INTERVAL 1 DAY)
 GROUP BY date`, db.Escape(startTime), db.Escape(endTime)))
 
 	case PointPerson:
@@ -114,7 +114,7 @@ SELECT
 FROM 
 	tmm.point_withdraws 
 WHERE 
-	 inserted_at > '%s' AND inserted_at < DATE_ADD('%s', INTERVAL 60*23+59 MINUTE)
+	 inserted_at > '%s' AND inserted_at < DATE_ADD('%s', INTERVAL 1 DAY)
 GROUP BY date`, db.Escape(startTime), db.Escape(endTime)))
 	case TotalDrawCash_:
 		title = "提现总金额"
@@ -154,7 +154,7 @@ FROM(
 	FROM
 		tmm.point_withdraws
 	WHERE
-		inserted_at > '%s' AND inserted_at <  DATE_ADD('%s', INTERVAL 60*23+59 MINUTE)
+		inserted_at > '%s' AND inserted_at <  DATE_ADD('%s', INTERVAL 1 DAY)
 	GROUP BY date
 	UNION ALL
 	SELECT
@@ -163,7 +163,7 @@ FROM(
 	FROM
 		tmm.withdraw_txs
 	WHERE
-		tx_status = 1 AND inserted_at > '%s' AND inserted_at <  DATE_ADD('%s', INTERVAL 60*23+59 MINUTE)
+		tx_status = 1 AND inserted_at > '%s' AND inserted_at <  DATE_ADD('%s', INTERVAL 1 DAY)
 	GROUP BY 
 		date
 	) AS tmp
