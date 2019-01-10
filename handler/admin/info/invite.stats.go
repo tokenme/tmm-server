@@ -11,6 +11,7 @@ import (
 	"github.com/shopspring/decimal"
 )
 
+
 func InviteStatsHandler(c *gin.Context) {
 	db := Service.Db
 	var req StatsRequest
@@ -82,7 +83,7 @@ func InviteStatsHandler(c *gin.Context) {
 		}
 		inviteCount := row.Int(2)
 		if req.Top10 {
-			user := &admin.Users{
+			user := &admin.User{
 				InviteCount: inviteCount,
 			}
 			user.InviteBonus = bouns.Ceil()

@@ -1,11 +1,11 @@
 package account_controller
 
 import (
+	"fmt"
 	"github.com/gin-gonic/gin"
 	. "github.com/tokenme/tmm/handler"
-	"net/http"
 	"github.com/tokenme/tmm/handler/admin"
-	"fmt"
+	"net/http"
 )
 
 type types int
@@ -78,7 +78,8 @@ func FriendsHandler(c *gin.Context) {
 		FROM 
 			tmm.invite_bonus 
 		WHERE 
-			user_id = %d  AND  task_type != 0  
+			user_id = %d  
+		GROUP BY from_user_id
 		) AS bonus ON bonus.from_user_id = inv.user_id
 	LEFT JOIN 
 		tmm.devices AS dev ON dev.user_id = u.id 
@@ -107,15 +108,15 @@ func FriendsHandler(c *gin.Context) {
 	switch types(req.Types) {
 	case Direct:
 		direct := fmt.Sprintf(" inv.parent_id = %d ", req.Id)
-		query = fmt.Sprintf(query, req.Id,req.Id, direct, req.Limit, offset)
+		query = fmt.Sprintf(query, req.Id, req.Id, direct, req.Limit, offset)
 		totalquery = fmt.Sprintf(totalquery, direct)
 	case Indirect:
 		indirect := fmt.Sprintf(" inv.grand_id = %d", req.Id)
-		query = fmt.Sprintf(query, req.Id,req.Id, indirect, req.Limit, offset)
+		query = fmt.Sprintf(query, req.Id, req.Id, indirect, req.Limit, offset)
 		totalquery = fmt.Sprintf(totalquery, indirect)
 	case Children:
 		online := fmt.Sprintf("  inv.parent_id = %d OR inv.grand_id = %d ", req.Id, req.Id)
-		query = fmt.Sprintf(query, req.Id,req.Id, online, req.Limit, offset)
+		query = fmt.Sprintf(query, req.Id, req.Id, online, req.Limit, offset)
 		totalquery = fmt.Sprintf(totalquery, online)
 
 	case Active:
@@ -132,7 +133,7 @@ func FriendsHandler(c *gin.Context) {
 		OR app.task_id > 0   OR reading.user_id > 0
 		OR daily.user_id > 0)
 		LIMIT 1 )`, req.Id, req.Id)
-		query = fmt.Sprintf(query, req.Id,req.Id, active, req.Limit, offset)
+		query = fmt.Sprintf(query, req.Id, req.Id, active, req.Limit, offset)
 		totalquery = fmt.Sprintf(totalquery, active)
 	default:
 		c.JSON(http.StatusOK, admin.Response{
@@ -146,7 +147,7 @@ func FriendsHandler(c *gin.Context) {
 		return
 	}
 
-	var List []*admin.Users
+	var List []*admin.UserStats
 	rows, _, err := db.Query(query)
 	if CheckErr(err, c) {
 		return
@@ -163,7 +164,7 @@ func FriendsHandler(c *gin.Context) {
 		return
 	}
 	for _, row := range rows {
-		user := &admin.Users{}
+		user := &admin.UserStats{}
 		user.Id = row.Uint64(0)
 		user.Mobile = row.Str(1)
 		user.Nick = row.Str(2)

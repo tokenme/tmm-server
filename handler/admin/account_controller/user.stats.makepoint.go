@@ -1,11 +1,11 @@
 package account_controller
 
 import (
+	"fmt"
 	"github.com/gin-gonic/gin"
 	. "github.com/tokenme/tmm/handler"
-	"fmt"
-	"net/http"
 	"github.com/tokenme/tmm/handler/admin"
+	"net/http"
 	"strings"
 )
 
@@ -32,7 +32,8 @@ func MakePointHandler(c *gin.Context) {
 		inserted_at AS inserted_at,	
 		1 AS type ,
 		0  AS device_id,
-		0  AS invite_bonus_types 
+		0  AS invite_bonus_types,
+		0  AS tmm
 	FROM 
   		tmm.invite_bonus
 	WHERE 
@@ -45,7 +46,8 @@ func MakePointHandler(c *gin.Context) {
 		inserted_at AS inserted_at,
 		0 AS type,
 		0 AS device_id,
-		0  AS invite_bonus_types 
+		0  AS invite_bonus_types,
+		0  AS tmm
 	FROM 
  		tmm.reading_logs
  	WHERE
@@ -58,7 +60,8 @@ func MakePointHandler(c *gin.Context) {
 		sha.inserted_at AS inserted_at,
 		2 AS type,
 		sha.device_id AS device_id,
-		0  AS invite_bonus_types 
+		0  AS invite_bonus_types,
+		0  AS tmm
 	FROM 
 		tmm.device_share_tasks AS sha
 	INNER JOIN tmm.devices AS dev ON (dev.id = sha.device_id)
@@ -73,11 +76,12 @@ func MakePointHandler(c *gin.Context) {
 		inserted_at AS inserted_at,	
 		3 AS type ,
 		0  AS device_id,
-		task_type  AS invite_bonus_types
+		task_type  AS invite_bonus_types,
+		tmm  AS tmm
 	FROM 
   		tmm.invite_bonus
 	WHERE 
-		user_id = %d AND task_type != 0 AND task_type != 3`, req.Id))
+		user_id = %d AND task_type != 0 `, req.Id))
 	}
 	if req.Types == AppTask || req.Types == -1 {
 		froms = append(froms, fmt.Sprintf(`
@@ -86,7 +90,8 @@ func MakePointHandler(c *gin.Context) {
 		app.inserted_at AS inserted_at,
 		4 AS type, 
 		app.device_id AS device_id,
-		0  AS invite_bonus_types 
+		0  AS invite_bonus_types,
+		0  AS tmm 
 	FROM
 		tmm.device_app_tasks AS app
 	INNER JOIN tmm.devices AS dev ON (dev.id = app.device_id)
@@ -98,7 +103,8 @@ func MakePointHandler(c *gin.Context) {
 		IFNULL(tmp.point,0) AS point,
 		tmp.inserted_at AS inserted_at,
 		tmp.type  AS type,
-		tmp.invite_bonus_types AS invite_bonus_types
+		tmp.invite_bonus_types AS invite_bonus_types,
+		tmp.tmm  AS tmm
 	FROM(
 		%s
 	) AS tmp
@@ -117,14 +123,19 @@ func MakePointHandler(c *gin.Context) {
 	}
 	var taskList []*Task
 	var taskType string
+	var get string
 	for _, row := range rows {
+		get = fmt.Sprintf("+%.2f积分", row.Float(0))
 		if row.Int(3) != 0 {
-			taskType =  InviteMap[row.Int(3)]
-		}else{
+			taskType = InviteMap[row.Int(3)]
+			if row.Int(3) == 3 {
+				get = fmt.Sprintf("+%.2fUC", row.Float(4))
+			}
+		} else {
 			taskType = typeMap[row.Int(2)]
 		}
 		task := &Task{
-			Get:    fmt.Sprintf("+%.2f积分", row.Float(0)),
+			Get:    get,
 			When:   row.Str(1),
 			Type:   taskType,
 			Status: TaskSuccessful,

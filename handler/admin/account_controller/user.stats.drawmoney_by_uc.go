@@ -1,11 +1,11 @@
 package account_controller
 
 import (
+	"fmt"
 	"github.com/gin-gonic/gin"
 	. "github.com/tokenme/tmm/handler"
-	"fmt"
-	"net/http"
 	"github.com/tokenme/tmm/handler/admin"
+	"net/http"
 )
 
 func DrawMoneyByUcHandler(c *gin.Context) {
@@ -73,7 +73,7 @@ LIMIT %d OFFSET %d`
 		Data: gin.H{
 			"data":  DrawMoneyList,
 			"total": total,
-			"page":req.Page,
+			"page":  req.Page,
 		},
 	})
 }

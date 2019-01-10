@@ -1,11 +1,11 @@
 package account_controller
 
 import (
+	"fmt"
 	"github.com/gin-gonic/gin"
 	. "github.com/tokenme/tmm/handler"
-	"fmt"
-	"net/http"
 	"github.com/tokenme/tmm/handler/admin"
+	"net/http"
 )
 
 func DrawMoneyByPointHandler(c *gin.Context) {
