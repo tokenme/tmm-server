@@ -38,8 +38,9 @@ var typeMap = map[int]string{
 }
 
 const (
-	ShareBonus = 1
-	AppBonus   = 2
+	ShareBonus      = 1
+	AppBonus        = 2
+	ActiveUserBonus = 3
 )
 
 const (
@@ -48,8 +49,9 @@ const (
 )
 
 var InviteMap = map[int]string{
-	ShareBonus: "好友贡献(文章)",
-	AppBonus:   "好友贡献(app)",
+	ShareBonus:      "好友贡献(文章)",
+	AppBonus:        "好友贡献(app)",
+	ActiveUserBonus: "下线好友活跃贡献",
 }
 var FirendMap = map[int]string{
 	DirectFirend:   "直接好友",

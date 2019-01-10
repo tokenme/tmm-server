@@ -1,11 +1,11 @@
 package account_controller
 
 import (
+	"fmt"
 	"github.com/gin-gonic/gin"
 	. "github.com/tokenme/tmm/handler"
-	"net/http"
 	"github.com/tokenme/tmm/handler/admin"
-	"fmt"
+	"net/http"
 )
 
 type types int
@@ -107,15 +107,15 @@ func FriendsHandler(c *gin.Context) {
 	switch types(req.Types) {
 	case Direct:
 		direct := fmt.Sprintf(" inv.parent_id = %d ", req.Id)
-		query = fmt.Sprintf(query, req.Id,req.Id, direct, req.Limit, offset)
+		query = fmt.Sprintf(query, req.Id, req.Id, direct, req.Limit, offset)
 		totalquery = fmt.Sprintf(totalquery, direct)
 	case Indirect:
 		indirect := fmt.Sprintf(" inv.grand_id = %d", req.Id)
-		query = fmt.Sprintf(query, req.Id,req.Id, indirect, req.Limit, offset)
+		query = fmt.Sprintf(query, req.Id, req.Id, indirect, req.Limit, offset)
 		totalquery = fmt.Sprintf(totalquery, indirect)
 	case Children:
 		online := fmt.Sprintf("  inv.parent_id = %d OR inv.grand_id = %d ", req.Id, req.Id)
-		query = fmt.Sprintf(query, req.Id,req.Id, online, req.Limit, offset)
+		query = fmt.Sprintf(query, req.Id, req.Id, online, req.Limit, offset)
 		totalquery = fmt.Sprintf(totalquery, online)
 
 	case Active:
@@ -132,7 +132,7 @@ func FriendsHandler(c *gin.Context) {
 		OR app.task_id > 0   OR reading.user_id > 0
 		OR daily.user_id > 0)
 		LIMIT 1 )`, req.Id, req.Id)
-		query = fmt.Sprintf(query, req.Id,req.Id, active, req.Limit, offset)
+		query = fmt.Sprintf(query, req.Id, req.Id, active, req.Limit, offset)
 		totalquery = fmt.Sprintf(totalquery, active)
 	default:
 		c.JSON(http.StatusOK, admin.Response{

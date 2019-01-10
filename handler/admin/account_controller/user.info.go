@@ -1,15 +1,15 @@
 package account_controller
 
-import (
-	"github.com/gin-gonic/gin"
-	"strconv"
-	. "github.com/tokenme/tmm/handler"
-	"net/http"
-	"github.com/tokenme/tmm/handler/admin"
-	"github.com/shopspring/decimal"
+import  (
 	"fmt"
+	"github.com/gin-gonic/gin"
+	"github.com/shopspring/decimal"
 	"github.com/tokenme/tmm/coins/eth/utils"
 	"github.com/tokenme/tmm/common"
+	. "github.com/tokenme/tmm/handler"
+	"github.com/tokenme/tmm/handler/admin"
+	"net/http"
+	"strconv"
 )
 
 func UserInfoHandler(c *gin.Context) {
@@ -26,7 +26,7 @@ SELECT
 	uc.cny AS uc_cny,
 	point.cny AS point_cny,
 	IFNULL(uc.cny,0)+IFNULL(point.cny,0) AS cny,
-	SUM(dev.points) AS points,
+	IFNULL(SUM(dev.points),0) AS points,
 	inv.direct AS direct,
 	inv.indirect AS indirect,
 	inv.active AS active,
@@ -54,9 +54,9 @@ SELECT
 	),true,false) AS _active
 	
 FROM 
-	devices AS dev
-INNER JOIN  
-	ucoin.users AS u  ON (u.id = dev.user_id)
+	ucoin.users AS u
+LEFT JOIN  
+	tmm.devices AS dev ON dev.user_id = u.id
 LEFT JOIN tmm.user_settings AS us_set ON (us_set.user_id = u.id )
 LEFT JOIN 
 	tmm.wx AS wx ON (wx.user_id =dev.user_id),
@@ -222,13 +222,6 @@ LIMIT 1
 	user.InviteNewUserActiveCount = row.Int(res.Map(`invite_firend_active`))
 	rows, _, err = db.Query("SELECT id,platform,is_emulator FROM tmm.devices WHERE user_id = %d", id)
 	if CheckErr(err, c) {
-		return
-	}
-	if Check(len(rows) == 0 || err != nil, admin.Not_Found, c) {
-		c.JSON(http.StatusOK, admin.Response{
-			Code:    0,
-			Message: admin.Not_Found,
-		})
 		return
 	}
 	for _, row := range rows {
