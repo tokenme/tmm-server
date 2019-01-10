@@ -1,15 +1,15 @@
 package account_controller
 
-import  (
+import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/shopspring/decimal"
 	"github.com/tokenme/tmm/coins/eth/utils"
-	"github.com/tokenme/tmm/common"
 	. "github.com/tokenme/tmm/handler"
 	"github.com/tokenme/tmm/handler/admin"
 	"net/http"
 	"strconv"
+	"strings"
 )
 
 func UserInfoHandler(c *gin.Context) {
@@ -20,9 +20,16 @@ func UserInfoHandler(c *gin.Context) {
 	}
 	query := `
 SELECT 
-	u.id AS id , 
+	u.id AS id ,
 	u.mobile AS mobile ,
+	u.country_code AS country_code,
+	u.created AS created,
 	wx.nick AS nick,
+	wx.inserted_at AS wx_inserted_at,
+	wx.union_id AS union_id,
+	wx.expires AS expires,
+	wx.open_id AS open_id,
+	u.wallet_addr AS addr,
 	uc.cny AS uc_cny,
 	point.cny AS point_cny,
 	IFNULL(uc.cny,0)+IFNULL(point.cny,0) AS cny,
@@ -32,11 +39,18 @@ SELECT
 	inv.active AS active,
 	inv.invite_firend_active AS invite_firend_active,
 	inv.invite_By_Number AS invite_By_Number,
+	inv.direct_blocked AS direct_blocked,
+	inv.indirect_blocked AS indirect_blocked,
 	bonus.inv_bonus AS inv_bonus,
 	sha.points AS sha_points,
 	app.points AS app_points,
-	reading.point AS reading_point,
-	u.wallet_addr AS addr,
+	reading.point AS reading_point,	
+	IFNULL(parent.id,0) AS parent_id,
+	IFNULL(parent.blocked,0) AS parent_blocked,
+	IFNULL(parent.nick,NULL) AS parent_nick,	
+	IFNULL(root.id,0) AS root_id,
+	IFNULL(root.blocked,0) AS root_blocked,
+	IFNULL(root.nick,NULL) AS root_nick,
 	IF(us_set.user_id > 0,IF(us_set.blocked = us_set.block_whitelist,0,1),0) AS blocked,
 	IF(EXISTS(
 		SELECT 
@@ -57,29 +71,68 @@ FROM
 	ucoin.users AS u
 LEFT JOIN  
 	tmm.devices AS dev ON dev.user_id = u.id
-LEFT JOIN tmm.user_settings AS us_set ON (us_set.user_id = u.id )
 LEFT JOIN 
-	tmm.wx AS wx ON (wx.user_id =dev.user_id),
-(
+	tmm.user_settings AS us_set ON (us_set.user_id = u.id )
+LEFT JOIN 
+	tmm.wx AS wx ON (wx.user_id =u.id)
+LEFT JOIN (
+SELECT 
+	IFNULL(wx.nick,us.nickname) AS nick,
+	us.id AS id ,
+	IF(us_set.user_id > 0,IF(us_set.blocked = us_set.block_whitelist,0,1),0) AS blocked
+FROM 
+	tmm.invite_codes  AS ic
+INNER JOIN 
+	ucoin.users AS us  ON us.id = ic.parent_id
+LEFT JOIN 
+	tmm.user_settings AS us_set ON (us_set.user_id = us.id )
+LEFT JOIN 
+	tmm.wx AS wx ON wx.user_id = us.id 
+WHERE 
+	ic.user_id = %d
+) AS parent ON 1 = 1 
+LEFT JOIN (
+SELECT 
+	IFNULL(wx.nick,us.nickname) AS nick,
+	us.id AS id ,
+	IF(us_set.user_id > 0,IF(us_set.blocked = us_set.block_whitelist,0,1),0) AS blocked
+FROM 
+	tmm.invite_codes  AS ic
+INNER JOIN 
+	ucoin.users AS us  ON us.id = ic.root_id
+LEFT JOIN 
+	tmm.user_settings AS us_set ON (us_set.user_id = us.id )
+LEFT JOIN 
+	tmm.wx AS wx ON wx.user_id = us.id 
+WHERE 
+	ic.user_id = %d
+) AS root ON 1 = 1 
+LEFT JOIN (
 	SELECT 
 		SUM(cny) AS cny
 	FROM 
 		tmm.withdraw_txs
 	WHERE 
 		user_id = %d AND tx_status = 1
-) AS uc,
-(
+) AS uc ON 1 = 1
+LEFT JOIN (
 	SELECT 
 		SUM(cny) AS cny
 	FROM 
 		tmm.point_withdraws 
 		WHERE user_id = %d
-) AS point,
-(
+) AS point ON 1 = 1
+LEFT JOIN (
 SELECT
-		COUNT(distinct IF(inv.parent_id = %d,inv.user_id,NULL)) AS direct,
-		COUNT(distinct IF(inv.grand_id = %d,inv.user_id,NULL)) AS indirect,
-		COUNT(distinct 
+		COUNT(IF(inv.parent_id = %d,inv.user_id,NULL)) AS direct,
+		COUNT(IF(inv.grand_id = %d,inv.user_id,NULL)) AS indirect,
+		COUNT(IF(inv.parent_id = %d AND EXISTS(
+		SELECT 1 FROM user_settings AS us  WHERE us.blocked= 1 AND us.user_id=inv.user_id AND us.block_whitelist=0  LIMIT 1
+		),1,NULL)) AS direct_blocked,
+		COUNT(IF(inv.grand_id = %d  AND EXISTS(
+		SELECT 1 FROM user_settings AS us  WHERE us.blocked= 1 AND us.user_id=inv.user_id AND us.block_whitelist=0  LIMIT 1
+		),1,NULL)) AS indirect_blocked,
+		COUNT( 
 		IF(EXISTS(
 		SELECT 
 		1
@@ -95,7 +148,7 @@ SELECT
 		LIMIT 1
 		),inv.user_id,NULL)
 		) AS active,
-		COUNT(distinct 
+		COUNT( 
 		IF(u.id > 0  AND EXISTS(
 		SELECT 
 		1
@@ -117,8 +170,8 @@ SELECT
 	LEFT JOIN ucoin.users AS u ON (u.id = inv.user_id AND u.created > DATE_SUB(DATE(NOW()),INTERVAL 2 DAY))
 	WHERE
 		inv.parent_id = %d OR inv.grand_id = %d
-) AS inv,
-(
+) AS inv ON 1 = 1
+LEFT JOIN (
 	SELECT 
 		IFNULL(SUM(sha.points),0)+IFNULL(bonus.points,0) AS points
 	FROM
@@ -136,8 +189,8 @@ SELECT
 	WHERE
 		dev.user_id = %d 
 	
-) AS sha,
-(
+) AS sha ON 1 = 1 
+LEFT JOIN (
 	SELECT
 		SUM(IF(app.status = 1,app.points,0)) AS points
 	FROM
@@ -146,22 +199,22 @@ SELECT
 		tmm.devices AS dev ON  (dev.id = app.device_id)
 	WHERE
 		dev.user_id = %d AND app.status = 1
-) AS app,
-(
+) AS app ON 1 = 1
+LEFT JOIN (
 	SELECT
 		SUM(bonus) AS inv_bonus
 	FROM 
 		tmm.invite_bonus 
 	WHERE 
 		user_id = %d  AND task_type  = 0
-) AS bonus,
-(
+) AS bonus ON 1 = 1
+LEFT JOIN (
 	SELECT 
 		SUM(point) AS point
 	FROM
 		tmm.reading_logs
 	WHERE user_id = %d
-) AS reading
+) AS reading ON 1 = 1
 WHERE 
 	u.id = %d
 LIMIT 1 
@@ -173,10 +226,11 @@ LIMIT 1
 		})
 		return
 	}
-	rows, res, err := db.Query(query, id, id, id, id, id, id, id, id, id, id, id, id)
+	rows, res, err := db.Query(query, id, id, id, id, id, id,id, id, id, id, id, id, id, id, id, id)
 	if CheckErr(err, c) {
 		return
 	}
+
 	if len(rows) == 0 {
 		c.JSON(http.StatusOK, admin.Response{
 			Code:    0,
@@ -184,6 +238,7 @@ LIMIT 1
 		})
 		return
 	}
+
 	row := rows[0]
 	point, err := decimal.NewFromString(row.Str(res.Map(`points`)))
 	if CheckErr(err, c) {
@@ -197,44 +252,133 @@ LIMIT 1
 	_, _, decimals, _, _, _, _, _, balance, err := utils.TokenMeta(tokenABI, row.Str(res.Map(`addr`)))
 	balanceDecimal, err := decimal.NewFromString(balance.String())
 	tmm := balanceDecimal.Div(decimal.New(1, int32(decimals)))
-	user := &admin.Users{
-		Point:              point.Ceil(),
-		DrawCash:           fmt.Sprintf("%.2f", row.Float(res.Map(`cny`))),
-		DrawCashByUc:       fmt.Sprintf("%.2f", row.Float(res.Map(`uc_cny`))),
-		DrawCashByPoint:    fmt.Sprintf("%.2f", row.Float(res.Map(`point_cny`))),
-		DirectFriends:      row.Int(res.Map(`direct`)),
-		IndirectFriends:    row.Int(res.Map(`indirect`)),
-		ActiveFriends:      row.Int(res.Map(`active`)),
-		Tmm:                tmm.Ceil(),
-		PointByShare:       int(row.Float(res.Map(`sha_points`))),
-		PointByReading:     int(row.Float(res.Map(`reading_point`))),
-		PointByInvite:      int(row.Float(res.Map(`inv_bonus`))),
-		PointByDownLoadApp: int(row.Float(res.Map(`app_points`))),
-		IsActive:           row.Bool(res.Map(`_active`)),
+
+	user := &admin.UserStats{
+		DrawCashByUc:             fmt.Sprintf("%.2f", row.Float(res.Map(`uc_cny`))),
+		DrawCashByPoint:          fmt.Sprintf("%.2f", row.Float(res.Map(`point_cny`))),
+		DirectFriends:            row.Int(res.Map(`direct`)),
+		IndirectFriends:          row.Int(res.Map(`indirect`)),
+		ActiveFriends:            row.Int(res.Map(`active`)),
+		PointByShare:             int(row.Float(res.Map(`sha_points`))),
+		PointByReading:           int(row.Float(res.Map(`reading_point`))),
+		PointByInvite:            int(row.Float(res.Map(`inv_bonus`))),
+		PointByDownLoadApp:       int(row.Float(res.Map(`app_points`))),
+		IsActive:                 row.Bool(res.Map(`_active`)),
+		DirectBlockedCount:       row.Int(res.Map(`direct_blocked`)),
+		InDirectBlockedCount:     row.Int(res.Map(`indirect_blocked`)),
+		InviteNewUserByThreeDays: row.Int(res.Map(`invite_By_Number`)),
+		InviteNewUserActiveCount: row.Int(res.Map(`invite_firend_active`)),
 	}
-	user.ChildrenNumber = user.DirectFriends + user.IndirectFriends
-	user.TotalMakePoint = user.PointByShare + user.PointByReading + user.PointByInvite + user.PointByDownLoadApp
 	user.Id = row.Uint64(res.Map(`id`))
 	user.Mobile = row.Str(res.Map(`mobile`))
 	user.Nick = row.Str(res.Map(`nick`))
+	user.InsertedAt = row.Str(res.Map(`created`))
+	user.CountryCode = row.Uint(res.Map(`country_code`))
+	user.WxInsertedAt = row.Str(res.Map(`wx_inserted_at`))
+	user.OpenId = row.Str(res.Map(`open_id`))
+	user.WxExpires = row.Str(res.Map(`expires`))
+	user.Wallet = row.Str(res.Map(`addr`))
+	user.WxUnionId = row.Str(res.Map(`union_id`))
+	user.Tmm = tmm.Ceil()
+	user.Point = point.Ceil()
+	user.DrawCash = fmt.Sprintf("%.2f", row.Float(res.Map(`cny`)))
 	user.Blocked = row.Int(res.Map(`blocked`))
-	user.InviteNewUserByThreeDays = row.Int(res.Map(`invite_By_Number`))
-	user.InviteNewUserActiveCount = row.Int(res.Map(`invite_firend_active`))
-	rows, _, err = db.Query("SELECT id,platform,is_emulator FROM tmm.devices WHERE user_id = %d", id)
+	user.TotalMakePoint = user.PointByShare+ user.PointByReading +
+		user.PointByInvite + user.PointByDownLoadApp
+
+	parent := admin.User{}
+	parent.Id = row.Uint64(res.Map(`parent_id`))
+	parent.Blocked = row.Int(res.Map(`parent_blocked`))
+	parent.Nick = row.Str(res.Map(`parent_nick`))
+	user.Parent = parent
+
+	root := admin.User{}
+	root.Id = row.Uint64(res.Map(`root_id`))
+	root.Blocked = row.Int(res.Map(`root_blocked`))
+	root.Nick = row.Str(res.Map(`root_nick`))
+
+	user.Root = root
+	rows, _, err = db.Query(`SELECT 
+		id,
+		platform,
+		idfa,
+		imei,
+		mac,
+		device_name,
+		system_version,
+		os_version,
+		language,
+		model,
+		timezone,
+		country,
+		is_emulator,
+		is_jailbrojen,
+		is_tablet,
+		points,
+		total_ts,
+		tmp_ts,
+		consumed_ts,
+		lastping_at,
+		inserted_at,
+		updated_at
+FROM 
+	tmm.devices
+WHERE 
+	user_id = %d`, id)
 	if CheckErr(err, c) {
 		return
 	}
 	for _, row := range rows {
-		device := &common.Device{}
-		isemulator := false
-		if row.Int(2) == 1 {
-			isemulator = true
-			user.IsHaveEmulatorDevices = true
-		}
-		device.IsEmulator = isemulator
+		device := &admin.Device{}
 		device.Id = row.Str(0)
 		device.Platform = row.Str(1)
+		device.Idfa = row.Str(2)
+		device.Imei = row.Str(3)
+		device.Mac = row.Str(4)
+		device.Name = row.Str(5)
+		device.SystemVersion = row.Str(6)
+		device.OsVersion = row.Str(7)
+		device.Language = row.Str(8)
+		device.Model = row.Str(9)
+		device.Timezone = row.Str(10)
+		device.Country = row.Str(11)
+		device.IsEmulator = row.Bool(12)
+		device.IsJailbrojen = row.Bool(13)
+		device.IsTablet = row.Bool(14)
+		device.Points = decimal.NewFromFloat(row.Float(15)).Ceil()
+		device.TotalTs = row.Uint64(16)
+		device.TmpTs = row.Uint64(17)
+		device.ConsumedTs = row.Float(18)
+		device.LastPingAt = row.Str(19)
+		device.InsertedAt = row.Str(20)
+		device.UpdatedAt = row.Str(21)
 		user.DeviceList = append(user.DeviceList, device)
+	}
+	if user.OpenId != "" {
+		rows, _, err = db.Query(`
+	select 
+		group_concat(user_id), 
+		count(1) num, open_id, nick
+	from 
+		tmm.wx
+	WHERE 
+		open_id = '%s'
+	group by 
+		open_id
+	having num > 1`, user.OpenId)
+		if CheckErr(err, c) {
+			return
+		}
+		if len(rows) > 0 {
+			var accountList []string
+			for _, account := range strings.Split(rows[0].Str(0), ",") {
+				if account == strconv.Itoa(id) {
+					continue
+				}
+				accountList = append(accountList, account)
+			}
+			user.OtherAccount = accountList
+		}
 	}
 	c.JSON(http.StatusOK, admin.Response{
 		Code:    0,

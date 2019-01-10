@@ -28,39 +28,62 @@ type AddRequest struct {
 	Cid           []int           `json:"cid" form:"cid"`
 }
 
-type Users struct {
-	Point                    decimal.Decimal  `json:"point"`
-	InviteBonus              decimal.Decimal  `json:"invite_bonus,omitempty"`
-	DrawCash                 string           `json:"draw_cash"`
-	InviteCount              int              `json:"invite_count,omitempty"`
-	Tmm                      decimal.Decimal  `json:"tmm"`
-	ExchangePointToUcoin     decimal.Decimal  `json:"exchange_point_to_ucoin"`
-	ExchangeCount            int              `json:"exchange_count"`
-	CompletedTaskCount       int              `json:"completed_task_count,omitempty"`
-	OnlineBFNumber           int              `json:"online_bf_number"`
-	OffLineBFNumber          int              `json:"off_line_bf_number"`
-	ChildrenNumber           int              `json:"children_number"`
-	Blocked                  int              `json:"blocked"`
-	PointByShare             int              `json:"point_by_share"`
-	PointByReading           int              `json:"point_by_reading"`
-	PointByInvite            int              `json:"point_by_invite"`
-	PointByDownLoadApp       int              `json:"point_by_down_load_app"`
-	DrawCashByPoint          string           `json:"draw_cash_by_point,omitempty"`
-	DrawCashByUc             string           `json:"draw_cash_by_uc,omitempty"`
-	DirectFriends            int              `json:"direct_friends"`
-	IndirectFriends          int              `json:"indirect_friends"`
-	ActiveFriends            int              `json:"active_friends"`
-	TotalMakePoint           int              `json:"total_make_point"`
-	DeviceList               []*common.Device `json:"device_list"`
-	InviteNewUserActiveCount int              `json:"invite_new_user_active_number"`
-	InviteNewUserByThreeDays int              `json:"invite_new_user_by_three_days"`
-	IsHaveEmulatorDevices    bool             `json:"is_have_emulator_devices"`
-	InsertedAt               string           `json:"inserted_at"`
-	IsActive                 bool             `json:"is_active"`
-	FirstDayActive           bool             `json:"first_day_active"`
-	SecondDayActive          bool             `json:"second_day_active"`
-	ThreeDayActive           bool             `json:"three_day_active"`
-	Bonus                    string           `json:"bonus"`
-	FirendType               string           `json:"firend_type"`
+type UserStats struct {
+	ExchangePointToUcoin     decimal.Decimal `json:"exchange_point_to_ucoin"`
+	ExchangeCount            int             `json:"exchange_count"`
+	OnlineBFNumber           int             `json:"online_bf_number"`
+	OffLineBFNumber          int             `json:"off_line_bf_number"`
+	PointByShare             int             `json:"point_by_share"`
+	PointByReading           int             `json:"point_by_reading"`
+	PointByInvite            int             `json:"point_by_invite"`
+	PointByDownLoadApp       int             `json:"point_by_down_load_app"`
+	DrawCashByPoint          string          `json:"draw_cash_by_point,omitempty"`
+	DrawCashByUc             string          `json:"draw_cash_by_uc,omitempty"`
+	DirectFriends            int             `json:"direct_friends"`
+	IndirectFriends          int             `json:"indirect_friends"`
+	DirectBlockedCount       int             `json:"direct_blocked_count"`
+	InDirectBlockedCount     int             `json:"indirect_blocked_count"`
+	ActiveFriends            int             `json:"active_friends"`
+	TotalMakePoint           int             `json:"total_make_point"`
+	DeviceList               []*Device       `json:"device_list"`
+	InviteNewUserActiveCount int             `json:"invite_new_user_active_number"`
+	InviteNewUserByThreeDays int             `json:"invite_new_user_by_three_days"`
+	IsHaveEmulatorDevices    bool            `json:"is_have_emulator_devices"`
+	InsertedAt               string          `json:"inserted_at,omitempty"`
+	IsActive                 bool            `json:"is_active"`
+	FirstDayActive           bool            `json:"first_day_active"`
+	SecondDayActive          bool            `json:"second_day_active"`
+	ThreeDayActive           bool            `json:"three_day_active"`
+	Bonus                    string          `json:"bonus,omitempty"`
+	FirendType               string          `json:"firend_type,omitempty"`
+	Parent                   User            `json:"pre_user,omitempty"`
+	Root                     User            `json:"root,omitempty"`
+	OtherAccount             []string        `json:"other_account"`
+	WxInsertedAt             string          `json:"wx_inserted_at"`
+	WxOpenId                 string          `json:"wx_open_id"`
+	WxUnionId                string          `json:"wx_union_id"`
+	WxExpires                string          `json:"wx_expires"`
+	User
+}
+type User struct {
 	common.User
+	Blocked            int             `json:"blocked"`
+	Point              decimal.Decimal `json:"point"`
+	InviteBonus        decimal.Decimal `json:"invite_bonus,omitempty"`
+	DrawCash           string          `json:"draw_cash"`
+	InviteCount        int             `json:"invite_count,omitempty"`
+	Tmm                decimal.Decimal `json:"tmm"`
+	CompletedTaskCount int             `json:"completed_task_count,omitempty"`
+}
+
+type Device struct {
+	common.Device
+	SystemVersion string  `json:"system_version"`
+	Language      string  `json:"language"`
+	OsVersion     string  `json:"os_version"`
+	Timezone      string  `json:"timezone"`
+	Country       string  `json:"country"`
+	IsJailbrojen  bool    `json:"is_jailbrojen"`
+	ConsumedTs    float64 `json:"consumed_ts"`
+	TmpTs         uint64  `json:"tmp_ts"`
 }

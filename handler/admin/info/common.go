@@ -12,7 +12,7 @@ const (
 )
 
 type Stats struct {
-	Top10       []*admin.Users `json:"top_10,omitempty"`
+	Top10       []*admin.User `json:"top_10,omitempty"`
 	Numbers     int            `json:"numbers"`
 	CurrentTime string         `json:"current_time"`
 	Title       string         `json:"title"`

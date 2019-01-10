@@ -78,7 +78,8 @@ func FriendsHandler(c *gin.Context) {
 		FROM 
 			tmm.invite_bonus 
 		WHERE 
-			user_id = %d  AND  task_type != 0  
+			user_id = %d  
+		GROUP BY from_user_id
 		) AS bonus ON bonus.from_user_id = inv.user_id
 	LEFT JOIN 
 		tmm.devices AS dev ON dev.user_id = u.id 
@@ -146,7 +147,7 @@ func FriendsHandler(c *gin.Context) {
 		return
 	}
 
-	var List []*admin.Users
+	var List []*admin.UserStats
 	rows, _, err := db.Query(query)
 	if CheckErr(err, c) {
 		return
@@ -163,7 +164,7 @@ func FriendsHandler(c *gin.Context) {
 		return
 	}
 	for _, row := range rows {
-		user := &admin.Users{}
+		user := &admin.UserStats{}
 		user.Id = row.Uint64(0)
 		user.Mobile = row.Str(1)
 		user.Nick = row.Str(2)

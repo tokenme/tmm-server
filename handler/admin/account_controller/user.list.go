@@ -459,7 +459,7 @@ LEFT JOIN (
 	if CheckErr(err, c) {
 		return
 	}
-	var List []*admin.Users
+	var List []*admin.UserStats
 	if len(rows) == 0 {
 		c.JSON(http.StatusOK, admin.Response{
 			Code:    0,
@@ -482,15 +482,15 @@ LEFT JOIN (
 		if CheckErr(err, c) {
 			return
 		}
-		user := &admin.Users{
-			Point:                point.Ceil(),
-			DrawCash:             fmt.Sprintf("%.2f", row.Float(res.Map(`cny`))),
+		user := &admin.UserStats{
 			ExchangeCount:        row.Int(res.Map(`point_to_tmm_times`)),
 			OnlineBFNumber:       row.Int(res.Map(`online`)),
 			OffLineBFNumber:      row.Int(res.Map(`offline`)),
 			ExchangePointToUcoin: pointToUcoin.Ceil(),
-			Blocked:              row.Int(res.Map(`blocked`)),
 		}
+		user.Point = point.Ceil()
+		user.DrawCash =  fmt.Sprintf("%.2f", row.Float(res.Map(`cny`)))
+		user.Blocked = row.Int(res.Map(`blocked`))
 		user.Nick = row.Str(res.Map(`nick`))
 		user.Id = row.Uint64(res.Map(`id`))
 		user.Mobile = row.Str(res.Map(`mobile`))
