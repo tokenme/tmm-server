@@ -148,11 +148,11 @@ func (this *Service) CheckExchangeRecords(ctx context.Context) error {
 				if err != nil {
 					log.Error(err.Error())
 				}
-			} else if record.Status == common.ExchangeTxFailed && record.Direction == common.TMMExchangeOut {
-				_, _, err = db.Query(`UPDATE tmm.devices AS d, tmm.exchange_records AS er SET d.points=IF(d.points > er.points, d.points - er.points, 0), d.consumed_ts = CEIL(d.consumed_ts + %s), er.status=0 WHERE d.id=er.device_id AND er.tx='%s'`, pointsPerTs.String(), db.Escape(record.Tx))
+				/*} else if record.Status == common.ExchangeTxSuccess && record.Direction == common.TMMExchangeOut {
+				_, _, err = db.Query(`UPDATE tmm.devices AS d, tmm.exchange_records AS er SET d.points=d.points + er.points, d.total_ts = d.total_ts + %s, er.status=1 WHERE d.id=er.device_id AND er.tx='%s'`, pointsPerTs.String(), db.Escape(record.Tx))
 				if err != nil {
 					log.Error(err.Error())
-				}
+				}*/
 			} else {
 				_, _, err := db.Query(`UPDATE tmm.exchange_records SET status=%d WHERE tx='%s'`, receipt.Status, db.Escape(record.Tx))
 				if err != nil {

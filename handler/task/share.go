@@ -53,9 +53,9 @@ func ShareHandler(c *gin.Context) {
 	)
 	{
 		query := `
-        SELECT d.user_id, us.blocked, us.block_whitelist
+	SELECT d.user_id, IFNULL(us.blocked, 0) AS blocked, IFNULL(us.block_whitelist, 0) AS block_whitelist
         FROM tmm.devices AS d
-        INNER JOIN tmm.user_settings AS us ON d.user_id = us.user_id
+        LEFT JOIN tmm.user_settings AS us ON d.user_id = us.user_id
         WHERE d.id = "%s" LIMIT 1
     `
 		rows, _, err := db.Query(query, deviceId)
@@ -68,13 +68,18 @@ func ShareHandler(c *gin.Context) {
 			isBlocked = row.Int(1) == 1 && row.Int(2) == 0
 		}
 	}
+	log.Info("Share device id:%s, user id:%d, is block:%v, task id:%d", deviceId, userId, isBlocked, taskId)
 
 	if userId > 0 {
 		task := common.ShareTask{}
 		key := task.UserRateLimitKey(userId)
 		redisConn := Service.Redis.Master.Get()
 		defer redisConn.Close()
-		counter, _ := redis.Int64(redisConn.Do("INCR", key))
+		counter, err := redis.Int64(redisConn.Do("INCR", key))
+		if err != nil {
+			log.Error(err.Error())
+		}
+		log.Info("RateLimit user:%d, key:%s, counter:%d", userId, key, counter)
 		if counter <= 1 {
 			_, err := redisConn.Do("EXPIRE", key, MaxUserRateLimitDuration)
 			if err != nil {
@@ -83,6 +88,7 @@ func ShareHandler(c *gin.Context) {
 		} else if counter >= MaxUserRateLimitCounter {
 			log.Warn("RateLimit for user:%d, counter:%d", userId, counter)
 			isRateLimited = true
+			return
 		}
 	}
 

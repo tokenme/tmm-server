@@ -46,6 +46,7 @@ FROM tmm.share_tasks AS st
 LEFT JOIN tmm.device_share_tasks AS dst ON (dst.task_id=st.id AND dst.device_id='%s')
 LEFT JOIN tmm.devices AS d ON (d.id=dst.device_id)
 WHERE st.id=%d
+  AND st.online_status=1
 LIMIT 1`
 	rows, _, err := db.Query(query, db.Escape(deviceId), taskId)
 	if err != nil {
@@ -88,7 +89,7 @@ LIMIT 1`
 		}
 	}
 
-	if isWx && openid == "" {
+	if openid == "" {
 		c.Redirect(http.StatusFound, "https://ucoin.tianxi100.com/_.gif")
 		return
 	}

@@ -3,6 +3,7 @@ package main
 import (
 	//"github.com/tokenme/tmm/tools/orderbook-server"
 	//"github.com/tokenme/tmm/tools/transferwatcher"
+	"context"
 	"flag"
 	"fmt"
 	"github.com/davecgh/go-spew/spew"
@@ -59,6 +60,7 @@ func main() {
 		redpacketFlag              bool
 		redpacketTokensFlag        int64
 		redpacketRecipientsFlag    uint
+		resetUserFlag              uint64
 	)
 
 	os.Setenv("CONFIGOR_ENV_PREFIX", "-")
@@ -90,6 +92,7 @@ func main() {
 	flag.BoolVar(&fixInviteBonusFlag, "fix-invite-bonus", false, "enable fix invite bonus")
 	flag.Int64Var(&redpacketTokensFlag, "rp-tokens", 0, "set redpacket tokens")
 	flag.UintVar(&redpacketRecipientsFlag, "rp-users", 0, "set redpacket recipients")
+	flag.Uint64Var(&resetUserFlag, "reset-user", 0, "reset user id")
 	flag.Parse()
 
 	configor.New(&configor.Config{Verbose: configFlag.Debug, ErrorOnUnmatchedKeys: true, Environment: "production"}).Load(&config, configPath)
@@ -343,6 +346,18 @@ func main() {
 			gin.SetMode(gin.DebugMode)
 		} else {
 			gin.SetMode(gin.ReleaseMode)
+		}
+		if resetUserFlag > 0 {
+			user := common.User{
+				Id: resetUserFlag,
+			}
+			tx, err := user.Reset(context.Background(), service, config, handler.GlobalLock)
+			if err != nil {
+				log.Error(err.Error())
+			} else if tx != "" {
+				log.Warn("tx: %s", tx)
+			}
+			return
 		}
 		activeBonusService := invitebonus.NewService(service, config, handler.GlobalLock)
 		if fixInviteBonusFlag {

@@ -27,6 +27,7 @@ type Config struct {
 	TMMTokenAddress        string            `required:"true"`
 	TMMEscrowAddress       string            `required:"true"`
 	MinTMMExchange         uint              `required:"true"`
+	MinTMMExchangeOut      uint              `required:"true"`
 	MinExchangeRate        float64           `required:"true"`
 	MaxExchangeRate        float64           `required:"true"`
 	MinTMMRedeem           uint              `required:"true"`

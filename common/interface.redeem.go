@@ -60,5 +60,6 @@ SELECT IFNULL(SUM(cny), 0) AS cny FROM tmm.point_withdraws AS pw WHERE inserted_
 		return exceeded, total, nil
 	}
 	maxDailyWithdraw := decimal.New(config.MaxDailWithdraw, 0)
+	total, _ = decimal.NewFromString(rows[0].Str(0))
 	return total.GreaterThan(maxDailyWithdraw), total, nil
 }
