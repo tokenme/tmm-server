@@ -54,6 +54,8 @@ type UserStats struct {
 	FirstDayActive           bool            `json:"first_day_active"`
 	SecondDayActive          bool            `json:"second_day_active"`
 	ThreeDayActive           bool            `json:"three_day_active"`
+	NotActive                string         `json:"not_active"`
+	IsHaveAppId              bool            `json:"is_have_app_id"`
 	Bonus                    string          `json:"bonus,omitempty"`
 	FirendType               string          `json:"firend_type,omitempty"`
 	Parent                   User            `json:"pre_user,omitempty"`

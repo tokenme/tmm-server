@@ -21,8 +21,6 @@ type Transaction struct {
 	Status         string `json:"status"`
 }
 
-
-
 const (
 	WithDrawMoneyByPoint = iota
 	WithDrawMoneyByUc
@@ -102,7 +100,27 @@ ORDER BY tmp.inserted_at DESC
 LIMIT %d OFFSET %d
 
 	`
+	totalQuery := `
+SELECT 
+	SUM(tmp.number)
+FROM (
+	SELECT 
+		COUNT(1) AS number
+	FROM 
+		tmm.point_withdraws 	
+	WHERE 
+		DATE(inserted_at) = '%s'
 
+	UNION ALL
+
+	SELECT 
+		COUNT(1) AS number
+	FROM 
+		tmm.withdraw_txs
+		
+	WHERE 
+		DATE(inserted_at) = '%s'  
+) AS tmp`
 	db := Service.Db
 	rows, _, err := db.Query(query, db.Escape(date), db.Escape(date), pageSize, offset)
 	if CheckErr(err, c) {
@@ -122,12 +140,22 @@ LIMIT %d OFFSET %d
 		})
 	}
 
+	rows, _, err = db.Query(totalQuery, db.Escape(date), db.Escape(date))
+	if CheckErr(err, c) {
+		return
+	}
+	var total int
+	if len(rows) > 0 {
+		total = rows[0].Int(0)
+	}
+
 	c.JSON(http.StatusOK, admin.Response{
 		Code:    0,
 		Message: admin.API_OK,
 		Data: gin.H{
-			"page": page,
-			"data": list,
+			"page":  page,
+			"data":  list,
+			"total": total,
 		},
 	})
 }
