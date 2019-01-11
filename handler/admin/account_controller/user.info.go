@@ -319,7 +319,7 @@ LIMIT 1
 		user.PointByInvite + user.PointByDownLoadApp
 	notActiveTotal := row.Float(res.Map(`total`))
 	if (float64(user.DirectFriends)+float64(user.IndirectFriends)) != 0 && notActiveTotal != 0 {
-		user.NotActive = fmt.Sprintf("%.2f%", notActiveTotal/(float64(user.DirectFriends)+float64(user.IndirectFriends))*100)
+		user.NotActive = fmt.Sprintf("%.2f", notActiveTotal/(float64(user.DirectFriends)+float64(user.IndirectFriends))*100)+"%"
 	} else {
 		user.NotActive = fmt.Sprint("0%")
 	}
