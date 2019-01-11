@@ -22,9 +22,10 @@ const (
 	WX_AUTH_URL                          = "https://jkgj-isv.isvjcloud.com/rest/m/u/weauth"
 	MaxUserRateLimitSecondCounter  int64 = 3
 	MaxUserRateLimitSecondDuration       = 1
-	MaxUserRateLimitMinuteCounter  int64 = 30
+	MaxUserRateLimitMinuteCounter  int64 = 1500
 	MaxUserRateLimitMinuteDuration       = 1800
-    MaxUserRateLimitBlockDurateion       = 7200
+        MaxUserRateLimitBlockDurateion       = 3600
+        MaxUserRateLimitBlockCounter   int64 = 1700
 )
 
 type ShareData struct {
@@ -131,6 +132,14 @@ func ShareHandler(c *gin.Context) {
                 log.Error(err.Error())
             }
             isRateLimited = true
+            if minuteCounter >= MaxUserRateLimitBlockCounter {
+                _, _, err := db.Query(`INSERT INTO tmm.user_settings(user_id, blocked) VALUES (%d, 1) ON DUPLICATE KEY UPDATE blocked=VALUES(blocked)`, userId)
+                if err != nil {
+                    log.Error(err.Error())
+                } else {
+                    log.Info("Block rate limit user: %d, counter: %d", userId, minuteCounter)
+                }
+            }
         }
 	}
 
