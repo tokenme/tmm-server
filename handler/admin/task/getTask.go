@@ -11,7 +11,6 @@ import (
 )
 
 func GetTaskHandler(c *gin.Context) {
-	var db = Service.Db
 	taskid, err := strconv.Atoi(c.Query(`taskid`))
 	if CheckErr(err, c) {
 		return
@@ -32,13 +31,16 @@ func GetTaskHandler(c *gin.Context) {
 	inserted_at,
 	updated_at 
 	FROM tmm.share_tasks WHERE id = %d`
+
+	var db = Service.Db
 	rows, res, err := db.Query(query, taskid)
 	if CheckErr(err, c) {
 		return
 	}
-	if Check(len(rows) == 0, `Not found `, c) {
+	if Check(len(rows) == 0, admin.Not_Found, c) {
 		return
 	}
+
 	row := rows[0]
 	points, err := decimal.NewFromString(row.Str(res.Map(`points`)))
 	if CheckErr(err, c) {
@@ -66,17 +68,19 @@ func GetTaskHandler(c *gin.Context) {
 	task.Points = points
 	task.PointsLeft = pointsLeft
 	task.Bonus = bonus
+
 	var cidQuery = `SELECT cid FROM tmm.share_task_categories WHERE task_id = %d`
 	rows, _, err = db.Query(cidQuery, taskid)
 	if CheckErr(err, c) {
 		return
 	}
+
 	var cidList = []int{}
 	for _, row := range rows {
 		cidList = append(cidList, row.Int(0))
-
 	}
 	task.Cid = cidList
+
 	c.JSON(http.StatusOK, admin.Response{
 		Code:    0,
 		Message: admin.API_OK,

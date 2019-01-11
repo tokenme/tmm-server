@@ -1,34 +1,35 @@
 package task
 
 import (
+	"fmt"
 	"github.com/gin-gonic/gin"
 	. "github.com/tokenme/tmm/handler"
-	"net/http"
-	"fmt"
-	"strings"
 	"github.com/tokenme/tmm/handler/admin"
 	"github.com/tokenme/tmm/tools/videospider"
+	"net/http"
+	"strings"
 )
 
 func AddShareHandler(c *gin.Context) {
-	var db = Service.Db
 	var req admin.AddRequest
 	if CheckErr(c.Bind(&req), c) {
 		return
 	}
+
 	var fieldList []string
 	var valueList []string
+	var db = Service.Db
 	if req.Title != "" {
 		fieldList = append(fieldList, `title`)
-		valueList = append(valueList, fmt.Sprintf(`'%s'`, req.Title))
+		valueList = append(valueList, fmt.Sprintf(`'%s'`, db.Escape(req.Title)))
 	}
 	if req.Summary != "" {
 		fieldList = append(fieldList, `summary`)
-		valueList = append(valueList, fmt.Sprintf(`'%s'`, req.Summary))
+		valueList = append(valueList, fmt.Sprintf(`'%s'`, db.Escape(req.Summary)))
 	}
 	if req.Image != "" {
 		fieldList = append(fieldList, `image`)
-		valueList = append(valueList, fmt.Sprintf(`'%s'`, req.Image))
+		valueList = append(valueList, fmt.Sprintf(`'%s'`, db.Escape(req.Image)))
 	}
 	if req.Points.String() != "0" {
 		fieldList = append(fieldList, `points,points_left`)
@@ -54,26 +55,32 @@ func AddShareHandler(c *gin.Context) {
 				return
 			}
 		}
-		if Check(len(fieldList) == 0,`Error Link`,c){
+		if Check(len(fieldList) == 0, `Error Link`, c) {
 			return
 		}
 		fieldList = append(fieldList, `link`)
 		valueList = append(valueList, fmt.Sprintf(`'%s'`, req.Link))
 	}
 
-	var query = `
-	INSERT INTO tmm.share_tasks 
-	(%s) 
-	VALUES (%s)`
 	if Check(len(fieldList) == 0 || len(fieldList) != len(valueList), `Invalid param`, c) {
 		return
 	}
 	fieldList = append(fieldList, `creator`)
 	valueList = append(valueList, fmt.Sprintf(`%d`, 0))
+
+	var query = `
+	INSERT INTO tmm.share_tasks 
+	(%s) 
+	VALUES (%s)`
+
+	fieldList = append(fieldList, `creator`)
+	valueList = append(valueList, fmt.Sprintf(`%d`, 0))
+
 	_, res, err := db.Query(query, strings.Join(fieldList, `,`), strings.Join(valueList, `,`))
 	if CheckErr(err, c) {
 		return
 	}
+
 	var insertArray []string
 	for _, cid := range req.Cid {
 		insertArray = append(insertArray, fmt.Sprintf(`(%d,%d,%d)`, res.InsertId(), cid, 1))
@@ -85,6 +92,7 @@ func AddShareHandler(c *gin.Context) {
 			return
 		}
 	}
+
 	c.JSON(http.StatusOK, admin.Response{
 		Message: admin.API_OK,
 		Data:    req,

@@ -1,13 +1,13 @@
 package task
 
 import (
-	"net/http"
-	"github.com/gin-gonic/gin"
-	. "github.com/tokenme/tmm/handler"
-	"github.com/shopspring/decimal"
 	"fmt"
+	"github.com/gin-gonic/gin"
+	"github.com/shopspring/decimal"
 	"github.com/tokenme/tmm/common"
+	. "github.com/tokenme/tmm/handler"
 	"github.com/tokenme/tmm/handler/admin"
+	"net/http"
 	"strings"
 )
 
@@ -17,23 +17,23 @@ type SearchOptions struct {
 	Cid                  int `form:"cid"`
 	Nocid                int `form:"nocid"`
 	Online               int `form:"online_status"`
-	IsTask               int `form:"is_task"`
+	IsCrawled            int `form:"is_task"`
 	SortByReadersNumbers int `form:"readersNumbersSort"`
 }
 
 func GetTaskListHandler(c *gin.Context) {
-	db := Service.Db
 	var req SearchOptions
 	if CheckErr(c.Bind(&req), c) {
 		return
 	}
-	var offset int
 
+	var offset int
 	if req.Page > 0 {
 		offset = (req.Page - 1) * req.Limit
 	}
-	var sumquery string
-	query := ` SELECT 
+
+	query := ` 
+SELECT 
 	s.id,
 	s.creator,
 	s.title,
@@ -47,63 +47,81 @@ func GetTaskListHandler(c *gin.Context) {
 	s.viewers,
 	s.online_status,
     s.inserted_at,
-	log.users AS users,
-	log.ts AS ts,	
-	s.updated_at FROM tmm.share_tasks AS s
-	LEFT JOIN (SELECT COUNT(1) AS users ,task_id,SUM(ts) AS ts FROM tmm.reading_logs GROUP BY task_id) AS log ON (log.task_id = s.id)
-	%s 
-	ORDER BY %s
-	LIMIT %d OFFSET %d `
-	sumquery = `SELECT count(*) FROM tmm.share_tasks as s %s `
+	COUNT(log.user_id) AS users,
+	SUM(log.ts) AS ts,
+	s.updated_at 
+FROM 
+	tmm.share_tasks AS s
+LEFT JOIN 
+	tmm.reading_logs AS log ON log.task_id = s.id
+LEFT JOIN 
+	share_task_categories AS stc ON  stc.task_id = s.id
+WHERE
+	 %s 
+GROUP BY 
+	s.id 
+ORDER BY 
+	%s
+LIMIT %d OFFSET %d `
+	sumquery := `
+SELECT 
+	count(1) 
+FROM 
+	tmm.share_tasks as s 
+LEFT JOIN 
+	share_task_categories AS stc ON  stc.task_id = s.id
+WHERE 
+	%s `
+
 	var where []string
 	var sumwhere []string
-	if req.Nocid != 1 {
-		if req.Cid != 0 {
-			taskType := fmt.Sprintf(` INNER JOIN tmm.share_task_categories AS stc ON ( stc.task_id = s.id )  
-			where stc.cid = %d `, req.Cid)
-			where = append(where, taskType)
-			sumwhere = append(sumwhere, taskType)
-		} else {
-			param := ` WHERE 1 = 1 `
-			where = append(where, param)
-			sumwhere = append(sumwhere, param)
+
+	if req.Nocid == -1 {
+		if req.Cid > 0 {
+			where = append(where, fmt.Sprintf(` stc.cid = %d `, req.Cid))
+			sumwhere = append(sumwhere, fmt.Sprintf(` stc.cid = %d `, req.Cid))
 		}
+
 	} else {
-		isAuto := ` WHERE NOT EXISTS (
-		SELECT 1 FROM tmm.share_task_categories AS stc
-		WHERE stc.is_auto = 1 AND stc.task_id = s.id
-		LIMIT 1 ) `
+		isAuto := ` 
+		stc.is_auto < 1
+		`
 		where = append(where, isAuto)
 		sumwhere = append(sumwhere, isAuto)
 	}
+
 	if req.Online == 1 {
-		isOnline := fmt.Sprintf(`AND s.online_status = %d AND s.points_left > s.bonus`, req.Online)
+		isOnline := fmt.Sprintf(` s.online_status = %d AND s.points_left > s.bonus`, req.Online)
 		where = append(where, isOnline)
 		sumwhere = append(sumwhere, isOnline)
 	} else {
-		isOnline := fmt.Sprintf(`AND s.online_status = %d `, req.Online)
+		isOnline := fmt.Sprintf(` s.online_status = %d `, req.Online)
 		where = append(where, isOnline)
 		sumwhere = append(sumwhere, isOnline)
 	}
-	if req.IsTask != -1 {
-		istask := fmt.Sprint(" AND s.is_crawled = 0 ")
-		where = append(where, istask)
-		sumwhere = append(sumwhere, istask)
+
+	if req.IsCrawled != -1 {
+		isCrawled := fmt.Sprint("  s.is_crawled = 0 ")
+		where = append(where, isCrawled)
+		sumwhere = append(sumwhere, isCrawled)
 	}
+
 	var order string
-	if req.SortByReadersNumbers != -1 {
-		order = ` log.users DESC ,s.id DESC `
+	if req.SortByReadersNumbers == 1 {
+		order = ` users DESC  `
 	} else {
 		order = ` s.id DESC`
 	}
-	rows, res, err := db.Query(query, strings.Join(where, ` `), order, req.Limit, offset)
+
+	db := Service.Db
+	rows, res, err := db.Query(query, strings.Join(where, ` AND `), order, req.Limit, offset)
 	if CheckErr(err, c) {
 		return
 	}
 	if len(rows) == 0 {
 		c.JSON(http.StatusOK, admin.Response{
 			Code:    0,
-			Message: "Not Find Data",
+			Message: admin.Not_Found,
 			Data: gin.H{
 				"curr_page": req.Page,
 				"data":      nil,
@@ -112,6 +130,7 @@ func GetTaskListHandler(c *gin.Context) {
 		})
 		return
 	}
+
 	var sharelist []*common.ShareTask
 	for _, row := range rows {
 		var cidList []int
@@ -153,10 +172,12 @@ func GetTaskListHandler(c *gin.Context) {
 		share.Cid = cidList
 		sharelist = append(sharelist, share)
 	}
-	rows, _, err = db.Query(sumquery, strings.Join(sumwhere, ` `))
+
+	rows, _, err = db.Query(sumquery, strings.Join(sumwhere, ` AND `))
 	if CheckErr(err, c) {
 		return
 	}
+
 	count := rows[0].Int(0)
 	c.JSON(http.StatusOK, admin.Response{
 		Code:    0,
