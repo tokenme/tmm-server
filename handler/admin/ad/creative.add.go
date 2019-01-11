@@ -47,9 +47,15 @@ func AddCreativeHandler(c *gin.Context) {
 	if creat.Width != 0 {
 		valueList = append(valueList, fmt.Sprintf(" %d ", creat.Width))
 		fieldList = append(fieldList, fmt.Sprintf("width"))
+	}else{
+		valueList = append(valueList, fmt.Sprintf(" %d ", 640))
+		fieldList = append(fieldList, fmt.Sprintf("width"))
 	}
 	if creat.Height != 0 {
 		valueList = append(valueList, fmt.Sprintf(" %d ", creat.Height))
+		fieldList = append(fieldList, fmt.Sprintf("height"))
+	}else{
+		valueList = append(valueList, fmt.Sprintf(" %d ", 200))
 		fieldList = append(fieldList, fmt.Sprintf("height"))
 	}
 	if creat.Platform == 1 || creat.Platform == 2 || creat.Platform == 0 {
@@ -65,7 +71,7 @@ func AddCreativeHandler(c *gin.Context) {
 		fieldList = append(fieldList, fmt.Sprintf("end_date"))
 	}
 
-	if len(valueList) > 0 {
+	if len(valueList) > 2 {
 		_, _, err := db.Query(`INSERT tmm.creatives(%s )
 		VALUES (%s)`, strings.Join(fieldList, ","), strings.Join(valueList, ","))
 		if CheckErr(err, c) {
