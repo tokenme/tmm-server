@@ -65,47 +65,50 @@ SELECT
 		OR app.task_id > 0   OR reading.user_id > 0
 		OR daily.user_id > 0)
 		LIMIT 1
-	),true,false) AS _active
-	
+	),TRUE,FALSE) AS _active,
+	IF(dev_app.app_id IS NOT NULL,TRUE,FALSE) AS  app_id,
+	IF(not_active.total = 0,0,not_active.total) AS total
 FROM 
 	ucoin.users AS u
 LEFT JOIN  
 	tmm.devices AS dev ON dev.user_id = u.id
+LEFT JOIN
+	tmm.device_apps AS dev_app ON dev_app.device_id = dev.id
 LEFT JOIN 
 	tmm.user_settings AS us_set ON (us_set.user_id = u.id )
 LEFT JOIN 
 	tmm.wx AS wx ON (wx.user_id =u.id)
 LEFT JOIN (
-SELECT 
-	IFNULL(wx.nick,us.nickname) AS nick,
-	us.id AS id ,
-	IF(us_set.user_id > 0,IF(us_set.blocked = us_set.block_whitelist,0,1),0) AS blocked
-FROM 
-	tmm.invite_codes  AS ic
-INNER JOIN 
-	ucoin.users AS us  ON us.id = ic.parent_id
-LEFT JOIN 
-	tmm.user_settings AS us_set ON (us_set.user_id = us.id )
-LEFT JOIN 
-	tmm.wx AS wx ON wx.user_id = us.id 
-WHERE 
-	ic.user_id = %d
+	SELECT 
+		IFNULL(wx.nick,us.nickname) AS nick,
+		us.id AS id ,
+		IF(us_set.user_id > 0,IF(us_set.blocked = us_set.block_whitelist,0,1),0) AS blocked
+	FROM 
+		tmm.invite_codes  AS ic
+	INNER JOIN 
+		ucoin.users AS us  ON us.id = ic.parent_id
+	LEFT JOIN 
+		tmm.user_settings AS us_set ON (us_set.user_id = us.id )
+	LEFT JOIN 
+		tmm.wx AS wx ON wx.user_id = us.id 
+	WHERE 
+		ic.user_id = %d
 ) AS parent ON 1 = 1 
 LEFT JOIN (
-SELECT 
-	IFNULL(wx.nick,us.nickname) AS nick,
-	us.id AS id ,
-	IF(us_set.user_id > 0,IF(us_set.blocked = us_set.block_whitelist,0,1),0) AS blocked
-FROM 
-	tmm.invite_codes  AS ic
-INNER JOIN 
-	ucoin.users AS us  ON us.id = ic.root_id
-LEFT JOIN 
-	tmm.user_settings AS us_set ON (us_set.user_id = us.id )
-LEFT JOIN 
-	tmm.wx AS wx ON wx.user_id = us.id 
-WHERE 
-	ic.user_id = %d
+	SELECT 
+		IFNULL(wx.nick,us.nickname) AS nick,
+		us.id AS id ,
+		IF(us_set.user_id > 0,IF(us_set.blocked = us_set.block_whitelist,0,1),0) AS blocked
+	FROM 
+		tmm.invite_codes  AS ic
+	INNER JOIN 
+		ucoin.users AS us  ON us.id = ic.root_id
+	LEFT JOIN 
+		tmm.user_settings AS us_set ON (us_set.user_id = us.id )
+	LEFT JOIN 
+		tmm.wx AS wx ON wx.user_id = us.id 
+	WHERE 
+		ic.user_id = %d
 ) AS root ON 1 = 1 
 LEFT JOIN (
 	SELECT 
@@ -123,7 +126,7 @@ LEFT JOIN (
 		WHERE user_id = %d
 ) AS point ON 1 = 1
 LEFT JOIN (
-SELECT
+	SELECT
 		COUNT(IF(inv.parent_id = %d,inv.user_id,NULL)) AS direct,
 		COUNT(IF(inv.grand_id = %d,inv.user_id,NULL)) AS indirect,
 		COUNT(IF(inv.parent_id = %d AND EXISTS(
@@ -133,41 +136,52 @@ SELECT
 		SELECT 1 FROM user_settings AS us  WHERE us.blocked= 1 AND us.user_id=inv.user_id AND us.block_whitelist=0  LIMIT 1
 		),1,NULL)) AS indirect_blocked,
 		COUNT( 
-		IF(EXISTS(
-		SELECT 
-		1
-		FROM tmm.devices AS dev 
-		LEFT JOIN tmm.device_share_tasks AS sha ON (sha.device_id = dev.id AND sha.inserted_at > DATE_SUB(DATE(NOW()),INTERVAL 2 DAY))
-		LEFT JOIN tmm.device_app_tasks AS app ON (app.device_id = dev.id  AND  app.inserted_at > DATE_SUB(DATE(NOW()),INTERVAL 2 DAY))
-		LEFT JOIN reading_logs AS reading ON (reading.user_id = dev.user_id  AND (reading.updated_at > DATE_SUB(DATE(NOW()),INTERVAL 2 DAY) OR  reading.inserted_at > DATE_SUB(DATE(NOW()),INTERVAL 2 DAY)))
-		LEFT JOIN tmm.daily_bonus_logs AS daily ON (daily.user_id = dev.user_id AND daily.updated_on >= DATE_SUB(DATE(NOW()),INTERVAL 2 DAY))  
-		WHERE dev.user_id = inv.user_id AND ( 
-		sha.task_id > 0  
-		OR app.task_id > 0   OR reading.user_id > 0
-		OR daily.user_id > 0)
-		LIMIT 1
-		),inv.user_id,NULL)
+			IF(EXISTS(
+			SELECT 
+				1
+			FROM 
+				tmm.devices AS dev 
+			LEFT JOIN 
+				tmm.device_share_tasks AS sha ON (sha.device_id = dev.id AND sha.inserted_at > DATE_SUB(DATE(NOW()),INTERVAL 2 DAY))
+			LEFT JOIN 
+				tmm.device_app_tasks AS app ON (app.device_id = dev.id  AND  app.inserted_at > DATE_SUB(DATE(NOW()),INTERVAL 2 DAY))
+			LEFT JOIN 
+				reading_logs AS reading ON (reading.user_id = dev.user_id  AND (reading.updated_at > DATE_SUB(DATE(NOW()),INTERVAL 2 DAY) OR  reading.inserted_at > DATE_SUB(DATE(NOW()),INTERVAL 2 DAY)))
+			LEFT JOIN 
+				tmm.daily_bonus_logs AS daily ON (daily.user_id = dev.user_id AND daily.updated_on >= DATE_SUB(DATE(NOW()),INTERVAL 2 DAY))  
+			WHERE 
+				dev.user_id = inv.user_id AND ( 
+				sha.task_id > 0	OR app.task_id > 0 OR 
+				reading.user_id > 0 OR daily.user_id > 0)
+			LIMIT 1
+			),inv.user_id,NULL)
 		) AS active,
-		COUNT( 
+		COUNT(
 		IF(u.id > 0  AND EXISTS(
-		SELECT 
-		1
-		FROM tmm.devices AS dev 
-		LEFT JOIN tmm.device_share_tasks AS sha ON (sha.device_id = dev.id AND sha.inserted_at > DATE_SUB(DATE(NOW()),INTERVAL 2 DAY))
-		LEFT JOIN tmm.device_app_tasks AS app ON (app.device_id = dev.id  AND  app.inserted_at > DATE_SUB(DATE(NOW()),INTERVAL 2 DAY))
-		LEFT JOIN reading_logs AS reading ON (reading.user_id = dev.user_id  AND (reading.updated_at > DATE_SUB(DATE(NOW()),INTERVAL 2 DAY) OR  reading.inserted_at > DATE_SUB(DATE(NOW()),INTERVAL 2 DAY)))
-		LEFT JOIN tmm.daily_bonus_logs AS daily ON (daily.user_id = dev.user_id AND daily.updated_on >= DATE_SUB(DATE(NOW()),INTERVAL 2 DAY))  
-		WHERE dev.user_id = u.id AND ( 
-		sha.task_id > 0  
-		OR app.task_id > 0   OR reading.user_id > 0
-		OR daily.user_id > 0)
-		LIMIT 1
-		),inv.user_id,NULL) 
+			SELECT 
+				1
+			FROM 
+				tmm.devices AS dev 
+			LEFT JOIN 
+				tmm.device_share_tasks AS sha ON (sha.device_id = dev.id AND sha.inserted_at > DATE_SUB(DATE(NOW()),INTERVAL 2 DAY))
+			LEFT JOIN 
+				tmm.device_app_tasks AS app ON (app.device_id = dev.id  AND  app.inserted_at > DATE_SUB(DATE(NOW()),INTERVAL 2 DAY))
+			LEFT JOIN 
+				reading_logs AS reading ON (reading.user_id = dev.user_id  AND (reading.updated_at > DATE_SUB(DATE(NOW()),INTERVAL 2 DAY) OR  reading.inserted_at > DATE_SUB(DATE(NOW()),INTERVAL 2 DAY)))
+			LEFT JOIN 
+				tmm.daily_bonus_logs AS daily ON (daily.user_id = dev.user_id AND daily.updated_on >= DATE_SUB(DATE(NOW()),INTERVAL 2 DAY))  
+			WHERE 
+				dev.user_id = u.id AND ( 
+				sha.task_id > 0 OR app.task_id > 0  OR
+				reading.user_id > 0 OR daily.user_id > 0)
+			LIMIT 1
+			),inv.user_id,NULL) 
 		) AS invite_firend_active,
 		COUNT(IF(u.id>0,1,NULL)) AS invite_By_Number
 	FROM
 		tmm.invite_codes  AS inv
-	LEFT JOIN ucoin.users AS u ON (u.id = inv.user_id AND u.created > DATE_SUB(DATE(NOW()),INTERVAL 2 DAY))
+	LEFT JOIN 
+		ucoin.users AS u ON (u.id = inv.user_id AND u.created > DATE_SUB(DATE(NOW()),INTERVAL 2 DAY))
 	WHERE
 		inv.parent_id = %d OR inv.grand_id = %d
 ) AS inv ON 1 = 1
@@ -187,8 +201,7 @@ LEFT JOIN (
 	WHERE  task_type != 0  AND user_id = %d
 	) AS bonus ON bonus.user_id = dev.user_id
 	WHERE
-		dev.user_id = %d 
-	
+		dev.user_id = %d
 ) AS sha ON 1 = 1 
 LEFT JOIN (
 	SELECT
@@ -215,6 +228,24 @@ LEFT JOIN (
 		tmm.reading_logs
 	WHERE user_id = %d
 ) AS reading ON 1 = 1
+LEFT JOIN (
+	SELECT
+		COUNT(DISTINCT IF(sha.task_id IS NULL   AND app.task_id IS NULL  AND reading.user_id IS NULL  ,inv.user_id,NULL)) AS total
+	FROM
+		tmm.invite_codes AS inv
+	INNER JOIN 
+		ucoin.users AS u ON u.id = inv.user_id
+	LEFT JOIN
+		tmm.devices AS dev ON dev.user_id = u.id
+	LEFT JOIN 
+		tmm.device_share_tasks AS sha ON (sha.device_id = dev.id AND sha.inserted_at < DATE_ADD(DATE(u.created),INTERVAL 3 DAY))
+	LEFT JOIN 
+		tmm.device_app_tasks AS app ON (app.device_id = dev.id  AND  app.inserted_at < DATE_ADD(DATE(u.created),INTERVAL 3 DAY))
+	LEFT JOIN 
+		reading_logs AS reading ON (reading.user_id = dev.user_id  AND reading.inserted_at < DATE_ADD(DATE(u.created),INTERVAL 3 DAY))
+	WHERE   
+		inv.parent_id = %d OR inv.grand_id = %d
+) AS not_active ON 1 = 1
 WHERE 
 	u.id = %d
 LIMIT 1 
@@ -226,7 +257,7 @@ LIMIT 1
 		})
 		return
 	}
-	rows, res, err := db.Query(query, id, id, id, id, id, id,id, id, id, id, id, id, id, id, id, id)
+	rows, res, err := db.Query(query, id, id, id, id, id, id, id, id, id, id, id, id, id, id, id, id, id, id)
 	if CheckErr(err, c) {
 		return
 	}
@@ -268,6 +299,7 @@ LIMIT 1
 		InDirectBlockedCount:     row.Int(res.Map(`indirect_blocked`)),
 		InviteNewUserByThreeDays: row.Int(res.Map(`invite_By_Number`)),
 		InviteNewUserActiveCount: row.Int(res.Map(`invite_firend_active`)),
+		IsHaveAppId:              row.Bool(res.Map(`app_id`)),
 	}
 	user.Id = row.Uint64(res.Map(`id`))
 	user.Mobile = row.Str(res.Map(`mobile`))
@@ -283,8 +315,14 @@ LIMIT 1
 	user.Point = point.Ceil()
 	user.DrawCash = fmt.Sprintf("%.2f", row.Float(res.Map(`cny`)))
 	user.Blocked = row.Int(res.Map(`blocked`))
-	user.TotalMakePoint = user.PointByShare+ user.PointByReading +
+	user.TotalMakePoint = user.PointByShare + user.PointByReading +
 		user.PointByInvite + user.PointByDownLoadApp
+	notActiveTotal := row.Float(res.Map(`total`))
+	if (float64(user.DirectFriends)+float64(user.IndirectFriends)) != 0 && notActiveTotal != 0 {
+		user.NotActive = fmt.Sprintf("%.2f%", notActiveTotal/(float64(user.DirectFriends)+float64(user.IndirectFriends))*100)
+	} else {
+		user.NotActive = fmt.Sprint("0%")
+	}
 
 	parent := admin.User{}
 	parent.Id = row.Uint64(res.Map(`parent_id`))

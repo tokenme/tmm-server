@@ -5,11 +5,9 @@ const (
 	ExchangePoint    = "积分兑换"
 	DrawMoneyByPoint = "积分提现"
 	DrawMoneyByUc    = "UC提现"
+	TaskSuccessful   = "已结算"
 )
 
-const (
-	TaskSuccessful = "已结算"
-)
 const (
 	Failed = iota
 	Success
@@ -24,8 +22,8 @@ const (
 )
 
 var MsgMap = map[int]string{
-	Success: "成功",
 	Failed:  "失败",
+	Success: "成功",
 	Pending: "等待打包中",
 }
 

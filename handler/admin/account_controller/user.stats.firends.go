@@ -62,7 +62,8 @@ func FriendsHandler(c *gin.Context) {
 			,1,NULL)) > 0,TRUE,FALSE 
 		) AS three_day_active,
 		bonus.bonus,
-		IF(inv.parent_id = %d,0,1 ) AS fiends_types 
+		IF(inv.parent_id = %d,0,1 ) AS fiends_types,
+		IF(dev_app.app_id IS NOT NULL,TRUE,FALSE) AS  app_id
 	FROM
 		tmm.invite_codes AS inv
 	INNER JOIN 
@@ -83,6 +84,8 @@ func FriendsHandler(c *gin.Context) {
 		) AS bonus ON bonus.from_user_id = inv.user_id
 	LEFT JOIN 
 		tmm.devices AS dev ON dev.user_id = u.id 
+	LEFT JOIN
+		tmm.device_apps AS dev_app ON dev_app.device_id = dev.id
 	LEFT JOIN 
 		tmm.device_share_tasks AS sha ON (sha.device_id = dev.id AND sha.inserted_at < DATE_ADD(DATE(u.created),INTERVAL 3 day ) )
 	LEFT JOIN 
@@ -175,6 +178,7 @@ func FriendsHandler(c *gin.Context) {
 		user.ThreeDayActive = row.Bool(7)
 		user.Bonus = fmt.Sprintf("%.1f", row.Float(8))
 		user.FirendType = FirendMap[row.Int(9)]
+		user.IsHaveAppId = row.Bool(10)
 		List = append(List, user)
 	}
 	var total int
