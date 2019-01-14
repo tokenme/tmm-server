@@ -18,7 +18,6 @@ const (
 )
 
 func FriendsHandler(c *gin.Context) {
-	db := Service.Db
 	var req PageOptions
 	if CheckErr(c.Bind(&req), c) {
 		return
@@ -26,6 +25,7 @@ func FriendsHandler(c *gin.Context) {
 	if Check(req.Id < 0, admin.Not_Found, c) {
 		return
 	}
+
 	var offset int
 	if req.Limit < 1 {
 		req.Limit = 10
@@ -34,6 +34,7 @@ func FriendsHandler(c *gin.Context) {
 		offset = (req.Page - 1) * req.Limit
 	}
 	var totalquery, query string
+
 	query = `
 	SELECT
 		inv.user_id,
@@ -113,10 +114,12 @@ func FriendsHandler(c *gin.Context) {
 		direct := fmt.Sprintf(" inv.parent_id = %d ", req.Id)
 		query = fmt.Sprintf(query, req.Id, req.Id, direct, req.Limit, offset)
 		totalquery = fmt.Sprintf(totalquery, direct)
+
 	case Indirect:
 		indirect := fmt.Sprintf(" inv.grand_id = %d", req.Id)
 		query = fmt.Sprintf(query, req.Id, req.Id, indirect, req.Limit, offset)
 		totalquery = fmt.Sprintf(totalquery, indirect)
+
 	case Children:
 		online := fmt.Sprintf("  inv.parent_id = %d OR inv.grand_id = %d ", req.Id, req.Id)
 		query = fmt.Sprintf(query, req.Id, req.Id, online, req.Limit, offset)
@@ -138,6 +141,7 @@ func FriendsHandler(c *gin.Context) {
 		LIMIT 1 )`, req.Id, req.Id)
 		query = fmt.Sprintf(query, req.Id, req.Id, active, req.Limit, offset)
 		totalquery = fmt.Sprintf(totalquery, active)
+
 	default:
 		c.JSON(http.StatusOK, admin.Response{
 			Code:    0,
@@ -151,10 +155,12 @@ func FriendsHandler(c *gin.Context) {
 	}
 
 	var List []*admin.UserStats
+	db := Service.Db
 	rows, _, err := db.Query(query)
 	if CheckErr(err, c) {
 		return
 	}
+
 	if len(rows) == 0 {
 		c.JSON(http.StatusOK, admin.Response{
 			Code:    0,
@@ -166,6 +172,7 @@ func FriendsHandler(c *gin.Context) {
 		})
 		return
 	}
+
 	for _, row := range rows {
 		user := &admin.UserStats{}
 		user.Id = row.Uint64(0)
@@ -181,6 +188,7 @@ func FriendsHandler(c *gin.Context) {
 		user.IsHaveAppId = row.Bool(10)
 		List = append(List, user)
 	}
+
 	var total int
 	rows, _, err = db.Query(totalquery)
 	if CheckErr(err, c) {
@@ -189,6 +197,7 @@ func FriendsHandler(c *gin.Context) {
 	if len(rows) > 0 {
 		total = rows[0].Int(0)
 	}
+
 	c.JSON(http.StatusOK, admin.Response{
 		Code:    0,
 		Message: admin.API_OK,

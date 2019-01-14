@@ -10,11 +10,11 @@ import (
 )
 
 func MakePointHandler(c *gin.Context) {
-	db := Service.Db
 	var req PageOptions
 	if CheckErr(c.Bind(&req), c) {
 		return
 	}
+
 	var offset int
 	if req.Limit < 1 {
 		req.Limit = 10
@@ -24,6 +24,7 @@ func MakePointHandler(c *gin.Context) {
 	} else {
 		offset = 0
 	}
+
 	var froms []string
 	if req.Types == Invite || req.Types == -1 {
 		froms = append(froms, fmt.Sprintf(`
@@ -113,7 +114,9 @@ func MakePointHandler(c *gin.Context) {
 		tmp.inserted_at DESC
 	LIMIT %d OFFSET %d
 	`
+
 	var where string
+	db := Service.Db
 	if req.Devices != "" && (req.Types == AppTask || req.Types == Share) {
 		where = fmt.Sprintf(" WHERE tmp.device_id ='%s'", db.Escape(req.Devices))
 	}
@@ -121,12 +124,13 @@ func MakePointHandler(c *gin.Context) {
 	if CheckErr(err, c) {
 		return
 	}
+
 	var taskList []*Task
 	var taskType string
 	var get string
 	for _, row := range rows {
 		get = fmt.Sprintf("+%.2f积分", row.Float(0))
-		if row.Int(3) != 0 {
+		if row.Int(3) > 0 {
 			taskType = InviteMap[row.Int(3)]
 			if row.Int(3) == 3 {
 				get = fmt.Sprintf("+%.2fUC", row.Float(4))
@@ -142,6 +146,7 @@ func MakePointHandler(c *gin.Context) {
 		}
 		taskList = append(taskList, task)
 	}
+
 	var total int
 	rows, _, err = db.Query(`
 	SELECT 
@@ -153,6 +158,7 @@ func MakePointHandler(c *gin.Context) {
 	if len(rows) > 0 {
 		total = rows[0].Int(0)
 	}
+
 	c.JSON(http.StatusOK, admin.Response{
 		Code:    0,
 		Message: admin.API_OK,
