@@ -56,7 +56,6 @@ type UserStats struct {
 	ThreeDayActive           bool            `json:"three_day_active"`
 	NotActive                string          `json:"not_active"`
 	IsHaveAppId              bool            `json:"is_have_app_id"`
-	IsRateLimited            bool            `json:"is_rate_limited"`
 	Bonus                    string          `json:"bonus,omitempty"`
 	FirendType               string          `json:"firend_type,omitempty"`
 	Parent                   User            `json:"pre_user,omitempty"`

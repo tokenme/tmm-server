@@ -8,9 +8,9 @@ import (
 )
 
 type EditRequest struct {
-	Id             int    `json:"id"`
-	Ban            bool   `json:"ban"`
-	BlockedMessage string `json:"blocked_message"`
+	Id       int    `json:"id"`
+	Ban      bool   `json:"ban"`
+	Comments string `json:"blocked_message"`
 }
 
 func EditAccountHandler(c *gin.Context) {
@@ -20,16 +20,16 @@ func EditAccountHandler(c *gin.Context) {
 	}
 
 	query := `
-	INSERT INTO tmm.user_settings (user_id,blocked,block_whitelist,blocked_message) 
+	INSERT INTO tmm.user_settings (user_id,blocked,block_whitelist,comments) 
 	VALUES(%d,%d,%d,'%s')  
-    ON DUPLICATE KEY UPDATE blocked=VALUES(blocked),block_whitelist=VALUES(block_whitelist),blocked_message=VALUES(blocked_message)`
+    ON DUPLICATE KEY UPDATE blocked=VALUES(blocked),block_whitelist=VALUES(block_whitelist),comments=VALUES(comments)`
 	var blockWhitelist int
 	if !req.Ban {
-		blockWhitelist  = 1
+		blockWhitelist = 1
 	}
 
 	db := Service.Db
-	if _,_,err:=db.Query(query,req.Id,1,blockWhitelist,req.BlockedMessage);CheckErr(err,c){
+	if _, _, err := db.Query(query, req.Id, 1, blockWhitelist, req.Comments); CheckErr(err, c) {
 		return
 	}
 

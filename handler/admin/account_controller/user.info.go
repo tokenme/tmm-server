@@ -2,11 +2,9 @@ package account_controller
 
 import (
 	"fmt"
-	"github.com/garyburd/redigo/redis"
 	"github.com/gin-gonic/gin"
 	"github.com/shopspring/decimal"
 	"github.com/tokenme/tmm/coins/eth/utils"
-	"github.com/tokenme/tmm/common"
 	. "github.com/tokenme/tmm/handler"
 	"github.com/tokenme/tmm/handler/admin"
 	"net/http"
@@ -57,7 +55,7 @@ SELECT
 	IFNULL(root.blocked,0) AS root_blocked,
 	IFNULL(root.nick,NULL) AS root_nick,
 	IF(us_set.user_id > 0,IF(us_set.blocked = us_set.block_whitelist,0,1),0) AS blocked,
-	us_set.blocked_message AS message,
+	us_set.comments AS message,
 	IF(EXISTS(
 		SELECT 
 		1
@@ -236,7 +234,7 @@ LEFT JOIN (
 ) AS reading ON 1 = 1
 LEFT JOIN (
 	SELECT
-		COUNT(DISTINCT IF(sha.task_id > 0    OR app.task_id > 0  AND reading.user_id  > 0   ,inv.user_id,NULL)) AS total
+		COUNT(DISTINCT IF(sha.task_id > 0  OR app.task_id > 0  OR reading.user_id  > 0   ,inv.user_id,NULL)) AS total
 	FROM
 		tmm.invite_codes AS inv
 	INNER JOIN 
@@ -280,10 +278,6 @@ LIMIT 1
 	_, _, decimals, _, _, _, _, _, balance, err := utils.TokenMeta(tokenABI, row.Str(res.Map(`addr`)))
 	balanceDecimal, err := decimal.NewFromString(balance.String())
 	tmm := balanceDecimal.Div(decimal.New(1, int32(decimals)))
-	redisConn := Service.Redis.Master.Get()
-	defer redisConn.Close()
-	task := common.ShareTask{}
-	isRateLimited, err := redis.Bool(redisConn.Do("EXISTS", task.UserRateLimitBlockKey(uint64(id))))
 
 	user := &admin.UserStats{
 		DrawCashByUc:             fmt.Sprintf("%.2f", row.Float(res.Map(`uc_cny`))),
@@ -302,7 +296,6 @@ LIMIT 1
 		InviteNewUserActiveCount: row.Int(res.Map(`invite_firend_active`)),
 		IsHaveAppId:              row.Bool(res.Map(`app_id`)),
 		BlockedMessage:           row.Str(res.Map(`message`)),
-		IsRateLimited:            isRateLimited,
 	}
 	user.Id = row.Uint64(res.Map(`id`))
 	user.Mobile = row.Str(res.Map(`mobile`))
@@ -321,7 +314,7 @@ LIMIT 1
 	user.TotalMakePoint = user.PointByShare + user.PointByReading +
 		user.PointByInvite + user.PointByDownLoadApp
 	threeActiveCount := row.Float(res.Map(`total`))
-	if (float64(user.DirectFriends)+float64(user.IndirectFriends)) > 0 && threeActiveCount > 0 {
+	if user.DirectFriends+user.IndirectFriends > 0 && threeActiveCount > 0 {
 		user.NotActive = fmt.Sprintf("%.2f", 100-threeActiveCount/(float64(user.DirectFriends)+float64(user.IndirectFriends))*100) + "%"
 	} else {
 		user.NotActive = fmt.Sprint("0%")
