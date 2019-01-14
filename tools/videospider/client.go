@@ -189,7 +189,7 @@ func (this *Client) UpdateVideos(updateCh chan<- struct{}) error {
 			}
 		}
 		if len(offlineIds) > 0 {
-			log.Warn("Offline:%d Videos", len(val))
+			log.Warn("Offline:%d Videos", len(offlineIds))
 			_, _, err := db.Query(`UPDATE tmm.share_tasks SET online_status=-1 WHERE id IN (%s)`, strings.Join(offlineIds, ","))
 			if err != nil {
 				log.Error(err.Error())
