@@ -53,6 +53,8 @@ func (this *Client) Register(resolver Resolver) {
 	this.resolvers[resolver.Name()] = resolver
 }
 
+const ERR_NO_VIDEO_FILE_FOUND = "no video file found"
+
 func (this *Client) Get(link string) (info Video, err error) {
 	for _, resolver := range this.resolvers {
 		if resolver.MatchUrl(link) {
@@ -70,7 +72,7 @@ func (this *Client) Get(link string) (info Video, err error) {
 			}
 			info.Files = files
 			if len(files) == 0 {
-				return info, errors.New("no video file found")
+				return info, errors.New(ERR_NO_VIDEO_FILE_FOUND)
 			}
 			return info, nil
 		}
@@ -125,7 +127,7 @@ func (this *Client) UpdateVideos(updateCh chan<- struct{}) error {
 		task := req.(*TaskVideo)
 		//log.Info("Updating:%s", task.Link)
 		video, err := this.Get(task.Link)
-		if err != nil {
+		if err != nil && err.Error() != ERR_NO_VIDEO_FILE_FOUND {
 			log.Error("Update:%s, Failed:%s", task.Link, err.Error())
 			ignoreIds[task.Id] = struct{}{}
 			return
@@ -187,7 +189,7 @@ func (this *Client) UpdateVideos(updateCh chan<- struct{}) error {
 			}
 		}
 		if len(offlineIds) > 0 {
-			log.Warn("Offline:%d Videos", len(val))
+			log.Warn("Offline:%d Videos", len(offlineIds))
 			_, _, err := db.Query(`UPDATE tmm.share_tasks SET online_status=-1 WHERE id IN (%s)`, strings.Join(offlineIds, ","))
 			if err != nil {
 				log.Error(err.Error())
