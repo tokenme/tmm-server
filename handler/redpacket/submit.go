@@ -56,7 +56,7 @@ func SubmitHandler(c *gin.Context) {
 		unionId := "NULL"
 		var nick string
 		{
-			rows, _, err := db.Query(`SELECT u.id, u.country_code, u.mobile, wx.union_id, wx.nick, wx.avatar FROM ucoin.users AS u LEFT JOIN tmm.wx AS wx ON (wx.user_id=u.id) WHERE u.id=%d LIMIT 1`, userId)
+			rows, _, err := db.Query(`SELECT u.id, u.country_code, u.mobile, u.avatar, wx.union_id, wx.nick, wx.avatar FROM ucoin.users AS u LEFT JOIN tmm.wx AS wx ON (wx.user_id=u.id) WHERE u.id=%d LIMIT 1`, userId)
 			if err != nil {
 				log.Error(err.Error())
 			}
@@ -68,12 +68,13 @@ func SubmitHandler(c *gin.Context) {
 				Id:          rows[0].Uint64(0),
 				CountryCode: rows[0].Uint(1),
 				Mobile:      rows[0].Str(2),
+				Avatar:      rows[0].Str(3),
 			}
-			wxUnionId := rows[0].Str(3)
+			wxUnionId := rows[0].Str(4)
 			if wxUnionId != "" {
 				user.Wechat = &common.Wechat{
-					Nick:   rows[0].Str(4),
-					Avatar: rows[0].Str(5),
+					Nick:   rows[0].Str(5),
+					Avatar: rows[0].Str(6),
 				}
 				unionId = fmt.Sprintf("'%s'", db.Escape(wxUnionId))
 				nick = user.GetShowName()

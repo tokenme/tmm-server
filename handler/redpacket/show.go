@@ -231,7 +231,7 @@ func ShowHandler(c *gin.Context) {
 func getRecipients(id uint64, userId uint64, unionId string, service *common.Service) (recipients []*common.RedpacketRecipient, err error) {
 	db := service.Db
 	rows, _, err := db.Query(`SELECT
-        rr.user_id, IFNULL(wx.union_id, rr.union_id), IFNULL(wx.nick, rr.nick), IFNULL(wx.avatar, rr.avatar), rr.tmm
+        rr.user_id, IFNULL(wx.union_id, rr.union_id), IFNULL(wx.nick, rr.nick), IFNULL(wx.avatar, IF(u.avatar="" OR u.avatar IS NULL, rr.avatar, u.avatar)), rr.tmm
     FROM tmm.redpacket_recipients AS rr
     LEFT JOIN ucoin.users AS u ON (u.id=rr.user_id)
     LEFT JOIN tmm.wx AS wx ON (wx.user_id=u.id)
@@ -254,7 +254,7 @@ func getRecipients(id uint64, userId uint64, unionId string, service *common.Ser
 			Nick:    row.Str(2),
 			Avatar:  avatar,
 			Tmm:     tmm,
-			IsSelf:  userId == uid || unionId == unid,
+			IsSelf:  userId == uid || unionId != "" && unionId == unid,
 		}
 		recipients = append(recipients, rr)
 	}
