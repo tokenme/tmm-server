@@ -114,7 +114,7 @@ func MakePointHandler(c *gin.Context) {
 	LIMIT %d OFFSET %d
 	`
 	var where string
-	if req.Devices != "" && req.Types == AppTask || req.Types == Share {
+	if req.Devices != "" && (req.Types == AppTask || req.Types == Share) {
 		where = fmt.Sprintf(" WHERE tmp.device_id ='%s'", db.Escape(req.Devices))
 	}
 	rows, _, err := db.Query(query, strings.Join(froms, " UNION "), where, req.Limit, offset)

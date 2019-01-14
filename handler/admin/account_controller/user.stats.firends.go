@@ -42,23 +42,23 @@ func FriendsHandler(c *gin.Context) {
 		u.created,
 		IF(us_set.user_id > 0,IF(us_set.blocked = us_set.block_whitelist,0,1),0) AS blocked,
 		IF(COUNT(IF(
-			DATE(sha.inserted_at) = DATE(u.created) OR
-			DATE(app.inserted_at) = DATE(u.created) OR
-			DATE(reading.inserted_at) = DATE(u.created)
+			(sha.inserted_at > u.created AND sha.inserted_at < DATE_ADD(u.created,INTERVAL 1 day) )  OR
+			(app.inserted_at > u.created AND app.inserted_at < DATE_ADD(u.created,INTERVAL 1 day) )  OR
+			(reading.inserted_at > u.created AND reading.inserted_at < DATE_ADD(u.created,INTERVAL 1 day))
 		,1,NULL)) > 0,TRUE,FALSE 
 		) AS flrst_day_active,
 		IF(COUNT(IF(
-			DATE(sha.inserted_at) = DATE_ADD(DATE(u.created),INTERVAL 1 day) OR
-			DATE(app.inserted_at) = DATE_ADD(DATE(u.created),INTERVAL 1 day) OR
-			DATE(reading.updated_at) = DATE_ADD(DATE(u.created),INTERVAL 1 day) OR
-			DATE(reading.inserted_at) = DATE_ADD(DATE(u.created),INTERVAL 1 day)
-			,1,NULL)) > 0,TRUE,FALSE 
+			(sha.inserted_at > DATE_ADD(u.created,INTERVAL 1 day) AND sha.inserted_at < DATE_ADD(u.created,INTERVAL 2 day)) OR
+			(app.inserted_at > DATE_ADD(u.created,INTERVAL 1 day) AND app.inserted_at < DATE_ADD(u.created,INTERVAL 2 day)) OR
+			(reading.inserted_at > DATE_ADD(u.created,INTERVAL 1 day) AND reading.inserted_at < DATE_ADD(u.created,INTERVAL 2 day)) OR
+			(reading.updated_at > DATE_ADD(u.created,INTERVAL 1 day) AND reading.updated_at < DATE_ADD(u.created,INTERVAL 2 day)) 
+			,1,NULL)) > 0,TRUE,FALSE           
 		) AS second_day_active,
 		IF(COUNT(IF(
-			DATE(sha.inserted_at) = DATE_ADD(DATE(u.created),INTERVAL 2 day) OR
-			DATE(app.inserted_at) = DATE_ADD(DATE(u.created),INTERVAL 2 day) OR
-			DATE(reading.updated_at) = DATE_ADD(DATE(u.created),INTERVAL 2 day) OR
-			DATE(reading.inserted_at) = DATE_ADD(DATE(u.created),INTERVAL 2 day)
+			sha.inserted_at > DATE_ADD(u.created,INTERVAL 2 day) OR
+			app.inserted_at > DATE_ADD(u.created,INTERVAL 2 day) OR
+			reading.updated_at > DATE_ADD(u.created,INTERVAL 2 day) OR
+			reading.inserted_at > DATE_ADD(u.created,INTERVAL 2 day)
 			,1,NULL)) > 0,TRUE,FALSE 
 		) AS three_day_active,
 		bonus.bonus,
@@ -87,11 +87,11 @@ func FriendsHandler(c *gin.Context) {
 	LEFT JOIN
 		tmm.device_apps AS dev_app ON dev_app.device_id = dev.id
 	LEFT JOIN 
-		tmm.device_share_tasks AS sha ON (sha.device_id = dev.id AND sha.inserted_at < DATE_ADD(DATE(u.created),INTERVAL 3 day ) )
+		tmm.device_share_tasks AS sha ON (sha.device_id = dev.id AND sha.inserted_at < DATE_ADD(u.created,INTERVAL 3 day ) )
 	LEFT JOIN 
-		tmm.device_app_tasks AS app ON (app.device_id = dev.id AND app.inserted_at < DATE_ADD(DATE(u.created),INTERVAL 3 day ))
+		tmm.device_app_tasks AS app ON (app.device_id = dev.id AND app.inserted_at < DATE_ADD(u.created,INTERVAL 3 day ))
 	LEFT JOIN 
-		reading_logs AS reading ON (reading.user_id = dev.user_id AND (reading.inserted_at <  DATE_ADD(DATE(u.created),INTERVAL 3 day ) OR reading.updated_at <  DATE_ADD(DATE(u.created),INTERVAL 3 day ) ) )
+		reading_logs AS reading ON (reading.user_id = dev.user_id AND (reading.inserted_at <  DATE_ADD(u.created,INTERVAL 3 day ) OR reading.updated_at <  DATE_ADD(u.created,INTERVAL 3 day ) ) )
  	WHERE %s
 	GROUP BY inv.user_id 
 	ORDER BY  inv.user_id DESC 

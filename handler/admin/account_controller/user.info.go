@@ -2,9 +2,11 @@ package account_controller
 
 import (
 	"fmt"
+	"github.com/garyburd/redigo/redis"
 	"github.com/gin-gonic/gin"
 	"github.com/shopspring/decimal"
 	"github.com/tokenme/tmm/coins/eth/utils"
+	"github.com/tokenme/tmm/common"
 	. "github.com/tokenme/tmm/handler"
 	"github.com/tokenme/tmm/handler/admin"
 	"net/http"
@@ -13,11 +15,14 @@ import (
 )
 
 func UserInfoHandler(c *gin.Context) {
-	db := Service.Db
 	id, err := strconv.Atoi(c.DefaultQuery(`id`, `-1`))
 	if CheckErr(err, c) {
 		return
 	}
+	if Check(id < 1, `错误参数`, c) {
+		return
+	}
+
 	query := `
 SELECT 
 	u.id AS id ,
@@ -52,6 +57,7 @@ SELECT
 	IFNULL(root.blocked,0) AS root_blocked,
 	IFNULL(root.nick,NULL) AS root_nick,
 	IF(us_set.user_id > 0,IF(us_set.blocked = us_set.block_whitelist,0,1),0) AS blocked,
+	us_set.blocked_message AS message,
 	IF(EXISTS(
 		SELECT 
 		1
@@ -67,7 +73,7 @@ SELECT
 		LIMIT 1
 	),TRUE,FALSE) AS _active,
 	IF(dev_app.app_id IS NOT NULL,TRUE,FALSE) AS  app_id,
-	IF(not_active.total = 0,0,not_active.total) AS total
+	three_active.total AS total
 FROM 
 	ucoin.users AS u
 LEFT JOIN  
@@ -230,7 +236,7 @@ LEFT JOIN (
 ) AS reading ON 1 = 1
 LEFT JOIN (
 	SELECT
-		COUNT(DISTINCT IF(sha.task_id IS NULL   AND app.task_id IS NULL  AND reading.user_id IS NULL  ,inv.user_id,NULL)) AS total
+		COUNT(DISTINCT IF(sha.task_id > 0    OR app.task_id > 0  AND reading.user_id  > 0   ,inv.user_id,NULL)) AS total
 	FROM
 		tmm.invite_codes AS inv
 	INNER JOIN 
@@ -238,35 +244,26 @@ LEFT JOIN (
 	LEFT JOIN
 		tmm.devices AS dev ON dev.user_id = u.id
 	LEFT JOIN 
-		tmm.device_share_tasks AS sha ON (sha.device_id = dev.id AND sha.inserted_at < DATE_ADD(DATE(u.created),INTERVAL 3 DAY))
+		tmm.device_share_tasks AS sha ON (sha.device_id = dev.id AND sha.inserted_at < DATE_ADD(u.created,INTERVAL 3 DAY))
 	LEFT JOIN 
-		tmm.device_app_tasks AS app ON (app.device_id = dev.id  AND  app.inserted_at < DATE_ADD(DATE(u.created),INTERVAL 3 DAY))
+		tmm.device_app_tasks AS app ON (app.device_id = dev.id  AND  app.inserted_at < DATE_ADD(u.created,INTERVAL 3 DAY))
 	LEFT JOIN 
-		reading_logs AS reading ON (reading.user_id = dev.user_id  AND reading.inserted_at < DATE_ADD(DATE(u.created),INTERVAL 3 DAY))
+		reading_logs AS reading ON (reading.user_id = dev.user_id  AND reading.inserted_at < DATE_ADD(u.created,INTERVAL 3 DAY))
 	WHERE   
 		inv.parent_id = %d OR inv.grand_id = %d
-) AS not_active ON 1 = 1
+) AS three_active ON 1 = 1
 WHERE 
 	u.id = %d
 LIMIT 1 
 	`
-	if id <= 0 {
-		c.JSON(http.StatusOK, admin.Response{
-			Code:    0,
-			Message: `错误参数`,
-		})
-		return
-	}
+
+	db := Service.Db
 	rows, res, err := db.Query(query, id, id, id, id, id, id, id, id, id, id, id, id, id, id, id, id, id, id)
 	if CheckErr(err, c) {
 		return
 	}
 
-	if len(rows) == 0 {
-		c.JSON(http.StatusOK, admin.Response{
-			Code:    0,
-			Message: admin.Not_Found,
-		})
+	if Check(len(rows) == 0, admin.Not_Found, c) {
 		return
 	}
 
@@ -283,6 +280,10 @@ LIMIT 1
 	_, _, decimals, _, _, _, _, _, balance, err := utils.TokenMeta(tokenABI, row.Str(res.Map(`addr`)))
 	balanceDecimal, err := decimal.NewFromString(balance.String())
 	tmm := balanceDecimal.Div(decimal.New(1, int32(decimals)))
+	redisConn := Service.Redis.Master.Get()
+	defer redisConn.Close()
+	task := common.ShareTask{}
+	isRateLimited, err := redis.Bool(redisConn.Do("EXISTS", task.UserRateLimitBlockKey(uint64(id))))
 
 	user := &admin.UserStats{
 		DrawCashByUc:             fmt.Sprintf("%.2f", row.Float(res.Map(`uc_cny`))),
@@ -300,6 +301,8 @@ LIMIT 1
 		InviteNewUserByThreeDays: row.Int(res.Map(`invite_By_Number`)),
 		InviteNewUserActiveCount: row.Int(res.Map(`invite_firend_active`)),
 		IsHaveAppId:              row.Bool(res.Map(`app_id`)),
+		BlockedMessage:           row.Str(res.Map(`message`)),
+		IsRateLimited:            isRateLimited,
 	}
 	user.Id = row.Uint64(res.Map(`id`))
 	user.Mobile = row.Str(res.Map(`mobile`))
@@ -311,15 +314,15 @@ LIMIT 1
 	user.WxExpires = row.Str(res.Map(`expires`))
 	user.Wallet = row.Str(res.Map(`addr`))
 	user.WxUnionId = row.Str(res.Map(`union_id`))
-	user.Tmm = tmm.Ceil()
+	user.Tmm = tmm.StringFixed(2)
 	user.Point = point.Ceil()
 	user.DrawCash = fmt.Sprintf("%.2f", row.Float(res.Map(`cny`)))
 	user.Blocked = row.Int(res.Map(`blocked`))
 	user.TotalMakePoint = user.PointByShare + user.PointByReading +
 		user.PointByInvite + user.PointByDownLoadApp
-	notActiveTotal := row.Float(res.Map(`total`))
-	if (float64(user.DirectFriends)+float64(user.IndirectFriends)) != 0 && notActiveTotal != 0 {
-		user.NotActive = fmt.Sprintf("%.2f", notActiveTotal/(float64(user.DirectFriends)+float64(user.IndirectFriends))*100)+"%"
+	threeActiveCount := row.Float(res.Map(`total`))
+	if (float64(user.DirectFriends)+float64(user.IndirectFriends)) > 0 && threeActiveCount > 0 {
+		user.NotActive = fmt.Sprintf("%.2f", 100-threeActiveCount/(float64(user.DirectFriends)+float64(user.IndirectFriends))*100) + "%"
 	} else {
 		user.NotActive = fmt.Sprint("0%")
 	}
