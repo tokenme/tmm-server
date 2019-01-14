@@ -15,6 +15,8 @@ type WithDrawStats struct {
 	WithdrawByUC     string `json:"withdraw_by_uc"`
 	UserCountByUC    int    `json:"user_count_by_uc"`
 	MaxDailWithdraw  int64  `json:"max_dail_withdraw"`
+	TotalCny         string    `json:"total_cny"`
+	TotalUser        int    `json:"total_user"`
 }
 
 func GetTodayWithDrawStatsHandler(c *gin.Context) {
@@ -29,7 +31,9 @@ SELECT
 	SUM(IF(tmp.types = 0,tmp.cny,0)) AS point_cny,
 	COUNT(DISTINCT IF(tmp.types = 0,tmp.user_id,NULL)) AS point_count,
 	SUM(IF(tmp.types = 1,tmp.cny,0)) AS Uc_cny,
-	COUNT(DISTINCT IF(tmp.types = 1,tmp.user_id,NULL)) AS Uc_count
+	COUNT(DISTINCT IF(tmp.types = 1,tmp.user_id,NULL)) AS Uc_count,
+	SUM(tmp.cny) AS  total_cny,
+	COUNT(DISTINCT tmp.user_id) AS total_person 
 FROM (
 	SELECT
 		user_id ,
@@ -50,11 +54,20 @@ FROM (
 		tmm.withdraw_txs
 	WHERE
 		DATE(inserted_at) = '%s' AND tx_status = 1 
+  UNION ALL 
+	SELECT 
+		user_id,
+		cny,
+		2 AS types
+	FROM
+		tmm.withdraw_logs
+	WHERE 
+		DATE(inserted_at) = '%s' 
 ) AS tmp
 	`
 
 	db := Service.Db
-	rows, _, err := db.Query(query, db.Escape(date), db.Escape(date))
+	rows, _, err := db.Query(query, db.Escape(date), db.Escape(date),db.Escape(date))
 	if CheckErr(err, c) {
 		return
 	}
@@ -69,6 +82,8 @@ FROM (
 	Stats.UserCountByPoint = row.Int(1)
 	Stats.WithdrawByUC = fmt.Sprintf("%.2f", row.Float(2))
 	Stats.UserCountByUC = row.Int(3)
+	Stats.TotalCny = fmt.Sprintf("%.2f", row.Float(4))
+	Stats.TotalUser = row.Int(5)
 
 	c.JSON(http.StatusOK, admin.Response{
 		Code:    0,

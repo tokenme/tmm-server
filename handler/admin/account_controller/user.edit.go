@@ -8,27 +8,28 @@ import (
 )
 
 type EditRequest struct {
-	Id  int  `json:"id"`
-	Ban bool `json:"ban"`
+	Id       int    `json:"id"`
+	Ban      bool   `json:"ban"`
+	Comments string `json:"blocked_message"`
 }
 
 func EditAccountHandler(c *gin.Context) {
-	db := Service.Db
 	var req EditRequest
 	if CheckErr(c.Bind(&req), c) {
 		return
 	}
+
 	query := `
-	INSERT INTO tmm.user_settings (user_id,blocked,block_whitelist) 
-	VALUES(%d,%d,%d)  ON 
-	DUPLICATE KEY UPDATE blocked=VALUES(blocked),block_whitelist=VALUES(block_whitelist)`
-	var err error
-	if req.Ban {
-		_, _, err = db.Query(query, req.Id, 1, 0)
-	} else {
-		_, _, err = db.Query(query, req.Id, 1, 1)
+	INSERT INTO tmm.user_settings (user_id,blocked,block_whitelist,comments) 
+	VALUES(%d,%d,%d,'%s')  
+    ON DUPLICATE KEY UPDATE blocked=VALUES(blocked),block_whitelist=VALUES(block_whitelist),comments=VALUES(comments)`
+	var blockWhitelist int
+	if !req.Ban {
+		blockWhitelist = 1
 	}
-	if CheckErr(err, c) {
+
+	db := Service.Db
+	if _, _, err := db.Query(query, req.Id, 1, blockWhitelist, req.Comments); CheckErr(err, c) {
 		return
 	}
 

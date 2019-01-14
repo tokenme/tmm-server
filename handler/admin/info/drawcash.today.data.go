@@ -14,6 +14,7 @@ import (
 type Transaction struct {
 	Id             uint   `json:"id"`
 	Mobile         string `json:"mobile"`
+	Nick           string `json:"nick"`
 	AccountCreated string `json:"account_created"`
 	Types          string `json:"types"`
 	InsertedAt     string `json:"inserted_at"`
@@ -62,39 +63,46 @@ SELECT
 	tmp.tx_status,
 	tmp.created,
 	tmp.mobile,
-	tmp.types
+	tmp.types,
+	tmp.nick 
 FROM (
 	SELECT 
-		user_id ,
-		cny ,
-		inserted_at ,
+		point.user_id AS user_id ,
+		point.cny  AS cny,
+		point.inserted_at AS inserted_at ,
 		1 AS tx_status,
 		u.created,
 		u.mobile ,
-		0 AS types 
+		0 AS types,
+		IFNULL(wx.nick,u.nickname) AS nick
 	FROM 
-		tmm.point_withdraws 
+		tmm.point_withdraws AS point
 	INNER JOIN 
-		ucoin.users AS u  ON u.id = user_id 	
+		ucoin.users AS u  ON u.id = user_id
+	LEFT JOIN 
+		tmm.wx AS wx ON wx.user_id = u.id 
 	WHERE 
-		DATE(inserted_at) = '%s'
+		DATE(point.inserted_at) = '%s'
 
 	UNION ALL
 
 	SELECT 
-		user_id,
-		cny,
-		inserted_at,
-		withdraw_status,
+		uc.user_id AS user_id ,
+		uc.cny AS cny, 
+		uc.inserted_at AS inserted_at,
+		uc.withdraw_status AS withdraw_status,
 		u.created,
 		u.mobile ,
-		1 AS types 
+		1 AS types,
+		IFNULL(wx.nick,u.nickname) AS nick
 	FROM 
-		tmm.withdraw_txs
+		tmm.withdraw_txs AS uc
 	INNER JOIN 
 		ucoin.users AS u  ON u.id = user_id 	
+	LEFT JOIN 
+		tmm.wx AS wx ON wx.user_id = u.id
 	WHERE 
-		DATE(inserted_at) = '%s'    
+		DATE(uc.inserted_at) = '%s'    
 ) AS tmp
 ORDER BY tmp.inserted_at DESC 
 LIMIT %d OFFSET %d
@@ -137,6 +145,7 @@ FROM (
 			AccountCreated: row.Str(4),
 			Mobile:         row.Str(5),
 			Types:          DrawType[row.Int(6)],
+			Nick:          row.Str(7),
 		})
 	}
 

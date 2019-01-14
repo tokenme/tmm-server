@@ -88,7 +88,7 @@ LEFT JOIN tmm.wx AS wx ON (wx.user_id = us.id)
 		//count := row.Int(res.Map(`numbers`))
 		if req.Top10 {
 			user := &admin.User{
-				Tmm:           tmm.Ceil(),
+				Tmm:           tmm.StringFixed(0),
 				//Point:         points.Ceil(),
 				//ExchangeCount: count,
 			}

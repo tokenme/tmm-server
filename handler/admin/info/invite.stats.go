@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"strings"
 	"time"
-	"github.com/shopspring/decimal"
 )
 
 
@@ -35,7 +34,7 @@ func InviteStatsHandler(c *gin.Context) {
 
 	if req.EndTime != "" {
 		endTime = req.EndTime
-		when = append(when, fmt.Sprintf(` AND ic.inserted_at <  DATE_ADD('%s', INTERVAL 60*23+59 MINUTE)`, db.Escape(endTime)))
+		when = append(when, fmt.Sprintf(` AND ic.inserted_at <  DATE_ADD('%s', INTERVAL 1 DAY)`, db.Escape(endTime)))
 	}
 	var top10 string
 	if req.Top10 {
@@ -45,17 +44,18 @@ func InviteStatsHandler(c *gin.Context) {
 	SELECT
 		us.id AS id ,
 		wx.nick AS nickname,
-		COUNT(*) AS total,
-		us.mobile AS mobile,
-		SUM(ic.bonus) AS bouns
+		COUNT(DISTINCT ic.from_user_id) AS total,
+		us.mobile AS mobile
 	FROM tmm.invite_bonus AS ic
-	LEFT  JOIN tmm.wx AS wx ON  wx.user_id = ic.user_id 
+	INNER JOIN tmm.invite_codes AS inv_codes ON inv_codes.user_id = ic.from_user_id
 	INNER JOIN ucoin.users AS us ON (us.id = ic.user_id)
+	LEFT  JOIN tmm.wx AS wx ON  wx.user_id = ic.user_id
 	WHERE ic.task_type = 0 %s  
 	AND NOT EXISTS  (SELECT 1 FROM user_settings AS us  WHERE us.blocked= 1 AND us.user_id=us.id AND us.block_whitelist=0  LIMIT 1)
 	GROUP BY us.id  
 	ORDER BY total DESC 
 	%s`
+	fmt.Printf(query, strings.Join(when, " "), top10)
 	rows, _, err := db.Query(query, strings.Join(when, " "), top10)
 	if CheckErr(err, c) {
 		return
@@ -77,7 +77,6 @@ func InviteStatsHandler(c *gin.Context) {
 		return
 	}
 	for _, row := range rows {
-		bouns,err:=decimal.NewFromString(row.Str(4))
 		if CheckErr(err,c){
 			return
 		}
@@ -86,7 +85,6 @@ func InviteStatsHandler(c *gin.Context) {
 			user := &admin.User{
 				InviteCount: inviteCount,
 			}
-			user.InviteBonus = bouns.Ceil()
 			user.Mobile = row.Str(3)
 			user.Id = row.Uint64(0)
 			user.Nick = row.Str(1)
