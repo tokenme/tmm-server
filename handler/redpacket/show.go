@@ -11,6 +11,7 @@ import (
 	"github.com/tokenme/tmm/tools/forex"
 	"github.com/tokenme/tmm/tools/wechatmp"
 	"github.com/tokenme/tmm/utils"
+	tokenUtils "github.com/tokenme/tmm/utils/token"
 	"net/http"
 	"sort"
 	"strings"
@@ -25,6 +26,7 @@ type ShowData struct {
 	ShareTitle       string
 	ShareLink        string
 	ShareImage       string
+	InviteCode       string
 	JSConfig         wechatmp.JSConfig
 	PacketId         string                       `json:"packet_id"`
 	Title            string                       `json:"title"`
@@ -101,7 +103,7 @@ func ShowHandler(c *gin.Context) {
 		recipientUserId = userId
 	}
 	{
-		rows, _, err := db.Query(`SELECT u.id, u.country_code, u.mobile, wx.nick, wx.avatar FROM ucoin.users AS u LEFT JOIN tmm.wx AS wx ON (wx.user_id=u.id) WHERE u.id=%d LIMIT 1`, userId)
+		rows, _, err := db.Query(`SELECT u.id, u.country_code, u.mobile, wx.nick, wx.avatar, ic.id FROM ucoin.users AS u INNER JOIN tmm.invite_codes AS ic ON (ic.user_id=u.id) LEFT JOIN tmm.wx AS wx ON (wx.user_id=u.id) WHERE u.id=%d LIMIT 1`, userId)
 		if err != nil {
 			log.Error(err.Error())
 		}
@@ -110,6 +112,7 @@ func ShowHandler(c *gin.Context) {
 				Id:          rows[0].Uint64(0),
 				CountryCode: rows[0].Uint(1),
 				Mobile:      utils.HideMobile(rows[0].Str(2)),
+				InviteCode:  tokenUtils.Token(rows[0].Uint64(5)),
 			}
 			wxNick := rows[0].Str(3)
 			if wxNick != "" {
@@ -128,9 +131,10 @@ func ShowHandler(c *gin.Context) {
 		return
 	}
 	rows, _, err := db.Query(`SELECT
-        rp.id, rp.message, rp.tmm, rp.recipients, rp.creator, IFNULL(u.country_code, 0), IFNULL(u.mobile, ""), IFNULL(u.avatar, ""), wx.nick, wx.avatar, rp.online_status
+        rp.id, rp.message, rp.tmm, rp.recipients, rp.creator, IFNULL(u.country_code, 0), IFNULL(u.mobile, ""), IFNULL(u.avatar, ""), wx.nick, wx.avatar, rp.online_status, IFNULL(ic.id, 0)
         FROM tmm.redpackets AS rp
         LEFT JOIN ucoin.users AS u ON (u.id=rp.creator)
+        LEFT JOIN tmm.invite_codes AS ic ON (ic.user_id=u.id)
         LEFT JOIN tmm.wx AS wx ON (wx.user_id=u.id)
         WHERE rp.id=%d LIMIT 1`, packetId)
 	if CheckErr(err, c) {
@@ -147,6 +151,7 @@ func ShowHandler(c *gin.Context) {
 		CountryCode: row.Uint(5),
 		Mobile:      utils.HideMobile(row.Str(6)),
 		Avatar:      row.Str(7),
+		InviteCode:  tokenUtils.Token(row.Uint64(11)),
 	}
 	wxNick := row.Str(8)
 	if wxNick != "" {
@@ -174,9 +179,11 @@ func ShowHandler(c *gin.Context) {
 	if creator.Id > 0 {
 		data.Nick = creator.GetShowName()
 		data.Avatar = creator.GetAvatar(Config.CDNUrl)
+		data.InviteCode = creator.InviteCode.Encode()
 	} else {
 		data.Nick = user.GetShowName()
 		data.Avatar = user.GetAvatar(Config.CDNUrl)
+		data.InviteCode = user.InviteCode.Encode()
 	}
 
 	if recipient.Wechat != nil {
