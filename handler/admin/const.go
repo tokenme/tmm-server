@@ -54,13 +54,15 @@ type UserStats struct {
 	FirstDayActive           bool            `json:"first_day_active"`
 	SecondDayActive          bool            `json:"second_day_active"`
 	ThreeDayActive           bool            `json:"three_day_active"`
-	NotActive                string         `json:"not_active"`
+	NotActive                string          `json:"not_active"`
 	IsHaveAppId              bool            `json:"is_have_app_id"`
+	IsRateLimited            bool            `json:"is_rate_limited"`
 	Bonus                    string          `json:"bonus,omitempty"`
 	FirendType               string          `json:"firend_type,omitempty"`
 	Parent                   User            `json:"pre_user,omitempty"`
 	Root                     User            `json:"root,omitempty"`
 	OtherAccount             []string        `json:"other_account"`
+	BlockedMessage           string          `json:"blocked_message"`
 	WxInsertedAt             string          `json:"wx_inserted_at"`
 	WxOpenId                 string          `json:"wx_open_id"`
 	WxUnionId                string          `json:"wx_union_id"`
@@ -74,7 +76,7 @@ type User struct {
 	InviteBonus        decimal.Decimal `json:"invite_bonus,omitempty"`
 	DrawCash           string          `json:"draw_cash"`
 	InviteCount        int             `json:"invite_count,omitempty"`
-	Tmm                decimal.Decimal `json:"tmm"`
+	Tmm                string          `json:"tmm"`
 	CompletedTaskCount int             `json:"completed_task_count,omitempty"`
 }
 
