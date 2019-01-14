@@ -179,7 +179,7 @@ func (this User) IsBlocked(service *Service) error {
 		return err
 	}
 	if len(rows) > 0 {
-		return errors.New("您的账户存在异常操作，疑似恶意邀请用户行为，不能执行提现及兑换操作。如有疑问请联系客服。客服微信搜索 \"jjxseven\"")
+		return errors.New("您的账户存在异常操作（异常行为包括但不限于：疑似恶意邀请用户行为、恶意刷分享文章、异常阅读文章等行为），不能执行提现及兑换操作。如有疑问请联系客服。客服微信搜索 \"jjxseven\"")
 	}
 	return nil
 }

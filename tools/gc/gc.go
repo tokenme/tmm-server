@@ -100,6 +100,17 @@ HAVING invites>=10 AND apps<invites/2) AS t
 ON DUPLICATE KEY UPDATE blocked=VALUES(blocked);`
 	_, _, err := db.Query(query)
 	query = `INSERT INTO tmm.user_settings (user_id, blocked)
+SELECT user_id, 1
+FROM (
+    SELECT rl.user_id, STD(rl.ts) AS t, COUNT(*) AS c
+    FROM tmm.reading_logs AS rl
+    WHERE
+        NOT EXISTS (SELECT 1 FROM tmm.user_settings AS us WHERE us.user_id=rl.user_id AND us.blocked=1 AND us.block_whitelist=0 LIMIT 1)
+    GROUP BY rl.user_id HAVING c>=100 AND t>=800
+) AS t
+ON DUPLICATE KEY UPDATE blocked=VALUES(blocked)`
+	_, _, err = db.Query(query)
+	query = `INSERT INTO tmm.user_settings (user_id, blocked)
 SELECT DISTINCT d.user_id, 1 FROM tmm.devices AS d
 WHERE
     NOT EXISTS(SELECT 1 FROM tmm.device_apps AS da WHERE da.device_id=d.id LIMIT 1)

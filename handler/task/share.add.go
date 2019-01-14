@@ -4,11 +4,11 @@ import (
 	//"github.com/davecgh/go-spew/spew"
 	"github.com/gin-gonic/gin"
 	//"github.com/mkideal/log"
+	"github.com/mkideal/log"
 	"github.com/shopspring/decimal"
 	"github.com/tokenme/tmm/common"
 	. "github.com/tokenme/tmm/handler"
 	"github.com/tokenme/tmm/tools/qiniu"
-	"github.com/mkideal/log"
 	"net/http"
 	"time"
 )
@@ -34,6 +34,10 @@ func ShareAddHandler(c *gin.Context) {
 
 	var req ShareAddRequest
 	if CheckErr(c.Bind(&req), c) {
+		return
+	}
+
+	if CheckErr(user.IsBlocked(Service), c) {
 		return
 	}
 

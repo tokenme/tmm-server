@@ -16,8 +16,8 @@ type AppAddRequest struct {
 	BundleId    string          `json:"bundle_id" form:"bundle_id" binding:"required"`
 	Points      decimal.Decimal `json:"points" form:"points" binding:"required"`
 	Bonus       decimal.Decimal `json:"bonus" form:"bonus" binding:"required"`
-    DownloadUrl string          `json:"download_url" from:"download_url" binding:"required"`
-    Icon        string          `json:"icon" from:"icon" binding:"required"`
+	DownloadUrl string          `json:"download_url" from:"download_url" binding:"required"`
+	Icon        string          `json:"icon" from:"icon" binding:"required"`
 	Platform    common.Platform `json:"platform" form:"platform" binding:"required"`
 }
 
@@ -30,6 +30,10 @@ func AppAddHandler(c *gin.Context) {
 
 	var req AppAddRequest
 	if CheckErr(c.Bind(&req), c) {
+		return
+	}
+
+	if CheckErr(user.IsBlocked(Service), c) {
 		return
 	}
 
