@@ -166,7 +166,7 @@ func validatePingRequest(pingRequest common.PingRequest, deviceId string, appId 
 			log.Error("ping empty deviceId")
 		}
 		if appId == "" {
-			log.Error("ping empty appId")
+			log.Error("ping empty appId, deviceId: %s", deviceId)
 		}
 		return false
 	}

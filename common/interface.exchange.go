@@ -49,6 +49,7 @@ type ExchangeRecord struct {
 type ExchangeRate struct {
 	Rate      decimal.Decimal `json:"rate"`
 	MinPoints decimal.Decimal `json:"min_points"`
+	MinToken  decimal.Decimal `json:"min_token"`
 }
 
 func GetExchangeRate(config Config, service *Service) (ExchangeRate, decimal.Decimal, error) {
@@ -73,6 +74,7 @@ func GetExchangeRate(config Config, service *Service) (ExchangeRate, decimal.Dec
 	}
 	minTMMExchange := decimal.New(int64(config.MinTMMExchange), 0)
 	exchRate.MinPoints = pointsPerTs.Div(tmmPerTs).Mul(minTMMExchange)
+	exchRate.MinToken = decimal.New(int64(config.MinTMMExchangeOut), 0)
 	return exchRate, pointsPerTs, nil
 }
 

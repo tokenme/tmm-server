@@ -1,12 +1,17 @@
 package common
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"github.com/shopspring/decimal"
-	"github.com/tokenme/tmm/utils"
+	"github.com/tokenme/tmm/coins/eth"
+	"github.com/tokenme/tmm/coins/eth/utils"
+	commonutils "github.com/tokenme/tmm/utils"
 	tokenUtils "github.com/tokenme/tmm/utils/token"
+	"math/big"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -84,7 +89,7 @@ func (this User) GetAvatar(cdn string) string {
 	if this.Avatar != "" {
 		return this.Avatar
 	}
-	key := utils.Md5(fmt.Sprintf("+%d%s", this.CountryCode, this.Mobile))
+	key := commonutils.Md5(fmt.Sprintf("+%d%s", this.CountryCode, this.Mobile))
 	return fmt.Sprintf("%suser/avatar/%s", cdn, key)
 }
 
@@ -99,6 +104,74 @@ type UserWithdraw struct {
 	TMM    decimal.Decimal `json:"tmm"`
 }
 
+func (this User) Reset(ctx context.Context, service *Service, config Config, locker *sync.Mutex) (string, error) {
+	db := service.Db
+	_, _, err := db.Query(`UPDATE tmm.devices SET points=0, total_ts=0, consumed_ts=0 WHERE user_id=%d`, this.Id)
+	if err != nil {
+		return "", err
+	}
+	_, _, err = db.Query(`UPDATE tmm.devices AS d, tmm.user_devices AS ud SET d.points=0, d.total_ts=0, d.consumed_ts=0 WHERE d.id=ud.device_id AND ud.user_id=%d`, this.Id)
+	if err != nil {
+		return "", err
+	}
+	agentPrivKey, err := commonutils.AddressDecrypt(config.TMMAgentWallet.Data, config.TMMAgentWallet.Salt, config.TMMAgentWallet.Key)
+	if err != nil {
+		return "", err
+	}
+	agentPubKey, err := eth.AddressFromHexPrivateKey(agentPrivKey)
+	if err != nil {
+		return "", err
+	}
+
+	token, err := utils.NewToken(config.TMMTokenAddress, service.Geth)
+	if err != nil {
+		return "", err
+	}
+	rows, _, err := db.Query(`SELECT wallet_addr FROM ucoin.users WHERE id=%d LIMIT 1`, this.Id)
+	if err != nil {
+		return "", err
+	}
+	if len(rows) == 0 {
+		return "", errors.New("not found user")
+	}
+	userWallet := rows[0].Str(0)
+	tokenBalance, err := utils.TokenBalanceOf(token, userWallet)
+	if err != nil {
+		return "", err
+	}
+	if tokenBalance.Cmp(big.NewInt(0)) == 1 {
+		locker.Lock()
+		defer locker.Unlock()
+		transactor := eth.TransactorAccount(agentPrivKey)
+		nonce, err := eth.Nonce(ctx, service.Geth, service.Redis.Master, agentPubKey, config.Geth)
+		if err != nil {
+			return "", err
+		}
+		gasPrice, err := service.Geth.SuggestGasPrice(ctx)
+		if err == nil && gasPrice.Cmp(eth.MinGas) == -1 {
+			gasPrice = eth.MinGas
+		} else {
+			gasPrice = nil
+		}
+		transactorOpts := eth.TransactorOptions{
+			Nonce:    nonce,
+			GasPrice: gasPrice,
+			GasLimit: 210000,
+		}
+		eth.TransactorUpdate(transactor, transactorOpts, ctx)
+		tx, err := utils.TransferProxy(token, transactor, userWallet, agentPubKey, tokenBalance)
+		if err != nil {
+			return "", err
+		}
+		err = eth.NonceIncr(ctx, service.Geth, service.Redis.Master, agentPubKey, config.Geth)
+		if err != nil {
+			return "", err
+		}
+		return tx.Hash().Hex(), nil
+	}
+	return "", nil
+}
+
 func (this User) IsBlocked(service *Service) error {
 	db := service.Db
 	rows, _, err := db.Query(`SELECT 1 FROM tmm.user_settings WHERE user_id=%d AND blocked=1 AND block_whitelist=0 LIMIT 1`, this.Id)
@@ -106,7 +179,7 @@ func (this User) IsBlocked(service *Service) error {
 		return err
 	}
 	if len(rows) > 0 {
-		return errors.New("您的账户存在异常操作，疑似恶意邀请用户行为，不能执行提现及兑换操作。如有疑问请联系客服。")
+		return errors.New("您的账户存在异常操作，疑似恶意邀请用户行为，不能执行提现及兑换操作。如有疑问请联系客服。客服微信搜索 \"jjxseven\"")
 	}
 	return nil
 }

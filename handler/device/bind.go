@@ -92,7 +92,7 @@ func BindHandler(c *gin.Context) {
 
 func inviteBonus(user common.User, deviceId string, c *gin.Context) error {
 	db := Service.Db
-	_, ret, err := db.Query(`UPDATE tmm.invite_codes AS t1, tmm.invite_codes AS t2, tmm.invite_submissions AS iss, ucoin.users AS u SET t1.parent_id=t2.user_id, t1.grand_id=t2.parent_id WHERE (t1.parent_id!=t2.user_id OR t1.grand_id!=t2.parent_id) AND t2.user_id!=t1.user_id AND t2.parent_id!=t1.user_id AND t2.id != t1.id AND t2.id=iss.code AND t1.user_id=u.id AND iss.completed=0 AND u.country_code=86 AND iss.tel=u.mobile AND u.mobile='%s'`, db.Escape(user.Mobile))
+	_, ret, err := db.Query(`UPDATE tmm.invite_codes AS t1, tmm.invite_codes AS t2, tmm.invite_submissions AS iss, ucoin.users AS u SET t1.parent_id=t2.user_id, t1.grand_id=t2.parent_id WHERE (t1.parent_id!=t2.user_id OR t1.grand_id!=t2.parent_id) AND t2.user_id!=t1.user_id AND t2.parent_id!=t1.user_id AND t2.id != t1.id AND t2.id=iss.code AND t1.user_id=u.id AND t1.parent_id=0 AND iss.completed=0 AND u.country_code=86 AND iss.tel=u.mobile AND u.mobile='%s'`, db.Escape(user.Mobile))
 	if err != nil {
 		log.Error(err.Error())
 		raven.CaptureError(err, nil)

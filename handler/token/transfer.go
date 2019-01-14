@@ -37,14 +37,8 @@ func TransferHandler(c *gin.Context) {
 		return
 	}
 	db := Service.Db
-	{
-		rows, _, err := db.Query(`SELECT 1 FROM tmm.user_settings WHERE user_id=%d AND blocked=1 AND block_whitelist=0`, user.Id)
-		if CheckErr(err, c) {
-			return
-		}
-		if Check(len(rows) > 0, "您的账户存在异常操作，疑似恶意邀请用户行为，不能执行兑换操作。如有疑问请联系客服。", c) {
-			return
-		}
+	if CheckErr(user.IsBlocked(Service), c) {
+		return
 	}
 	/*
 		var gasPrice *big.Int
@@ -58,8 +52,6 @@ func TransferHandler(c *gin.Context) {
 	gasPrice, err := Service.Geth.SuggestGasPrice(c)
 	if err == nil && gasPrice.Cmp(eth.MinGas) == -1 {
 		gasPrice = eth.MinGas
-	} else {
-		gasPrice = nil
 	}
 	minGas := new(big.Int).Mul(big.NewInt(60000), gasPrice)
 	if req.Token == "" {

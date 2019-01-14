@@ -18,10 +18,14 @@ import (
 )
 
 const (
-	WX_AUTH_GATEWAY                = "https://open.weixin.qq.com/connect/oauth2/authorize?appid=%s&redirect_uri=%s&response_type=code&scope=snsapi_base&state=%s#wechat_redirect"
-	WX_AUTH_URL                    = "https://jkgj-isv.isvjcloud.com/rest/m/u/weauth"
-	MaxUserRateLimitCounter  int64 = 10
-	MaxUserRateLimitDuration       = 2
+	WX_AUTH_GATEWAY                      = "https://open.weixin.qq.com/connect/oauth2/authorize?appid=%s&redirect_uri=%s&response_type=code&scope=snsapi_base&state=%s#wechat_redirect"
+	WX_AUTH_URL                          = "https://jkgj-isv.isvjcloud.com/rest/m/u/weauth"
+	MaxUserRateLimitSecondCounter  int64 = 3
+	MaxUserRateLimitSecondDuration       = 1
+	MaxUserRateLimitMinuteCounter  int64 = 1500
+	MaxUserRateLimitMinuteDuration       = 1800
+        MaxUserRateLimitBlockDurateion       = 3600
+        MaxUserRateLimitBlockCounter   int64 = 1700
 )
 
 type ShareData struct {
@@ -38,7 +42,6 @@ type ShareData struct {
 
 func ShareHandler(c *gin.Context) {
 	var trackId string
-	code := c.DefaultQuery("code", "null")
 	taskId, deviceId, err := common.DecryptShareTaskLink(c.Param("encryptedTaskId"), c.Param("encryptedDeviceId"), Config)
 	if CheckErr(err, c) {
 		return
@@ -54,9 +57,9 @@ func ShareHandler(c *gin.Context) {
 	)
 	{
 		query := `
-        SELECT d.user_id, us.blocked, us.block_whitelist
+	    SELECT d.user_id, IFNULL(us.blocked, 0) AS blocked, IFNULL(us.block_whitelist, 0) AS block_whitelist
         FROM tmm.devices AS d
-        INNER JOIN tmm.user_settings AS us ON d.user_id = us.user_id
+        LEFT JOIN tmm.user_settings AS us ON d.user_id = us.user_id
         WHERE d.id = "%s" LIMIT 1
     `
 		rows, _, err := db.Query(query, deviceId)
@@ -69,40 +72,103 @@ func ShareHandler(c *gin.Context) {
 			isBlocked = row.Int(1) == 1 && row.Int(2) == 0
 		}
 	}
+	log.Info("Share device id:%s, user id:%d, is block:%v, task id:%d", deviceId, userId, isBlocked, taskId)
 
-	if userId > 0 {
-		task := common.ShareTask{}
-		key := task.UserRateLimitKey(userId)
-		redisConn := Service.Redis.Master.Get()
-		defer redisConn.Close()
-		counter, _ := redis.Int64(redisConn.Do("INCR", key))
-		if counter <= 1 {
-			_, err := redisConn.Do("EXPIRE", key, MaxUserRateLimitDuration)
-			if err != nil {
-				log.Error(err.Error())
-			}
-		} else if counter >= MaxUserRateLimitCounter {
-			log.Warn("RateLimit for user:%d, counter:%d", userId, counter)
-			isRateLimited = true
-		}
-	}
+	task := common.ShareTask{}
+    redisConn := Service.Redis.Master.Get()
+    defer redisConn.Close()
+    var blockKey string
+    if userId > 0 {
+        blockKey = task.UserRateLimitBlockKey(userId)
+        blockKeyExists, err := redis.Bool(redisConn.Do("EXISTS", blockKey))
+        if err != nil {
+			log.Error(err.Error())
+		} else if blockKeyExists {
+            log.Info("Rate limit blocked: %d", userId)
+            isRateLimited = true
+        }
+    }
 
+    code := c.DefaultQuery("code", "null")
 	mpClient := wechatmp.NewClient(Config.Wechat.AppId, Config.Wechat.AppSecret, Service, c)
 	isWx := strings.Contains(strings.ToLower(c.Request.UserAgent()), "micromessenger")
+
+	if !isBlocked && userId > 0 && code == "null" {
+        if !isRateLimited {
+            secondKey := task.UserRateLimitSecondKey(userId)
+            secondCounter, err := redis.Int64(redisConn.Do("INCR", secondKey))
+            if err != nil {
+                log.Error(err.Error())
+            }
+            if secondCounter <= 1 {
+                _, err := redisConn.Do("EXPIRE", secondKey, MaxUserRateLimitSecondDuration)
+                if err != nil {
+                    log.Error(err.Error())
+                }
+            } else if secondCounter >= MaxUserRateLimitSecondCounter {
+                log.Warn("RateLimit for user:%d, second counter:%d", userId, secondCounter)
+                    _, err := redisConn.Do("SET", blockKey, "1", "EX", MaxUserRateLimitBlockDurateion)
+                if err != nil {
+                    log.Error(err.Error())
+                }
+                isRateLimited = true
+            }
+        }
+
+        minuteKey := task.UserRateLimitMinuteKey(userId)
+        minuteCounter, err := redis.Int64(redisConn.Do("INCR", minuteKey))
+        if err != nil {
+            log.Error(err.Error())
+        }
+        if minuteCounter <= 1 {
+            _, err := redisConn.Do("EXPIRE", minuteKey, MaxUserRateLimitMinuteDuration)
+            if err != nil {
+                log.Error(err.Error())
+            }
+        } else if minuteCounter >= MaxUserRateLimitMinuteCounter {
+            log.Warn("RateLimit for user:%d, minute counter:%d", userId, minuteCounter)
+            _, err := redisConn.Do("SET", blockKey, "1", "EX", MaxUserRateLimitBlockDurateion)
+            if err != nil {
+                log.Error(err.Error())
+            }
+            isRateLimited = true
+            if minuteCounter >= MaxUserRateLimitBlockCounter {
+                _, _, err := db.Query(`INSERT INTO tmm.user_settings(user_id, blocked) VALUES (%d, 1) ON DUPLICATE KEY UPDATE blocked=VALUES(blocked)`, userId)
+                if err != nil {
+                    log.Error(err.Error())
+                } else {
+                    log.Info("Block rate limit user: %d, counter: %d", userId, minuteCounter)
+                }
+            }
+        }
+	}
+
 	if isWx && !isBlocked && !isRateLimited {
 		if len(code) > 0 && code != "null" {
-			oauthAccessToken, err := mpClient.GetOAuthAccessToken(code)
-			if err != nil {
-				log.Error(err.Error())
-			} else if len(oauthAccessToken.Openid) > 0 {
-				now := time.Now()
-				cryptOpenid := common.CryptOpenid{
-					Openid: oauthAccessToken.Openid,
-					Ts:     now.Unix(),
-				}
-				trackId, err = cryptOpenid.Encode([]byte(Config.YktApiSecret))
+			redisConn := Service.Redis.Master.Get()
+			defer redisConn.Close()
+			codeKey := common.WxCodeKey(code)
+			openId, _ := redis.String(redisConn.Do("GET", codeKey))
+			if openId != "" {
+				log.Error("Wechat code used, openId:%s", openId)
+			} else {
+				oauthAccessToken, err := mpClient.GetOAuthAccessToken(code)
 				if err != nil {
 					log.Error(err.Error())
+				} else if len(oauthAccessToken.Openid) > 0 {
+					_, err = redisConn.Do("SETEX", codeKey, 60*2, oauthAccessToken.Openid)
+					if err != nil {
+						log.Error(err.Error())
+					}
+					now := time.Now()
+					cryptOpenid := common.CryptOpenid{
+						Openid: oauthAccessToken.Openid,
+						Ts:     now.Unix(),
+					}
+					trackId, err = cryptOpenid.Encode([]byte(Config.YktApiSecret))
+					if err != nil {
+						log.Error(err.Error())
+					}
 				}
 			}
 		} else if code == "null" {
@@ -143,7 +209,7 @@ LIMIT 1`
 	bonus, _ := decimal.NewFromString(row.Str(6))
 	points, _ := decimal.NewFromString(row.Str(7))
 	pointsLeft, _ := decimal.NewFromString(row.Str(8))
-	task := common.ShareTask{
+	task = common.ShareTask{
 		Id:         row.Uint64(0),
 		Title:      row.Str(1),
 		Summary:    row.Str(2),
@@ -154,6 +220,12 @@ LIMIT 1`
 		Points:     points,
 		PointsLeft: pointsLeft,
 	}
+
+    if isBlocked || isRateLimited {
+        c.Redirect(http.StatusMovedPermanently, task.Link)
+        return
+    }
+
 	if strings.HasPrefix(task.Link, "https://tmm.tokenmama.io/article/show") {
 		task.Link = strings.Replace(task.Link, "https://tmm.tokenmama.io/article/show", "https://static.tianxi100.com/article/show", -1)
 		task.TimelineOnly = true

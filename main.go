@@ -1,6 +1,9 @@
 package main
 
 import (
+	//"github.com/tokenme/tmm/tools/orderbook-server"
+	//"github.com/tokenme/tmm/tools/transferwatcher"
+	"context"
 	"flag"
 	"fmt"
 	"github.com/davecgh/go-spew/spew"
@@ -9,18 +12,18 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jinzhu/configor"
 	"github.com/mkideal/log"
+	"github.com/shopspring/decimal"
 	"github.com/tokenme/tmm/common"
 	"github.com/tokenme/tmm/handler"
 	"github.com/tokenme/tmm/router"
 	"github.com/tokenme/tmm/tools/articleclassifier"
-	"github.com/tokenme/tmm/tools/gc"
-	//"github.com/tokenme/tmm/tools/orderbook-server"
-	"github.com/tokenme/tmm/tools/tmmwithdraw"
-	"github.com/tokenme/tmm/tools/tokenprofile"
-	//"github.com/tokenme/tmm/tools/transferwatcher"
 	"github.com/tokenme/tmm/tools/etherscanspider"
+	"github.com/tokenme/tmm/tools/gc"
 	"github.com/tokenme/tmm/tools/invitebonus"
 	"github.com/tokenme/tmm/tools/qutoutiaospider"
+	"github.com/tokenme/tmm/tools/redpacket"
+	"github.com/tokenme/tmm/tools/tmmwithdraw"
+	"github.com/tokenme/tmm/tools/tokenprofile"
 	"github.com/tokenme/tmm/tools/toutiaospider"
 	"github.com/tokenme/tmm/tools/txaccelerate"
 	"github.com/tokenme/tmm/tools/videospider"
@@ -54,6 +57,10 @@ func main() {
 		ucoinHoldersFlag           bool
 		activeBonusFlag            bool
 		fixInviteBonusFlag         bool
+		redpacketFlag              bool
+		redpacketTokensFlag        int64
+		redpacketRecipientsFlag    uint
+		resetUserFlag              uint64
 	)
 
 	os.Setenv("CONFIGOR_ENV_PREFIX", "-")
@@ -81,7 +88,11 @@ func main() {
 	flag.BoolVar(&addArticlesFlag, "add-articles", false, "enable add articles")
 	flag.BoolVar(&ucoinHoldersFlag, "update-holders", false, "enable update ucoin holders")
 	flag.BoolVar(&activeBonusFlag, "active-bonus", false, "enable check active bonus")
+	flag.BoolVar(&redpacketFlag, "redpacket", false, "enable redpacket service")
 	flag.BoolVar(&fixInviteBonusFlag, "fix-invite-bonus", false, "enable fix invite bonus")
+	flag.Int64Var(&redpacketTokensFlag, "rp-tokens", 0, "set redpacket tokens")
+	flag.UintVar(&redpacketRecipientsFlag, "rp-users", 0, "set redpacket recipients")
+	flag.Uint64Var(&resetUserFlag, "reset-user", 0, "reset user id")
 	flag.Parse()
 
 	configor.New(&configor.Config{Verbose: configFlag.Debug, ErrorOnUnmatchedKeys: true, Environment: "production"}).Load(&config, configPath)
@@ -213,6 +224,16 @@ func main() {
 		return
 	}
 
+	if redpacketTokensFlag > 0 && redpacketRecipientsFlag > 0 {
+		rp, err := common.NewRedpacket(service, 0, decimal.New(redpacketTokensFlag, 0), redpacketRecipientsFlag)
+		if err != nil {
+			log.Error(err.Error())
+		} else {
+			log.Info("New Redpacket:%d, Token:%s, Recipients:%d", rp.Id, rp.Tmm.String(), rp.Recipients)
+		}
+		return
+	}
+
 	if addArticlesFlag {
 		addWxArticlesCh := make(chan struct{}, 1)
 		addToutiaoArticlesCh := make(chan struct{}, 1)
@@ -326,13 +347,28 @@ func main() {
 		} else {
 			gin.SetMode(gin.ReleaseMode)
 		}
+		if resetUserFlag > 0 {
+			user := common.User{
+				Id: resetUserFlag,
+			}
+			tx, err := user.Reset(context.Background(), service, config, handler.GlobalLock)
+			if err != nil {
+				log.Error(err.Error())
+			} else if tx != "" {
+				log.Warn("tx: %s", tx)
+			}
+			return
+		}
 		activeBonusService := invitebonus.NewService(service, config, handler.GlobalLock)
 		if fixInviteBonusFlag {
-			activeBonusService.FixBonus()
-			return
+			go activeBonusService.FixBonus()
 		}
 		if activeBonusFlag {
 			go activeBonusService.Start()
+		}
+		redpacketService := redpacket.NewService(service, config, handler.GlobalLock)
+		if redpacketFlag {
+			go redpacketService.Start()
 		}
 		//gin.DisableBindValidation()
 		templatePath := path.Join(config.Template, "./*")
@@ -353,6 +389,9 @@ func main() {
 		}
 		if activeBonusFlag {
 			activeBonusService.Stop()
+		}
+		if redpacketFlag {
+			redpacketService.Stop()
 		}
 	} else {
 		exitChan := make(chan struct{}, 1)

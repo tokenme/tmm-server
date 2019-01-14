@@ -6,6 +6,7 @@ import (
 	"github.com/getsentry/raven-go"
 	"github.com/gin-gonic/gin"
 	"github.com/tokenme/tmm/common"
+	"github.com/tokenme/tmm/handler"
 	"github.com/tokenme/tmm/middlewares/sentry"
 	"net/http"
 	"strconv"
@@ -30,13 +31,26 @@ func NewRouter(templatePath string, config common.Config) *gin.Engine {
 		c.JSON(http.StatusOK, gin.H{"msg": "tokenmama.io"})
 		return
 	})
-	r.GET("/contact/list", func(c *gin.Context) {
+	r.GET("/contact/list", handler.ApiSignPassFunc(), func(c *gin.Context) {
+		var qqKey string
+		platform := c.Request.Header.Get("tmm-platform")
+		if platform == "ios" {
+			qqKey = config.Contact.QQIOSKey
+		} else {
+			qqKey = config.Contact.QQAndroidKey
+		}
 		c.JSON(http.StatusOK, []gin.H{{
 			"name":  "telegram",
 			"value": config.Contact.Telegram,
 		}, {
 			"name":  "wechat",
 			"value": config.Contact.Wechat,
+		}, {
+			"name":  "qq_group_id",
+			"value": config.Contact.QQGroupId,
+		}, {
+			"name":  "qq_key",
+			"value": qqKey,
 		}, {
 			"name":  "website",
 			"value": config.Contact.Website,
@@ -72,6 +86,8 @@ func NewRouter(templatePath string, config common.Config) *gin.Engine {
 	inviteRouter(r)
 	goodRouter(r)
 	adRouter(r)
+	redpacketRouter(r)
+	operationRouter(r)
 	AdminRouter(r)
 	return r
 }

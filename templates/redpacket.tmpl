@@ -1,0 +1,139 @@
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui">
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<meta name="renderer" content="webkit">
+<meta property="og:type" content="website"/>
+<meta name="description" content="{{ .Message }}" />
+<meta property="og:title" content="{{ .Title }}"/>
+<meta property="og:image" content="{{ .ShareImage }}"/>
+<link rel="stylesheet" href="https://static.tianxi100.com/bluma.min.css" />
+<link href="https://cdn.bootcss.com/animate.css/3.5.2/animate.min.css" rel="stylesheet"/>
+<link href="https://cdn.bootcss.com/loaders.css/0.1.2/loaders.min.css" rel="stylesheet" />
+<link href="https://ucoin.tianxi100.com/redpacket.css?v=2019010803" rel="stylesheet" />
+<title>{{ .Title }}</title>
+</head>
+<body>
+  <div id="cover" class="hongbao-container">
+    <div class="hongbao">
+      <div class="topcontent">
+        <div class="avatar_hb">
+              <img src="{{ .Avatar }}">
+          </div>
+          <span class="text">{{ .Nick }}</span>
+          <div class="description">{{ .Message }}</div>
+      </div>
+      <div class="chai">
+        <a href="javascript:void(0);" onclick="checkHongbao()">拆红包</a>
+        <div id="loader" class="columns is-mobile is-centered is-invisible">
+          <div class="column is-narrow">
+            <div class="ball-scale-multiple">
+              <div></div>
+              <div></div>
+              <div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="inner" class="inner">
+    <div class="inner-top">
+      <h2>{{ .Nick }}</h2>
+      <div class="avatar_inner">
+        <img src="{{ .Avatar }}">
+      </div>
+    </div>
+    <div class="totalToken">
+      {{ .Tmm }}<sub>UC</sub>
+      <div class="price">
+        ≈ {{ .Cash }}元
+      </div>
+    </div>
+    <div class="description">{{ .Message }}</div>
+  </div>
+  <div id="innerList" class="content">
+    {{ if .InApp }}
+    <div class="notification is-success is-fullwidth">
+        独乐乐不如众乐乐, 分享到微信。
+    </div>
+    {{ else }}
+    <a class="button is-medium is-fullwidth is-success" href="https://ucoin.io/app/download">去UCoin钱包提现</a>
+    {{ end }}
+    <ol id="recipients">
+    {{ range .Recipients }}
+      <li class="media">
+        <div class="media-left">
+          <figure class="image is-48x48">
+            <img src="{{ .Avatar }}" class="is-rounded"/>
+          </figure>
+        </div>
+        <div class="media-content">
+          <div class="content">
+            <div class="columns is-mobile">
+              <div class="column nick">
+                {{ .Nick }}
+              </div>
+              <div class="column has-text-right">
+                {{ .Tmm }} UC
+                <div class="price">≈ {{ .Cash }}元</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </li>
+    {{ end }}
+    </ol>
+  </div>
+  <script src="https://cdn.bootcss.com/axios/0.18.0/axios.min.js"></script>
+  {{ if .JSConfig.Sign }}
+    <script src="https://res.wx.qq.com/open/js/jweixin-1.4.0.js"></script>
+    <script>
+      try {
+        var jsConfig = {
+          debug: false,
+          appId: {{ .AppId }},
+          timestamp: {{ .JSConfig.Timestamp }},
+          nonceStr: {{ .JSConfig.Nonce }},
+          signature: {{ .JSConfig.Sign }},
+          jsApiList: ['updateAppMessageShareData','updateTimelineShareData']
+        };
+        wx.config(jsConfig);
+        wx.ready(function () {
+          var shareAppMessageData = {
+            title: {{ .ShareTitle }},
+            desc: {{ .Message }},
+            link: {{ .ShareLink }},
+            imgUrl: {{ .ShareImage }},
+            success: function () {}
+          };
+          wx.updateAppMessageShareData(shareAppMessageData);
+          var shareTimelineData = {
+            title: {{ .ShareTitle }},
+            link: {{ .ShareLink }},
+            imgUrl: {{ .ShareImage }},
+            success: function () {}
+          };
+          wx.updateTimelineShareData(shareTimelineData);
+        });
+      } catch (e) {}
+    </script>
+    {{ end }}
+  <script src="https://ucoin.tianxi100.com/redpacket.js"></script>
+  <script type="text/javascript">
+    var submitting = false;
+    var recipientUnionId = '{{ .RecipientUnionId }}';
+    var recipientUserId = '{{ .RecipientUserId }}';
+    var recipientNick = '{{ .RecipientNick }}';
+    var recipientAvatar = '{{ .RecipientAvatar }}';
+    var packetId = '{{ .PacketId }}';
+    {{ if .NotSubmitted }}
+    toggleView(true);
+    {{ else }}
+    toggleView(false);
+    {{ end }}
+  </script>
+</body>
+</html>

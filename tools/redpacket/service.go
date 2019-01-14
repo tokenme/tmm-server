@@ -1,4 +1,4 @@
-package invitebonus
+package redpacket
 
 import (
 	"context"
@@ -25,7 +25,6 @@ type Service struct {
 	service         *common.Service
 	config          common.Config
 	globalLock      *sync.Mutex
-	checkBonusCh    chan struct{}
 	checkTxCh       chan struct{}
 	transferBonusCh chan struct{}
 	exitCh          chan struct{}
@@ -37,7 +36,6 @@ func NewService(service *common.Service, config common.Config, globalLock *sync.
 		service:         service,
 		config:          config,
 		globalLock:      globalLock,
-		checkBonusCh:    make(chan struct{}, 1),
 		checkTxCh:       make(chan struct{}, 1),
 		transferBonusCh: make(chan struct{}, 1),
 		exitCh:          make(chan struct{}, 1),
@@ -48,13 +46,10 @@ func NewService(service *common.Service, config common.Config, globalLock *sync.
 func (this *Service) Start() {
 	shouldStop := false
 	ctx, cancel := context.WithCancel(context.Background())
-	go this.CheckBonus(ctx)
 	go this.CheckTransferBonus(ctx)
 	go this.CheckTx(ctx)
 	for !shouldStop {
 		select {
-		case <-this.checkBonusCh:
-			go this.CheckBonus(ctx)
 		case <-this.checkTxCh:
 			go this.CheckTx(ctx)
 		case <-this.transferBonusCh:
@@ -79,7 +74,7 @@ func (this *Service) CheckTx(ctx context.Context) error {
 		this.checkTxCh <- struct{}{}
 	}()
 	db := this.service.Db
-	rows, _, err := db.Query(`SELECT tmm_tx FROM tmm.invite_bonus WHERE tmm_tx!='' AND tx_status=2 ORDER BY id ASC LIMIT 1000`)
+	rows, _, err := db.Query(`SELECT tx FROM tmm.redpacket_recipients WHERE tx!='' AND tx_status=2 ORDER BY id ASC LIMIT 1000`)
 	if err != nil {
 		log.Error(err.Error())
 		return err
@@ -94,50 +89,11 @@ func (this *Service) CheckTx(ctx context.Context) error {
 		if receipt == nil {
 			continue
 		}
-		_, _, err = db.Query(`UPDATE tmm.invite_bonus SET tx_status=%d WHERE tmm_tx='%s' AND tx_status=2`, receipt.Status, txHex)
+		_, _, err = db.Query(`UPDATE tmm.redpacket_recipients SET tx_status=%d WHERE tx='%s' AND tx_status=2`, receipt.Status, txHex)
 		if err != nil {
 			log.Error(err.Error())
 			continue
 		}
-	}
-	return nil
-}
-
-func (this *Service) CheckBonus(ctx context.Context) error {
-	defer func() {
-		time.Sleep(6 * time.Hour)
-		this.checkBonusCh <- struct{}{}
-	}()
-	if time.Now().Weekday() != time.Sunday {
-		return nil
-	}
-	db := this.service.Db
-	query := `INSERT INTO tmm.invite_bonus (user_id, from_user_id, tmm, task_type)
-SELECT parent_id, parent_id, COUNT(DISTINCT user_id) * 50, 3
-FROM
-(
-    SELECT parent_id, user_id, COUNT(DISTINCT record_on) AS days
-    FROM (
-        SELECT ic.parent_id AS parent_id, ic.user_id AS user_id, DATE(dst.inserted_at) AS record_on
-        FROM tmm.invite_codes AS ic
-        INNER JOIN tmm.devices AS d ON (d.user_id = ic.user_id)
-        INNER JOIN tmm.device_share_tasks AS dst ON (dst.device_id=d.id AND dst.inserted_at >= DATE_SUB(NOW(), INTERVAL 7 DAY))
-        WHERE ic.parent_id>0
-        GROUP BY ic.parent_id, ic.user_id, record_on
-        UNION ALL
-        SELECT ic.parent_id AS parent_id, ic.user_id AS user_id, DATE(dat.inserted_at) AS record_on
-        FROM tmm.invite_codes AS ic
-        INNER JOIN tmm.devices AS d ON (d.user_id = ic.user_id)
-        INNER JOIN tmm.device_app_tasks AS dat ON (dat.device_id=d.id AND dat.inserted_at >= DATE_SUB(NOW(), INTERVAL 7 DAY))
-        WHERE ic.parent_id>0
-        GROUP BY ic.parent_id, ic.user_id, record_on
-    ) AS t GROUP BY parent_id, user_id
-    HAVING days > 3
-) AS t2 GROUP BY parent_id`
-	_, _, err := db.Query(query)
-	if err != nil {
-		log.Error(err.Error())
-		return err
 	}
 	return nil
 }
@@ -148,7 +104,20 @@ func (this *Service) CheckTransferBonus(ctx context.Context) error {
 		this.transferBonusCh <- struct{}{}
 	}()
 	db := this.service.Db
-	rows, _, err := db.Query(`SELECT ib.id, u.wallet_addr, ib.tmm, u.id FROM tmm.invite_bonus AS ib INNER JOIN ucoin.users AS u ON (u.id=ib.user_id) WHERE ib.tmm_tx='' AND ib.task_type=3 ORDER BY ib.id ASC LIMIT 1000`)
+	query := `SELECT
+    rb.id AS id, u.wallet_addr AS wallet, rb.tmm AS tmm, u.id AS user_id
+FROM tmm.redpacket_recipients AS rb
+INNER JOIN ucoin.users AS u ON (u.id=rb.user_id)
+WHERE rb.tx=''
+UNION
+SELECT
+    rb.id AS id, u.wallet_addr AS wallet, rb.tmm AS tmm, u.id AS user_id
+FROM tmm.redpacket_recipients AS rb
+INNER JOIN tmm.wx AS wx ON (wx.union_id=rb.union_id)
+INNER JOIN ucoin.users AS u ON (u.id=wx.user_id)
+WHERE rb.user_id IS NULL AND rb.tx=''
+ORDER BY id ASC LIMIT 1000`
+	rows, _, err := db.Query(query)
 	if err != nil {
 		log.Error(err.Error())
 		return err
@@ -164,7 +133,7 @@ func (this *Service) CheckTransferBonus(ctx context.Context) error {
 			continue
 		}
 		this.PushMsg(userId, tokenAmount)
-		_, _, err = db.Query(`UPDATE tmm.invite_bonus SET tmm_tx='%s' WHERE id=%d`, receipt, id)
+		_, _, err = db.Query(`UPDATE tmm.redpacket_recipients SET tx='%s' WHERE id=%d`, receipt, id)
 		if err != nil {
 			log.Error(err.Error())
 			continue
@@ -231,97 +200,6 @@ func (this *Service) transferToken(userWallet string, tokenAmount decimal.Decima
 	return receipt, nil
 }
 
-func (this *Service) FixBonus() {
-	db := this.service.Db
-	query := `SELECT DISTINCT ic.user_id, ic.parent_id, u.wallet_addr
-FROM tmm.invite_codes AS ic
-INNER JOIN ucoin.users AS u ON (u.id=ic.user_id)
-WHERE
-NOT EXISTS (SELECT 1 FROM tmm.invite_bonus AS ib WHERE ib.user_id=ic.user_id AND ib.user_id=ib.from_user_id AND ib.task_type=0 LIMIT 1)
-AND NOT EXISTS (SELECT 1 FROM tmm.invite_bonus AS ib2 WHERE ib2.user_id=ic.parent_id AND ib2.from_user_id=ic.user_id AND ib2.task_type=0 LIMIT 1)
-AND ic.parent_id>0
-AND NOT EXISTS (SELECT 1 FROM tmm.user_settings AS us WHERE us.user_id=ic.parent_id AND us.blocked=1 AND us.block_whitelist=0 LIMIT 1)
-AND NOT EXISTS (SELECT 1 FROM tmm.user_settings AS us2 WHERE us2.user_id=ic.user_id AND us2.blocked=1 AND us2.block_whitelist=0 LIMIT 1)
-AND NOT EXISTS (SELECT 1 FROM tmm.user_settings AS us3 WHERE us3.user_id=ic.grand_id AND us3.blocked=1 AND us3.block_whitelist=0 LIMIT 1)`
-	ctx := context.Background()
-	rows, _, err := db.Query(query)
-	if err != nil {
-		log.Error(err.Error())
-		return
-	}
-	for _, row := range rows {
-		userId := row.Uint64(0)
-		parentId := row.Uint64(1)
-		userWallet := row.Str(2)
-		log.Info("Transfer: %d", userId)
-		{
-			query := `SELECT d.id FROM tmm.devices AS d WHERE d.user_id=%d ORDER BY d.lastping_at DESC LIMIT 1`
-			rows, _, err := db.Query(query, parentId)
-			if err != nil {
-				log.Error(err.Error())
-				continue
-			}
-			if len(rows) == 0 {
-				continue
-			}
-			tokenAmount := decimal.New(543, 0)
-			receipt, err := this.transferToken(userWallet, tokenAmount, ctx)
-			if err != nil {
-				log.Error("Bonus Transfer failed")
-				continue
-			}
-			deviceId := rows[0].Str(0)
-			_, _, err = db.Query(`UPDATE tmm.devices AS d SET d.points = d.points + 188 WHERE id='%s'`, db.Escape(deviceId))
-			if err != nil {
-				log.Error(err.Error())
-				continue
-			}
-			_, _, err = db.Query(`INSERT INTO tmm.invite_bonus (user_id, from_user_id, bonus, tmm, tmm_tx) VALUES (%d, %d, 0, %s, '%s'), (%d, %d, 188, 0, '')`, userId, userId, tokenAmount.String(), db.Escape(receipt), parentId, userId)
-			if err != nil {
-				log.Error(err.Error())
-				continue
-			}
-			log.Info("Transferred: %d, %s", userId, receipt)
-		}
-	}
-
-	query = `SELECT ib.user_id, ib.tmm, u.wallet_addr
-FROM tmm.invite_bonus AS ib
-INNER JOIN ucoin.users AS u ON (u.id=ib.user_id)
-WHERE
-ib.user_id=ib.from_user_id
-AND ib.tmm>0
-AND ib.tmm_tx=''
-AND ib.task_type=0
-AND NOT EXISTS (SELECT 1 FROM tmm.user_settings AS us WHERE us.user_id=ib.user_id AND us.blocked=1 AND us.block_whitelist=0 LIMIT 1)`
-	rows, _, err = db.Query(query)
-	if err != nil {
-		log.Error(err.Error())
-		return
-	}
-	for _, row := range rows {
-		userId := row.Uint64(0)
-		tokenAmount, err := decimal.NewFromString(row.Str(1))
-		if err != nil {
-			log.Error(err.Error())
-			continue
-		}
-		userWallet := row.Str(2)
-		log.Info("Transfer: %d", userId)
-		receipt, err := this.transferToken(userWallet, tokenAmount, ctx)
-		if err != nil {
-			log.Error("Bonus Transfer failed")
-			continue
-		}
-		_, _, err = db.Query(`UPDATE tmm.invite_bonus SET tmm_tx='%s' WHERE user_id=from_user_id AND task_type=0 AND tmm>0 AND tmm_tx='' AND user_id=%d`, db.Escape(receipt), userId)
-		if err != nil {
-			log.Error(err.Error())
-			continue
-		}
-		log.Info("Transferred: %d, %s", userId, receipt)
-	}
-}
-
 func (this *Service) PushMsg(userId uint64, bonus decimal.Decimal) {
 	db := this.service.Db
 	rows, _, err := db.Query(`SELECT d.push_token, d.language, d.platform FROM tmm.devices AS d WHERE d.user_id=%d ORDER BY lastping_at DESC LIMIT 1`, userId)
@@ -345,11 +223,11 @@ func (this *Service) PushMsg(userId uint64, bonus decimal.Decimal) {
 	)
 	switch language {
 	case "en":
-		title = "UCoin active user bonus"
-		content = fmt.Sprintf("You just received %sUC from UCoin because this user who is invited by you activated 3 days in 7 days", bonus.String())
+		title = "UCoin Redpacket"
+		content = fmt.Sprintf("You just received %sUC from UCoin Redpacket", bonus.String())
 	case "zh":
-		title = "友币活跃用户奖励"
-		content = fmt.Sprintf("由于您的下线7天内有3天活跃，您获得 %sUC 奖励", bonus.String())
+		title = "友币红包"
+		content = fmt.Sprintf("您获得 %sUC 红包", bonus.String())
 	}
 	var auther auth.Auther
 	var pushReq *http.Request

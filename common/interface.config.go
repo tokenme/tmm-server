@@ -13,6 +13,7 @@ type Config struct {
 	ShareUrl               string            `required:"true"`
 	ShareTrackUrl          string            `required:"true"`
 	ShareImpUrl            string            `required:"true"`
+	RedpacketUrl           string            `required:"true"`
 	AdImpUrl               string            `required:"true"`
 	AdClkUrl               string            `required:"true"`
 	Template               string            `required:"true"`
@@ -26,6 +27,7 @@ type Config struct {
 	TMMTokenAddress        string            `required:"true"`
 	TMMEscrowAddress       string            `required:"true"`
 	MinTMMExchange         uint              `required:"true"`
+	MinTMMExchangeOut      uint              `required:"true"`
 	MinExchangeRate        float64           `required:"true"`
 	MaxExchangeRate        float64           `required:"true"`
 	MinTMMRedeem           uint              `required:"true"`
@@ -127,9 +129,12 @@ type CoinbaseAPIConfig struct {
 }
 
 type ContactConfig struct {
-	Telegram string `required:"true"`
-	Wechat   string `required:"true"`
-	Website  string `required:"true"`
+	Telegram     string `required:"true"`
+	Wechat       string `required:"true"`
+	QQGroupId    string `required:"true"`
+	QQAndroidKey string `required:"true"`
+	QQIOSKey     string `required:"true"`
+	Website      string `required:"true"`
 }
 
 type AliyunConfig struct {

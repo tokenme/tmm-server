@@ -3,6 +3,7 @@ package task
 import (
 	"fmt"
 	//"github.com/davecgh/go-spew/spew"
+	"errors"
 	"github.com/gin-gonic/gin"
 	"github.com/mkideal/log"
 	"github.com/shopspring/decimal"
@@ -140,6 +141,27 @@ ORDER BY %s %s`
 			}
 			tasks = append(tasks, task)
 		}
+		if req.Page == 1 && idx == 2 {
+			rp, err := getRedpacket(Service, Config)
+			if err == nil {
+				rpLink, _ := rp.GetLink(Config, user.Id)
+				msg := rp.Message
+				if msg == "" {
+					msg = "大吉大利，恭喜发财"
+				}
+				task := &common.ShareTask{
+					Summary: msg,
+					Creative: &common.Creative{
+						Title:  "UCoin红包，快来抢",
+						Image:  "https://ucoin.tianxi100.com/redpacket-banner.jpg",
+						Link:   rpLink,
+						Width:  800,
+						Height: 229,
+					},
+				}
+				tasks = append(tasks, task)
+			}
+		}
 		bonus, _ := decimal.NewFromString(row.Str(6))
 		points, _ := decimal.NewFromString(row.Str(7))
 		pointsLeft, _ := decimal.NewFromString(row.Str(8))
@@ -235,4 +257,19 @@ func getCreatives(cid uint, page uint, platform string) (map[int][]*common.Adgro
 		}
 	}
 	return adsMap, nil
+}
+
+func getRedpacket(service *common.Service, config common.Config) (rp common.Redpacket, err error) {
+	db := service.Db
+	rows, _, err := db.Query(`SELECT id, message FROM tmm.redpackets ORDER BY online_status DESC, id ASC LIMIT 1`)
+	if err != nil {
+		return rp, err
+	}
+	if len(rows) == 0 {
+		return rp, errors.New("no result")
+	}
+	return common.Redpacket{
+		Id:      rows[0].Uint64(0),
+		Message: rows[0].Str(1),
+	}, nil
 }

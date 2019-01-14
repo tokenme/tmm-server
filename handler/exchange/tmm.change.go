@@ -47,6 +47,11 @@ func TMMChangeHandler(c *gin.Context) {
 		return
 	}
 
+	if req.Direction == -1 {
+		c.JSON(http.StatusOK, gin.H{"code": 400, "msg": "系统更新中，请稍候再试"})
+		return
+	}
+
 	redisConn := Service.Redis.Master.Get()
 	defer redisConn.Close()
 	changeRateKey := fmt.Sprintf(TMMChangeRateKey, req.Direction, user.Id)
@@ -73,6 +78,10 @@ func TMMChangeHandler(c *gin.Context) {
 	}
 
 	tmm := req.Points.Mul(exchangeRate.Rate)
+
+	if Check(req.Direction == common.TMMExchangeOut && tmm.LessThan(exchangeRate.MinToken), fmt.Sprintf("UCoin兑换积分最低不能少于%sUC", exchangeRate.MinToken.String()), c) {
+		return
+	}
 	consumedTs := req.Points.Div(pointsPerTs)
 
 	token, err := utils.NewToken(Config.TMMTokenAddress, Service.Geth)
@@ -196,12 +205,12 @@ WHERE d.id='%s' AND d.user_id=%d`
 	if req.Direction == common.TMMExchangeIn {
 		slackTitle = "Points -> Token"
 		_, _, err = db.Query(`UPDATE tmm.devices AS d SET d.points = IF(d.points - %s <= 0, 0, d.points - %s), d.consumed_ts = d.consumed_ts + %d WHERE d.id='%s' AND d.user_id=%d`, req.Points.String(), req.Points.String(), consumedTs.IntPart(), db.Escape(req.DeviceId), user.Id)
+		if CheckErr(err, c) {
+			return
+		}
 	} else {
 		slackTitle = "Token -> Points"
-		_, _, err = db.Query(`UPDATE tmm.devices AS d SET d.points = d.points + %s, d.total_ts = d.total_ts + %d WHERE d.id='%s' AND d.user_id=%d`, req.Points.String(), consumedTs.IntPart(), db.Escape(req.DeviceId), user.Id)
-	}
-	if CheckErr(err, c) {
-		return
+		//_, _, err = db.Query(`UPDATE tmm.devices AS d SET d.points = d.points + %s, d.total_ts = d.total_ts + %d WHERE d.id='%s' AND d.user_id=%d`, req.Points.String(), consumedTs.IntPart(), db.Escape(req.DeviceId), user.Id)
 	}
 
 	_, err = redisConn.Do("SETEX", changeRateKey, 60*60*6, time.Now().Format("2006-01-02 15:04:05"))
@@ -251,7 +260,7 @@ WHERE d.id='%s' AND d.user_id=%d`
 		Ts: json.Number(strconv.FormatInt(time.Now().Unix(), 10)),
 	}
 	slackParams.Attachments = []slack.Attachment{attachment}
-	_, _, err = Service.Slack.PostMessage(Config.Slack.OpsChannel, "Point <-> Token", slackParams)
+	_, _, err = Service.Slack.PostMessage(Config.Slack.OpsChannel, slackTitle, slackParams)
 	if err != nil {
 		log.Error(err.Error())
 		return
