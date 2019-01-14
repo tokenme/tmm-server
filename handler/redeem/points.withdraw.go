@@ -145,6 +145,10 @@ WHERE (wx.user_id=%d OR wx.union_id='%s') AND wt.inserted_at >= DATE_SUB(NOW(), 
 		return
 	}
 	if CheckWithCode(exceeded, EXCEEDED_DAILY_WITHDRAW_LIMIT_ERROR, "超出系统今日提现额度，请明天再试", c) {
+		_, _, err := db.Query(`INSERT INTO tmm.withdraw_logs (user_id, points, cny) VALUES (%d, %s, %s)`, user.Id, req.Points.String(), cny.String())
+		if err != nil {
+			log.Error(err.Error())
+		}
 		return
 	}
 
