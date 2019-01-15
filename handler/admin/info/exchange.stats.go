@@ -34,7 +34,7 @@ func ExchangeStatsHandler(c *gin.Context) {
 	exchangeKey := GetStatsKey(req.StartTime, `exchange`)
 	if !req.IsRefresh {
 		var info PointStats
-		if bytes, err := redis.Bytes(redisConn.Do(`GET`, exchangeKey)); err != nil && bytes != nil {
+		if bytes, err := redis.Bytes(redisConn.Do(`GET`, exchangeKey)); err == nil && bytes != nil {
 			if !CheckErr(json.Unmarshal(bytes, &info), c) {
 				c.JSON(http.StatusOK, admin.Response{
 					Code:    0,

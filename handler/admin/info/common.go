@@ -86,7 +86,7 @@ type StatsRequest struct {
 	Top10     bool   `form:"top_10",json:"top_10"`
 	Hours     int    `form:"hours" ,json:"hours"`
 	Type      int    `form:"type"`
-	IsRefresh bool   `json:"is_refresh"`
+	IsRefresh bool   `form:"is_refresh"`
 }
 
 type Good struct {

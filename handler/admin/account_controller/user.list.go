@@ -116,16 +116,16 @@ SELECT
 FROM (
 SELECT
 	inv.parent_id AS id,
-	COUNT(distinct IF(dev.lastping_at > DATE(NOW()),inv.user_id,NULL))   AS online,
-	COUNT(distinct IF(IFNULL(dev.lastping_at,DATE_SUB(NOW(),INTERVAL 1 DAY)) < DATE(NOW()),inv.user_id,NULL))   AS offline
+	COUNT(distinct IF(dev.lastping_at > DATE_SUB(NOW(),INTERVAL 1 DAY),inv.user_id,NULL))   AS online,
+	COUNT(distinct IF(IFNULL(dev.lastping_at,DATE_SUB(NOW(),INTERVAL 2 DAY)) < DATE_SUB(NOW(),INTERVAL 1 DAY),inv.user_id,NULL))   AS offline
 FROM 	
 	invite_codes AS inv 
 LEFT JOIN tmm.devices AS dev ON (dev.user_id = inv.user_id)
 GROUP BY  id UNION ALL
 SELECT 
 	inv.grand_id AS id,
-	COUNT(distinct IF(dev.lastping_at > DATE(NOW()),inv.user_id,NULL))   AS online,
-	COUNT(distinct IF(IFNULL(dev.lastping_at,DATE_SUB(NOW(),INTERVAL 1 DAY)) < DATE(NOW()),inv.user_id,NULL))   AS offline
+	COUNT(distinct IF(dev.lastping_at > DATE_SUB(NOW(),INTERVAL 1 DAY),inv.user_id,NULL))   AS online,
+	COUNT(distinct IF(IFNULL(dev.lastping_at,DATE_SUB(NOW(),INTERVAL 2 DAY)) < DATE_SUB(NOW(),INTERVAL 1 DAY),inv.user_id,NULL))   AS offline
 FROM 	
 	invite_codes AS inv 
 LEFT JOIN tmm.devices AS dev ON (dev.user_id = inv.user_id)
@@ -174,16 +174,16 @@ SELECT
 FROM (
 SELECT
 	inv.parent_id AS id,
-	COUNT(distinct IF(dev.lastping_at > DATE(NOW()),inv.user_id,NULL))   AS online,
-	COUNT(distinct IF(IFNULL(dev.lastping_at,DATE_SUB(NOW(),INTERVAL 1 DAY)) < DATE(NOW()),inv.user_id,NULL))   AS offline
+	COUNT(distinct IF(dev.lastping_at > DATE_SUB(NOW(),INTERVAL 1 DAY),inv.user_id,NULL))   AS online,
+	COUNT(distinct IF(IFNULL(dev.lastping_at,DATE_SUB(NOW(),INTERVAL 2 DAY)) < DATE_SUB(NOW(),INTERVAL 1 DAY),inv.user_id,NULL))   AS offline
 FROM 	
 	invite_codes AS inv 
 LEFT JOIN tmm.devices AS dev ON (dev.user_id = inv.user_id)
 GROUP BY  id UNION ALL
 SELECT 
 	inv.grand_id AS id,
-	COUNT(distinct IF(dev.lastping_at > DATE(NOW()),inv.user_id,NULL))   AS online,
-	COUNT(distinct IF(IFNULL(dev.lastping_at,DATE_SUB(NOW(),INTERVAL 1 DAY)) < DATE(NOW()),inv.user_id,NULL))   AS offline
+	COUNT(distinct IF(dev.lastping_at > DATE_SUB(NOW(),INTERVAL 1 DAY),inv.user_id,NULL))   AS online,
+	COUNT(distinct IF(IFNULL(dev.lastping_at,DATE_SUB(NOW(),INTERVAL 2 DAY)) < DATE_SUB(NOW(),INTERVAL 1 DAY),inv.user_id,NULL))   AS offline
 FROM 	
 	invite_codes AS inv 
 LEFT JOIN tmm.devices AS dev ON (dev.user_id = inv.user_id)
@@ -488,7 +488,7 @@ LEFT JOIN (
 			OffLineBFNumber:      row.Int(res.Map(`offline`)),
 			ExchangePointToUcoin: pointToUcoin.Ceil(),
 		}
-		user.Point = point.Ceil()
+		user.Point = point.StringFixed(0)
 		user.DrawCash =  fmt.Sprintf("%.2f", row.Float(res.Map(`cny`)))
 		user.Blocked = row.Int(res.Map(`blocked`))
 		user.Nick = row.Str(res.Map(`nick`))

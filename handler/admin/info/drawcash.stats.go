@@ -36,7 +36,7 @@ func DrawCashStatsHandler(c *gin.Context) {
 	drawcashKey := GetStatsKey(req.StartTime, `drawcash`)
 	if !req.IsRefresh {
 		var info DrawCashStats
-		if bytes, err := redis.Bytes(redisConn.Do(`GET`, drawcashKey)); err != nil && bytes != nil {
+		if bytes, err := redis.Bytes(redisConn.Do(`GET`, drawcashKey)); err == nil && bytes != nil {
 			if !CheckErr(json.Unmarshal(bytes, &info), c) {
 				c.JSON(http.StatusOK, admin.Response{
 					Code:    0,
