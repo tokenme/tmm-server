@@ -29,10 +29,10 @@ type AddRequest struct {
 }
 
 type UserStats struct {
-	ExchangePointToUcoin     decimal.Decimal `json:"exchange_point_to_ucoin"`
-	ExchangeCount            int             `json:"exchange_count"`
-	OnlineBFNumber           int             `json:"online_bf_number"`
-	OffLineBFNumber          int             `json:"off_line_bf_number"`
+	//ExchangePointToUcoin     decimal.Decimal `json:"exchange_point_to_ucoin"`
+	//ExchangeCount            int             `json:"exchange_count"`
+	//OnlineBFNumber           int             `json:"online_bf_number"`
+	//OffLineBFNumber          int             `json:"off_line_bf_number"`
 	PointByShare             int             `json:"point_by_share"`
 	PointByReading           int             `json:"point_by_reading"`
 	PointByInvite            int             `json:"point_by_invite"`
@@ -70,13 +70,17 @@ type UserStats struct {
 }
 type User struct {
 	common.User
-	Blocked            int             `json:"blocked"`
-	Point              string		   `json:"point"`
-	InviteBonus        decimal.Decimal `json:"invite_bonus,omitempty"`
-	DrawCash           string          `json:"draw_cash"`
-	InviteCount        int             `json:"invite_count,omitempty"`
-	Tmm                string          `json:"tmm"`
-	CompletedTaskCount int             `json:"completed_task_count,omitempty"`
+	Blocked              int             `json:"blocked"`
+	Point                string          `json:"point"`
+	InviteBonus          decimal.Decimal `json:"invite_bonus,omitempty"`
+	DrawCash             string          `json:"draw_cash"`
+	InviteCount          int             `json:"invite_count,omitempty"`
+	Tmm                  string          `json:"tmm"`
+	CompletedTaskCount   int             `json:"completed_task_count,omitempty"`
+	ExchangePointToUcoin decimal.Decimal `json:"exchange_point_to_ucoin"`
+	ExchangeCount        int             `json:"exchange_count"`
+	OnlineBFNumber       int             `json:"online_bf_number"`
+	OffLineBFNumber      int             `json:"off_line_bf_number"`
 }
 
 type Device struct {

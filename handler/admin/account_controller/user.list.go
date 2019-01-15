@@ -46,6 +46,7 @@ type SearchOptions struct {
 	IsWhiteList             bool         `form:"is_white_list"`
 	Id                      int          `form:"id"`
 	Mobile                  string       `form:"mobile"`
+	WxNick                  string       `form:"wx_nick"`
 }
 
 func GetAccountList(c *gin.Context) {
@@ -454,12 +455,15 @@ LEFT JOIN (
 	} else {
 		where = append(where, fmt.Sprintf(`  AND IF(us_set.user_id > 0,IF(us_set.blocked = us_set.block_whitelist,0,1),0) = %d `, 0))
 	}
-	rows, res, err := db.Query(query, strings.Join(when, " "),
-		strings.Join(leftJoin, " "), strings.Join(where, " "), limit, offset)
+	if search.WxNick != "" {
+		where = append(where, fmt.Sprintf(`  AND wx.nick LIKE '%s' `, search.WxNick+"%"))
+	}
+	rows, res, err := db.Query(query,strings.Join(when, " "),
+		strings.Join(leftJoin, " "), strings.Join(where, " "),limit, offset)
 	if CheckErr(err, c) {
 		return
 	}
-	var List []*admin.UserStats
+	var List []*admin.User
 	if len(rows) == 0 {
 		c.JSON(http.StatusOK, admin.Response{
 			Code:    0,
@@ -482,14 +486,14 @@ LEFT JOIN (
 		if CheckErr(err, c) {
 			return
 		}
-		user := &admin.UserStats{
+		user := &admin.User{
 			ExchangeCount:        row.Int(res.Map(`point_to_tmm_times`)),
 			OnlineBFNumber:       row.Int(res.Map(`online`)),
 			OffLineBFNumber:      row.Int(res.Map(`offline`)),
 			ExchangePointToUcoin: pointToUcoin.Ceil(),
 		}
 		user.Point = point.StringFixed(0)
-		user.DrawCash =  fmt.Sprintf("%.2f", row.Float(res.Map(`cny`)))
+		user.DrawCash = fmt.Sprintf("%.2f", row.Float(res.Map(`cny`)))
 		user.Blocked = row.Int(res.Map(`blocked`))
 		user.Nick = row.Str(res.Map(`nick`))
 		user.Id = row.Uint64(res.Map(`id`))
