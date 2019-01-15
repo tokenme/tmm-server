@@ -38,7 +38,7 @@ func MakePointHandler(c *gin.Context) {
 	FROM 
   		tmm.invite_bonus
 	WHERE 
-		user_id = %d AND task_type = 0`, req.Id))
+		user_id = %d AND task_type = 0 AND user_id != from_user_id`, req.Id))
 	}
 	if req.Types == Reading || req.Types == -1 {
 		froms = append(froms, fmt.Sprintf(`	
@@ -102,7 +102,7 @@ func MakePointHandler(c *gin.Context) {
 	query := `
 	SELECT 
 		IFNULL(tmp.point,0) AS point,
-		tmp.inserted_at AS inserted_at,
+		DATE_ADD(tmp.inserted_at,INTERVAL 8 HOUR) AS inserted_at, 	
 		tmp.type  AS type,
 		tmp.invite_bonus_types AS invite_bonus_types,
 		tmp.tmm  AS tmm

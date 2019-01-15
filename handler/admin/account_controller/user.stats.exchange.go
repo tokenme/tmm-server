@@ -38,7 +38,7 @@ func ExchangeHandler(c *gin.Context) {
 	}
 	query := `
 SELECT 
-	inserted_at,
+	DATE_ADD(inserted_at,INTERVAL 8 HOUR),
 	points,
 	tmm,
 	status

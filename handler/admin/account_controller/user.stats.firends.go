@@ -40,7 +40,7 @@ func FriendsHandler(c *gin.Context) {
 		inv.user_id,
 		u.mobile,
 		wx.nick,
-		u.created,
+		DATE_ADD(u.created,INTERVAL 8 HOUR), 
 		IF(us_set.user_id > 0,IF(us_set.blocked = us_set.block_whitelist,0,1),0) AS blocked,
 		IF(COUNT(IF(
 			(sha.inserted_at > u.created AND sha.inserted_at < DATE_ADD(u.created,INTERVAL 1 day) )  OR
@@ -130,10 +130,10 @@ func FriendsHandler(c *gin.Context) {
 		SELECT 
 		1
 		FROM tmm.devices AS dev 
-		LEFT JOIN tmm.device_share_tasks AS sha ON (sha.device_id = dev.id AND sha.inserted_at > DATE_SUB(DATE(NOW()),INTERVAL 2 day ))
-		LEFT JOIN tmm.device_app_tasks AS app ON (app.device_id = dev.id  AND  app.inserted_at > DATE_SUB(DATE(NOW()),INTERVAL 2 day ) AND app.status = 1)
-		LEFT JOIN reading_logs AS reading ON (reading.user_id = dev.user_id  AND (reading.updated_at > DATE_SUB(DATE(NOW()),INTERVAL 2 day ) OR  reading.inserted_at > DATE_SUB(DATE(NOW()),INTERVAL 2 day )))
-		LEFT JOIN tmm.daily_bonus_logs AS daily ON (daily.user_id = dev.user_id AND daily.updated_on >= DATE_SUB(DATE(NOW()),INTERVAL 2 day ))
+		LEFT JOIN tmm.device_share_tasks AS sha ON (sha.device_id = dev.id AND sha.inserted_at > DATE_SUB(NOW(),INTERVAL 3 day ))
+		LEFT JOIN tmm.device_app_tasks AS app ON (app.device_id = dev.id  AND  app.inserted_at > DATE_SUB(NOW(),INTERVAL 3 day ) AND app.status = 1)
+		LEFT JOIN reading_logs AS reading ON (reading.user_id = dev.user_id  AND (reading.updated_at > DATE_SUB(NOW(),INTERVAL 3 day ) OR  reading.inserted_at > DATE_SUB(NOW(),INTERVAL 3 day )))
+		LEFT JOIN tmm.daily_bonus_logs AS daily ON (daily.user_id = dev.user_id AND daily.updated_on >= DATE_SUB(NOW(),INTERVAL 3 day ))
 		WHERE dev.user_id = inv.user_id AND ( 
 		sha.task_id > 0  
 		OR app.task_id > 0   OR reading.user_id > 0

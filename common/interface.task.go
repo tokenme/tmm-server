@@ -26,6 +26,7 @@ type ShareTask struct {
 	ShareLink     string          `json:"share_link,omitempty"`
 	VideoLink     string          `json:"video_link,omitempty"`
 	Image         string          `json:"image,omitempty"`
+	Images        []string        `json:"images,omitempty"`
 	Points        decimal.Decimal `json:"points,omitempty"`
 	PointsLeft    decimal.Decimal `json:"points_left,omitempty"`
 	Bonus         decimal.Decimal `json:"bonus,omitempty"`

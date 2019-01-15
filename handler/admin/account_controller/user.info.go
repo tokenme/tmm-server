@@ -26,9 +26,9 @@ SELECT
 	u.id AS id ,
 	u.mobile AS mobile ,
 	u.country_code AS country_code,
-	u.created AS created,
+    DATE_ADD(u.created,INTERVAL 8 HOUR) created,
 	wx.nick AS nick,
-	wx.inserted_at AS wx_inserted_at,
+	DATE_ADD(wx.inserted_at,INTERVAL 8 HOUR) AS wx_inserted_at,
 	wx.union_id AS union_id,
 	wx.expires AS expires,
 	wx.open_id AS open_id,
@@ -60,10 +60,10 @@ SELECT
 		SELECT 
 		1
 		FROM tmm.devices AS dev 
-		LEFT JOIN tmm.device_share_tasks AS sha ON (sha.device_id = dev.id AND sha.inserted_at > DATE_SUB(DATE(NOW()),INTERVAL 2 DAY))
-		LEFT JOIN tmm.device_app_tasks AS app ON (app.device_id = dev.id  AND  app.inserted_at > DATE_SUB(DATE(NOW()),INTERVAL 2 DAY))
-		LEFT JOIN reading_logs AS reading ON (reading.user_id = dev.user_id  AND (reading.updated_at > DATE_SUB(DATE(NOW()),INTERVAL 2 DAY) OR  reading.inserted_at > DATE_SUB(DATE(NOW()),INTERVAL 2 DAY)))
-		LEFT JOIN tmm.daily_bonus_logs AS daily ON (daily.user_id = dev.user_id AND daily.updated_on >= DATE_SUB(DATE(NOW()),INTERVAL 2 DAY))  
+		LEFT JOIN tmm.device_share_tasks AS sha ON (sha.device_id = dev.id AND sha.inserted_at > DATE_SUB(NOW(),INTERVAL 3 DAY))
+		LEFT JOIN tmm.device_app_tasks AS app ON (app.device_id = dev.id  AND  app.inserted_at > DATE_SUB(NOW(),INTERVAL 3 DAY))
+		LEFT JOIN reading_logs AS reading ON (reading.user_id = dev.user_id  AND (reading.updated_at > DATE_SUB(NOW(),INTERVAL 3 DAY) OR  reading.inserted_at > DATE_SUB(NOW(),INTERVAL 3 DAY)))
+		LEFT JOIN tmm.daily_bonus_logs AS daily ON (daily.user_id = dev.user_id AND daily.updated_on >= DATE_SUB(NOW(),INTERVAL 3 DAY))  
 		WHERE dev.user_id = u.id AND ( 
 		sha.task_id > 0  
 		OR app.task_id > 0   OR reading.user_id > 0
@@ -146,13 +146,13 @@ LEFT JOIN (
 			FROM 
 				tmm.devices AS dev 
 			LEFT JOIN 
-				tmm.device_share_tasks AS sha ON (sha.device_id = dev.id AND sha.inserted_at > DATE_SUB(DATE(NOW()),INTERVAL 2 DAY))
+				tmm.device_share_tasks AS sha ON (sha.device_id = dev.id AND sha.inserted_at > DATE_SUB(NOW(),INTERVAL 3 DAY))
 			LEFT JOIN 
-				tmm.device_app_tasks AS app ON (app.device_id = dev.id  AND  app.inserted_at > DATE_SUB(DATE(NOW()),INTERVAL 2 DAY))
+				tmm.device_app_tasks AS app ON (app.device_id = dev.id  AND  app.inserted_at > DATE_SUB(NOW(),INTERVAL 3 DAY))
 			LEFT JOIN 
-				reading_logs AS reading ON (reading.user_id = dev.user_id  AND (reading.updated_at > DATE_SUB(DATE(NOW()),INTERVAL 2 DAY) OR  reading.inserted_at > DATE_SUB(DATE(NOW()),INTERVAL 2 DAY)))
+				reading_logs AS reading ON (reading.user_id = dev.user_id  AND (reading.updated_at > DATE_SUB(NOW(),INTERVAL 3 DAY) OR  reading.inserted_at > DATE_SUB(NOW(),INTERVAL 3 DAY)))
 			LEFT JOIN 
-				tmm.daily_bonus_logs AS daily ON (daily.user_id = dev.user_id AND daily.updated_on >= DATE_SUB(DATE(NOW()),INTERVAL 2 DAY))  
+				tmm.daily_bonus_logs AS daily ON (daily.user_id = dev.user_id AND daily.updated_on >= DATE_SUB(NOW(),INTERVAL 3 DAY))  
 			WHERE 
 				dev.user_id = inv.user_id AND ( 
 				sha.task_id > 0	OR app.task_id > 0 OR 
@@ -167,13 +167,13 @@ LEFT JOIN (
 			FROM 
 				tmm.devices AS dev 
 			LEFT JOIN 
-				tmm.device_share_tasks AS sha ON (sha.device_id = dev.id AND sha.inserted_at > DATE_SUB(DATE(NOW()),INTERVAL 2 DAY))
+				tmm.device_share_tasks AS sha ON (sha.device_id = dev.id AND sha.inserted_at > DATE_SUB(NOW(),INTERVAL 3 DAY))
 			LEFT JOIN 
-				tmm.device_app_tasks AS app ON (app.device_id = dev.id  AND  app.inserted_at > DATE_SUB(DATE(NOW()),INTERVAL 2 DAY))
+				tmm.device_app_tasks AS app ON (app.device_id = dev.id  AND  app.inserted_at > DATE_SUB(NOW(),INTERVAL 3 DAY))
 			LEFT JOIN 
-				reading_logs AS reading ON (reading.user_id = dev.user_id  AND (reading.updated_at > DATE_SUB(DATE(NOW()),INTERVAL 2 DAY) OR  reading.inserted_at > DATE_SUB(DATE(NOW()),INTERVAL 2 DAY)))
+				reading_logs AS reading ON (reading.user_id = dev.user_id  AND (reading.updated_at > DATE_SUB(NOW(),INTERVAL 3 DAY) OR  reading.inserted_at > DATE_SUB(NOW(),INTERVAL 3 DAY)))
 			LEFT JOIN 
-				tmm.daily_bonus_logs AS daily ON (daily.user_id = dev.user_id AND daily.updated_on >= DATE_SUB(DATE(NOW()),INTERVAL 2 DAY))  
+				tmm.daily_bonus_logs AS daily ON (daily.user_id = dev.user_id AND daily.updated_on >= DATE_SUB(NOW(),INTERVAL 3 DAY))  
 			WHERE 
 				dev.user_id = u.id AND ( 
 				sha.task_id > 0 OR app.task_id > 0  OR
@@ -185,7 +185,7 @@ LEFT JOIN (
 	FROM
 		tmm.invite_codes  AS inv
 	LEFT JOIN 
-		ucoin.users AS u ON (u.id = inv.user_id AND u.created > DATE_SUB(DATE(NOW()),INTERVAL 2 DAY))
+		ucoin.users AS u ON (u.id = inv.user_id AND u.created > DATE_SUB(NOW(),INTERVAL 3 DAY))
 	WHERE
 		inv.parent_id = %d OR inv.grand_id = %d
 ) AS inv ON 1 = 1
@@ -308,16 +308,20 @@ LIMIT 1
 	user.Wallet = row.Str(res.Map(`addr`))
 	user.WxUnionId = row.Str(res.Map(`union_id`))
 	user.Tmm = tmm.StringFixed(2)
-	user.Point = point.Ceil()
+	user.Point = point.StringFixed(0)
 	user.DrawCash = fmt.Sprintf("%.2f", row.Float(res.Map(`cny`)))
 	user.Blocked = row.Int(res.Map(`blocked`))
 	user.TotalMakePoint = user.PointByShare + user.PointByReading +
 		user.PointByInvite + user.PointByDownLoadApp
 	threeActiveCount := row.Float(res.Map(`total`))
 	if user.DirectFriends+user.IndirectFriends > 0 && threeActiveCount > 0 {
-		user.NotActive = fmt.Sprintf("%.2f", 100-threeActiveCount/(float64(user.DirectFriends)+float64(user.IndirectFriends))*100) + "%"
+		user.NotActive = fmt.Sprintf("%.2f", 100-threeActiveCount/float64(user.DirectFriends + user.IndirectFriends)*100) + "%"
 	} else {
-		user.NotActive = fmt.Sprint("0%")
+		if user.DirectFriends+user.InDirectBlockedCount > 0 && threeActiveCount == 0 {
+			user.NotActive = fmt.Sprint("100%")
+		}else{
+			user.NotActive = fmt.Sprint("0%")
+		}
 	}
 
 	parent := admin.User{}
