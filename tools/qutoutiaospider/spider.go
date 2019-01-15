@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/PuerkitoBio/goquery"
 	//"github.com/davecgh/go-spew/spew"
+	"encoding/json"
 	"github.com/levigross/grequests"
 	"github.com/mkideal/log"
 	"github.com/panjf2000/ants"
@@ -164,14 +165,21 @@ func (this *Crawler) Suggest(userTmp int64, page int, showTime int64, minTime in
 			}
 		}
 		sortId := utils.RangeRandUint64(1, 1000000)
-		var cover string
+		var (
+			cover string
+			imgs  string
+		)
 		if len(newA.Covers) > 0 {
 			cover = newA.Covers[0]
+			js, err := json.Marshal(newA.Covers)
+			if err == nil {
+				imgs = string(js)
+			}
 		}
-		val = append(val, fmt.Sprintf("(%s, '%s', '%s', '%s', '%s', '%s', '%s', '%s', 2, %d)", newA.Id, db.Escape(newA.Author), db.Escape(newA.Title), db.Escape(newA.Url), db.Escape(cover), publishTime.Format("2006-01-02 15:04:05"), db.Escape(newA.Markdown), db.Escape(newA.Digest), sortId))
+		val = append(val, fmt.Sprintf("(%s, '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', 2, %d)", newA.Id, db.Escape(newA.Author), db.Escape(newA.Title), db.Escape(newA.Url), db.Escape(cover), publishTime.Format("2006-01-02 15:04:05"), db.Escape(newA.Markdown), db.Escape(newA.Digest), imgs, sortId))
 	}
 	if len(val) > 0 {
-		_, _, err := db.Query(`INSERT IGNORE INTO tmm.articles (fileid, author, title, link, cover, published_at, content, digest, platform, sortid) VALUES %s`, strings.Join(val, ","))
+		_, _, err := db.Query(`INSERT IGNORE INTO tmm.articles (fileid, author, title, link, cover, published_at, content, digest, images, platform, sortid) VALUES %s`, strings.Join(val, ","))
 		if err != nil {
 			log.Error(err.Error())
 			return nil, err
@@ -293,7 +301,7 @@ func (this *Crawler) uploadImage(src string) (string, error) {
 
 func (this *Crawler) Publish() error {
 	db := this.service.Db
-	rows, _, err := db.Query(`SELECT id, title, digest, cover FROM tmm.articles WHERE published=0 AND platform=2 ORDER BY sortid LIMIT 1000`)
+	rows, _, err := db.Query(`SELECT id, title, digest, cover, images FROM tmm.articles WHERE published=0 AND platform=2 ORDER BY sortid LIMIT 1000`)
 	if err != nil {
 		return err
 	}
@@ -305,11 +313,27 @@ func (this *Crawler) Publish() error {
 		digest := row.Str(2)
 		link := fmt.Sprintf("https://tmm.tokenmama.io/article/show/%d", id)
 		cover := strings.Replace(row.Str(3), "http://", "https://", -1)
+		js := row.Str(4)
+		images := "NULL"
+		if js != "" {
+			var imgs []string
+			err := json.Unmarshal([]byte(js), &imgs)
+			if err == nil && len(imgs) > 0 {
+				var retImgs []string
+				for _, img := range imgs {
+					retImgs = append(retImgs, strings.Replace(img, "http://", "https://", -1))
+				}
+				js, err := json.Marshal(retImgs)
+				if err == nil {
+					images = fmt.Sprintf("'%s'", db.Escape(string(js)))
+				}
+			}
+		}
 		ids = append(ids, fmt.Sprintf("%d", id))
-		val = append(val, fmt.Sprintf("(0, '%s', '%s', '%s', '%s', 500, 500, 5, 20, 1)", db.Escape(title), db.Escape(digest), db.Escape(link), db.Escape(cover)))
+		val = append(val, fmt.Sprintf("(0, '%s', '%s', '%s', '%s', %s, 500, 500, 5, 20, 1)", db.Escape(title), db.Escape(digest), db.Escape(link), db.Escape(cover), images))
 	}
 	if len(val) > 0 {
-		_, _, err := db.Query(`INSERT INTO tmm.share_tasks (creator, title, summary, link, image, points, points_left, bonus, max_viewers, is_crawled) VALUES %s`, strings.Join(val, ","))
+		_, _, err := db.Query(`INSERT INTO tmm.share_tasks (creator, title, summary, link, image, images, points, points_left, bonus, max_viewers, is_crawled) VALUES %s`, strings.Join(val, ","))
 		if err != nil {
 			return err
 		}

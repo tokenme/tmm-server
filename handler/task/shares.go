@@ -3,6 +3,7 @@ package task
 import (
 	"fmt"
 	//"github.com/davecgh/go-spew/spew"
+	"encoding/json"
 	"errors"
 	"github.com/gin-gonic/gin"
 	"github.com/mkideal/log"
@@ -101,6 +102,7 @@ func SharesHandler(c *gin.Context) {
     st.summary,
     st.link,
     st.image,
+    st.images,
     st.max_viewers,
     st.bonus,
     st.points,
@@ -162,35 +164,38 @@ ORDER BY %s %s`
 				tasks = append(tasks, task)
 			}
 		}
-		bonus, _ := decimal.NewFromString(row.Str(6))
-		points, _ := decimal.NewFromString(row.Str(7))
-		pointsLeft, _ := decimal.NewFromString(row.Str(8))
-		creator := row.Uint64(12)
+		bonus, _ := decimal.NewFromString(row.Str(7))
+		points, _ := decimal.NewFromString(row.Str(8))
+		pointsLeft, _ := decimal.NewFromString(row.Str(9))
+		creator := row.Uint64(13)
+		var images []string
+		json.Unmarshal([]byte(row.Str(5)), &images)
 		task := &common.ShareTask{
 			Id:            row.Uint64(0),
 			Title:         row.Str(1),
 			Summary:       row.Str(2),
 			Link:          row.Str(3),
 			Image:         row.Str(4),
-			MaxViewers:    row.Uint(5),
+			Images:        images,
+			MaxViewers:    row.Uint(6),
 			Bonus:         bonus,
 			Points:        points,
 			PointsLeft:    pointsLeft,
-			InsertedAt:    row.ForceLocaltime(10).Format(time.RFC3339),
-			UpdatedAt:     row.ForceLocaltime(11).Format(time.RFC3339),
-			VideoLink:     row.Str(13),
-			IsVideo:       uint8(row.Uint(14)),
+			InsertedAt:    row.ForceLocaltime(11).Format(time.RFC3339),
+			UpdatedAt:     row.ForceLocaltime(12).Format(time.RFC3339),
+			VideoLink:     row.Str(14),
+			IsVideo:       uint8(row.Uint(15)),
 			ShowBonusHint: true,
-			IsTask:        !row.Bool(16),
+			IsTask:        !row.Bool(17),
 		}
 		if strings.HasPrefix(task.Link, "https://tmm.tokenmama.io/article/show") {
 			task.Link = strings.Replace(task.Link, "https://tmm.tokenmama.io/article/show", "https://static.tianxi100.com/article/show", -1)
 		}
 		task.Link, _ = task.TrackLink(task.Link, user.Id, Config)
 		if creator == user.Id {
-			task.Viewers = row.Uint(9)
+			task.Viewers = row.Uint(10)
 			task.Creator = creator
-			task.OnlineStatus = int8(row.Int(15))
+			task.OnlineStatus = int8(row.Int(16))
 		}
 		task.ShareLink, _ = task.GetShareLink(deviceId, Config)
 		tasks = append(tasks, task)

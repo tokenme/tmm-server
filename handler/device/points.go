@@ -55,7 +55,7 @@ func PointsHandler(c *gin.Context) {
 		if lastPoints.GreaterThan(decimal.Zero) && increasedPoints.GreaterThan(decimal.New(1, -4)) {
 			title := "New UCoin Points"
 			desc := fmt.Sprintf("You just earn %s UCoin points, check UCoin Wallet for more information.", increasedPoints.StringFixed(4))
-			icon := "https://static.tianxi100.com/ucoin/icon-ios-marketing-1024@1x.png"
+			icon := "https://ucoin.tianxi100.com/logo.png"
 			link := "https://tmm.tokenmama.io"
 			if strings.HasPrefix(deviceRequest.Language, "zh") {
 				title = "UCoin 积分提醒"

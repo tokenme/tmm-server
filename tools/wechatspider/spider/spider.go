@@ -123,7 +123,11 @@ func (this *Spider) GetGzhArticles(wechatName string) ([]Article, error) {
 			continue
 		}
 		for idx, i := range ret.Article.Items {
-			link := fmt.Sprintf("https://mp.weixin.qq.com%s", html.UnescapeString(i.Url))
+			iUrl := html.UnescapeString(i.Url)
+			link := fmt.Sprintf("https://mp.weixin.qq.com%s", iUrl)
+			if strings.Contains(link, "http//mp.weixin.qq.com") {
+				link = strings.Replace(link, "http//mp.weixin.qq.com", "", -1)
+			}
 			sourceUrl := profile
 			if i.SourceUrl != "" {
 				sourceUrl = i.SourceUrl
@@ -354,6 +358,9 @@ func (this *Spider) wxOpenUnlock(link string, referrer string, retry uint) (*gre
 	resp, err := grequests.Get(link, ro)
 	if err != nil {
 		log.Error(err.Error())
+		if strings.Contains(err.Error(), "http//mp.weixin.qq.com") {
+			log.Warn("ori: %s", link)
+		}
 		if retry > 2 {
 			return nil, err
 		}
