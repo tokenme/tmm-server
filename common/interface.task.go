@@ -151,6 +151,7 @@ type AppTask struct {
 	Size          uint            `json:"size,omitempty"`
 	OnlineStatus  int8            `json:"online_status,omitempty"`
 	InstallStatus int8            `json:"install_status,omitempty"`
+    Details       string          `json:"details,omitempty"`
 }
 
 type TaskType = uint
