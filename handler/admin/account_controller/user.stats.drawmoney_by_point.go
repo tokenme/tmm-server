@@ -27,7 +27,7 @@ func DrawMoneyByPointHandler(c *gin.Context) {
 SELECT 
 	points,
 	cny,
-	inserted_at
+	DATE_ADD(inserted_at,INTERVAL 8 HOUR)
 FROM 
 	tmm.point_withdraws 
 WHERE 

@@ -4,37 +4,48 @@ import (
 	"github.com/gin-gonic/gin"
 	. "github.com/tokenme/tmm/handler"
 	"strings"
-	"github.com/shopspring/decimal"
 	"fmt"
 	"time"
 	"net/http"
 	"github.com/tokenme/tmm/handler/admin"
+	"github.com/garyburd/redigo/redis"
+	"encoding/json"
 )
 
 func ExchangeStatsHandler(c *gin.Context) {
-	db := Service.Db
 	var req StatsRequest
 	if CheckErr(c.Bind(&req), c) {
 		return
 	}
+
 	var when []string
-	var startTime, endTime string
-	endTime = time.Now().Format("2006-01-02 15:04:05")
+	var startTime string
+	db := Service.Db
 	if req.StartTime != "" {
 		startTime = req.StartTime
 		when = append(when, fmt.Sprintf(` inserted_at >= '%s' `, db.Escape(startTime)))
 	} else {
-		startTime = time.Now().AddDate(0,0,-7).Format("2006-01-02")
+		startTime = time.Now().AddDate(0, 0, -7).Format("2006-01-02")
 		when = append(when, fmt.Sprintf(` inserted_at >= '%s' `, db.Escape(startTime)))
 	}
 
-	if req.EndTime != "" {
-		endTime = req.EndTime
-		when = append(when, fmt.Sprintf(` inserted_at <  DATE_ADD('%s', INTERVAL 60*23+59 MINUTE) `, db.Escape(endTime)))
-	}
-	var top10 string
-	if req.Top10 {
-		top10 = " LIMIT 10"
+	redisConn := Service.Redis.Master.Get()
+	defer redisConn.Close()
+	exchangeKey := GetStatsKey(req.StartTime, `exchange`)
+	if !req.IsRefresh {
+		var info PointStats
+		if bytes, err := redis.Bytes(redisConn.Do(`GET`, exchangeKey)); err == nil && bytes != nil {
+			if !CheckErr(json.Unmarshal(bytes, &info), c) {
+				c.JSON(http.StatusOK, admin.Response{
+					Code:    0,
+					Message: admin.API_OK,
+					Data:    info,
+				})
+			}
+			return
+		}
+	} else {
+		redisConn.Do(`EXPIRE`, exchangeKey, 1)
 	}
 
 	query := `
@@ -57,16 +68,15 @@ FROM(
 LEFT JOIN tmm.wx AS wx ON (wx.user_id = us.id)
 	WHERE tmp.user_id = us.id AND NOT EXISTS  (SELECT 1 FROM user_settings AS us  WHERE us.blocked= 1 AND us.user_id=us.id AND us.block_whitelist=0  LIMIT 1)
 	ORDER BY tmm DESC
-%s
+LIMIT 10
 `
 
-	rows, res, err := db.Query(query, strings.Join(when, " AND "), top10)
+	rows, res, err := db.Query(query, strings.Join(when, " AND "))
 	if CheckErr(err, c) {
 		return
 	}
+
 	var info ExchangeStats
-	info.CurrentTime = fmt.Sprintf("%s-%s", startTime, endTime)
-	info.Numbers = len(rows)
 	info.Title = `积分兑换UC数量排行榜`
 	if len(rows) == 0 {
 		c.JSON(http.StatusOK, admin.Response{
@@ -76,29 +86,20 @@ LEFT JOIN tmm.wx AS wx ON (wx.user_id = us.id)
 		})
 		return
 	}
+
 	for _, row := range rows {
-		tmm, err := decimal.NewFromString(row.Str(res.Map(`tmm`)))
-		if CheckErr(err, c) {
-			return
-		}
-		//points, err := decimal.NewFromString(row.Str(res.Map(`points`)))
-		//if CheckErr(err, c) {
-		//	return
-		//}
-		//count := row.Int(res.Map(`numbers`))
-		if req.Top10 {
-			user := &admin.User{
-				Tmm:           tmm.StringFixed(0),
-				//Point:         points.Ceil(),
-				//ExchangeCount: count,
-			}
-			user.Mobile = row.Str(res.Map(`mobile`))
-			user.Id = row.Uint64(res.Map(`id`))
-			user.Nick = row.Str(res.Map(`nickname`))
-			info.Top10 = append(info.Top10, user)
-		}
-		//info.ExchangeCount = info.ExchangeCount + count
+		user := &admin.User{}
+		user.Tmm = fmt.Sprintf("%.2f", row.Float(res.Map(`tmm`)))
+		user.Mobile = row.Str(res.Map(`mobile`))
+		user.Id = row.Uint64(res.Map(`id`))
+		user.Nick = row.Str(res.Map(`nickname`))
+		info.Top10 = append(info.Top10, user)
 	}
+
+	if bytes, err := json.Marshal(&info); !CheckErr(err, c)  {
+		redisConn.Do(`SET`, exchangeKey, bytes, `EX`, KeyAlive)
+	}
+
 	c.JSON(http.StatusOK, admin.Response{
 		Code:    0,
 		Message: admin.API_OK,
