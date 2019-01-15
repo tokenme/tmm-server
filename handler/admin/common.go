@@ -71,7 +71,7 @@ type UserStats struct {
 type User struct {
 	common.User
 	Blocked            int             `json:"blocked"`
-	Point              decimal.Decimal `json:"point"`
+	Point              string		   `json:"point"`
 	InviteBonus        decimal.Decimal `json:"invite_bonus,omitempty"`
 	DrawCash           string          `json:"draw_cash"`
 	InviteCount        int             `json:"invite_count,omitempty"`

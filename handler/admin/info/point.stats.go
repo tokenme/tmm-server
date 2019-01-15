@@ -8,20 +8,20 @@ import (
 	"fmt"
 	"time"
 	"strings"
-	"github.com/shopspring/decimal"
+	"github.com/garyburd/redigo/redis"
+	"encoding/json"
 )
 
 func PointStatsHandler(c *gin.Context) {
 
-	db := Service.Db
 	var req StatsRequest
 	if CheckErr(c.Bind(&req), c) {
 		return
 	}
+
 	var shareWhen, appTaskWhen, when []string
-	var startTime, endTime string
-	var top10 string
-	endTime = time.Now().Format("2006-01-02 15:04:05")
+	var startTime string
+	db := Service.Db
 	if req.StartTime != "" {
 		startTime = req.StartTime
 		shareWhen = append(shareWhen, fmt.Sprintf(" AND sha.inserted_at >= '%s' ", db.Escape(startTime)))
@@ -34,16 +34,25 @@ func PointStatsHandler(c *gin.Context) {
 		when = append(when, fmt.Sprintf("  inserted_at >= '%s' ", db.Escape(startTime)))
 	}
 
-	if req.EndTime != "" {
-		endTime = req.EndTime
-		shareWhen = append(shareWhen, fmt.Sprintf(" AND sha.inserted_at < DATE_ADD('%s', INTERVAL 60*23+59 MINUTE) ", db.Escape(endTime)))
-		appTaskWhen = append(appTaskWhen, fmt.Sprintf(" AND  app.inserted_at < DATE_ADD('%s', INTERVAL 60*23+59 MINUTE) ", db.Escape(endTime)))
-		when = append(when, fmt.Sprintf("AND  inserted_at < DATE_ADD('%s', INTERVAL 60*23+59 MINUTE) ", db.Escape(endTime)))
+	redisConn := Service.Redis.Master.Get()
+	defer redisConn.Close()
+	pointKey := GetStatsKey(req.StartTime, `point`)
+	if !req.IsRefresh {
+		var info PointStats
+		if bytes, err := redis.Bytes(redisConn.Do(`GET`, pointKey)); err != nil && bytes != nil {
+			if !CheckErr(json.Unmarshal(bytes, &info), c) {
+				c.JSON(http.StatusOK, admin.Response{
+					Code:    0,
+					Message: admin.API_OK,
+					Data:    info,
+				})
+			}
+			return
+		}
+	} else {
+		redisConn.Do(`EXPIRE`, pointKey, 1)
 	}
 
-	if req.Top10 {
-		top10 = " LIMIT 10"
-	}
 	query := `
 SELECT
 	us.id AS id,
@@ -93,16 +102,15 @@ AND NOT EXISTS
 		(SELECT 1 FROM user_settings AS us  WHERE us.blocked= 1 AND us.user_id=us.id AND us.block_whitelist=0  LIMIT 1)
 GROUP BY 
 		 us.id
-ORDER BY points DESC %s`
+ORDER BY points DESC 
+LIMIT 10`
+
 	rows, res, err := db.Query(query, strings.Join(shareWhen, " "),
-		strings.Join(appTaskWhen, " "), strings.Join(when, " "),strings.Join(when," "),
-		top10)
+		strings.Join(appTaskWhen, " "), strings.Join(when, " "), strings.Join(when, " "))
 	if CheckErr(err, c) {
 		return
 	}
 	var info PointStats
-	info.Numbers = len(rows)
-	info.CurrentTime = fmt.Sprintf("%s-%s", startTime, endTime)
 	info.Title = "积分排行榜"
 	if len(rows) == 0 {
 		c.JSON(http.StatusOK, admin.Response{
@@ -112,22 +120,20 @@ ORDER BY points DESC %s`
 		})
 		return
 	}
+
 	for _, row := range rows {
-		Point, err := decimal.NewFromString(row.Str(res.Map(`points`)))
-		if CheckErr(err, c) {
-			return
-		}
-		if req.Top10 {
-			user := &admin.User{
-				Point: Point.Ceil(),
-			}
-			user.Mobile = row.Str(res.Map(`mobile`))
-			user.Id = row.Uint64(res.Map(`id`))
-			user.Nick = row.Str(res.Map(`nick`))
-			info.Top10 = append(info.Top10, user)
-		}
-		info.Point = info.Point.Add(Point)
+		user := &admin.User{}
+		user.Point = fmt.Sprintf("%.0f", row.Float(res.Map(`points`)))
+		user.Mobile = row.Str(res.Map(`mobile`))
+		user.Id = row.Uint64(res.Map(`id`))
+		user.Nick = row.Str(res.Map(`nick`))
+		info.Top10 = append(info.Top10, user)
 	}
+
+	if bytes, err := json.Marshal(&info); !CheckErr(err, c) {
+		redisConn.Do(`SET`, pointKey, bytes, `EX`, KeyAlive)
+	}
+
 	c.JSON(http.StatusOK, admin.Response{
 		Code:    0,
 		Message: admin.API_OK,

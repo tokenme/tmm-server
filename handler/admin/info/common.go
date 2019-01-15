@@ -13,9 +13,9 @@ const (
 
 type Stats struct {
 	Top10       []*admin.User `json:"top_10,omitempty"`
-	Numbers     int            `json:"numbers"`
-	CurrentTime string         `json:"current_time"`
-	Title       string         `json:"title"`
+	Numbers     int           `json:"numbers"`
+	CurrentTime string        `json:"current_time"`
+	Title       string        `json:"title"`
 }
 
 //提现
@@ -86,6 +86,7 @@ type StatsRequest struct {
 	Top10     bool   `form:"top_10",json:"top_10"`
 	Hours     int    `form:"hours" ,json:"hours"`
 	Type      int    `form:"type"`
+	IsRefresh bool   `json:"is_refresh"`
 }
 
 type Good struct {
@@ -148,4 +149,8 @@ func GetPercentList(valueList []string) (PercentList []string) {
 	}
 
 	return
+}
+
+func GetStatsKey(date string, types string) string {
+	return  fmt.Sprintf("top10-%s-%s",types,date)
 }
