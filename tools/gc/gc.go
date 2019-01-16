@@ -107,7 +107,7 @@ FROM (
     WHERE
         rl.point > 0
         AND NOT EXISTS (SELECT 1 FROM tmm.user_settings AS us WHERE us.user_id=rl.user_id AND us.blocked=1 LIMIT 1)
-    GROUP BY rl.user_id HAVING c>=60 AND ex/c>0.8
+    GROUP BY rl.user_id HAVING c>=40 AND ex/c>0.6
 ) AS t
 ON DUPLICATE KEY UPDATE blocked=VALUES(blocked), block_whitelist=VALUES(block_whitelist)`
 	_, _, err = db.Query(query)
