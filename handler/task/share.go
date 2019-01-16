@@ -239,8 +239,8 @@ func checkBlockUser(service *common.Service, deviceId string, haveCode bool) (is
 		log.Warn("RateLimit blocked: %d, duration: %d", userId, MaxUserRateLimitBlockDurateion)
 		isRateLimited = true
 	}
-
 	if !haveCode {
+		var secondCount, minuteConut int
 		secondKey := task.UserRateLimitSecondKey(userId)
 		secondCounter, err := redis.Int64(redisConn.Do("INCR", secondKey))
 		if err != nil {
@@ -267,9 +267,14 @@ func checkBlockUser(service *common.Service, deviceId string, haveCode bool) (is
 				log.Error(err.Error())
 			}
 			isRateLimited = true
+			secondCount = 1
 		}
 
 		if isBlocked {
+			db.Query(`INSERT INTO tmm.share_blocked_logs
+			(user_id,inserted_at,second_count,minute_count,blocked) VALUES(%d,'%s',%d,%d,%d) 
+			ON DUPLICATE KEY UPDATE second_count=second_count+VALUES(second_count), minute_count=minute_count+VALUES(minute_count),blocked=blocked+VALUES(blocked)`,
+				userId,time.Now().Format(`2006-01-02`),0,0,1)
 			return true, isRateLimited, nil
 		}
 
@@ -299,7 +304,16 @@ func checkBlockUser(service *common.Service, deviceId string, haveCode bool) (is
 				log.Error(err.Error())
 			}
 			isRateLimited = true
+			minuteConut = 1
 		}
+		var isblocked int
+		if isBlocked {
+			isblocked = 1
+		}
+			db.Query(`INSERT INTO tmm.share_blocked_logs
+			(user_id,inserted_at,second_count,minute_count,blocked) VALUES(%d,'%s',%d,%d,%d) 
+			ON DUPLICATE KEY UPDATE second_count=second_count+VALUES(second_count), minute_count=minute_count+VALUES(minute_count),blocked=blocked+VALUES(blocked)`,
+			userId,time.Now().Format(`2006-01-02`),secondCount,minuteConut,isblocked)
 	}
 	return isBlocked, isRateLimited, nil
 }

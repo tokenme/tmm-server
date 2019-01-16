@@ -25,16 +25,20 @@ func ExchangeRateHandler(c *gin.Context) {
 	rt.PointToCashRate = PTCPrice.Mul(rate)
 
 	//积分兑换uc汇率
-	tmmPerTs, err := common.GetTMMPerTs(Config, Service)
+	//tmmPerTs, err := common.GetTMMPerTs(Config, Service)
+	//if CheckErr(err, c) {
+	//	return
+	//}
+	//pointsPerTs, err := common.GetPointsPerTs(Service)
+	//if CheckErr(err, c) {
+	//	return
+	//}
+	//rt.PointToUcRate = tmmPerTs.Div(pointsPerTs)
+	exchangeRate, _, err := common.GetExchangeRate(Config, Service)
 	if CheckErr(err, c) {
 		return
 	}
-	pointsPerTs, err := common.GetPointsPerTs(Service)
-	if CheckErr(err, c) {
-		return
-	}
-	rt.PointToUcRate = tmmPerTs.Div(pointsPerTs)
-
+	rt.PointToUcRate = exchangeRate.Rate
 	//uc提现汇率
 	UTCPrice := common.GetTMMPrice(Service, Config, common.RecyclePrice)
 	rate = forex.Rate(Service, "USD", currency)
