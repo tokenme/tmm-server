@@ -118,15 +118,19 @@ func (this ShareTask) UidKey(uid uint64) string {
 }
 
 func (this ShareTask) UserRateLimitSecondKey(uid uint64) string {
-	return fmt.Sprintf("st-%d-rate-second", uid)
+	return fmt.Sprintf("st-%d-rate-sec", uid)
 }
 
 func (this ShareTask) UserRateLimitMinuteKey(uid uint64) string {
-	return fmt.Sprintf("st-%d-rate-minute", uid)
+	return fmt.Sprintf("st-%d-rate-min", uid)
+}
+
+func (this ShareTask) UserRateLimitSecondBlockKey(uid uint64) string {
+	return fmt.Sprintf("st-%d-rb-sec", uid)
 }
 
 func (this ShareTask) UserRateLimitBlockKey(uid uint64) string {
-	return fmt.Sprintf("st-%d-rate-block", uid)
+	return fmt.Sprintf("st-%d-rb-min", uid)
 }
 
 func WxCodeKey(code string) string {
