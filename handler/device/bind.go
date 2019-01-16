@@ -3,6 +3,7 @@ package device
 import (
 	//"github.com/davecgh/go-spew/spew"
 	"errors"
+	"fmt"
 	"github.com/getsentry/raven-go"
 	"github.com/gin-gonic/gin"
 	"github.com/mkideal/log"
@@ -194,7 +195,7 @@ func _transferToken(userId uint64, forexRate decimal.Decimal, c *gin.Context) (r
 		return receipt, tokenAmount, err
 	}
 	if len(rows) == 0 {
-		return receipt, tokenAmount, errors.New("not found")
+		return receipt, tokenAmount, errors.New(fmt.Sprintf("not found: %d", userId))
 	}
 	userWallet := rows[0].Str(0)
 	tokenPrice := common.GetTMMPrice(Service, Config, common.RecyclePrice)
