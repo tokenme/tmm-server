@@ -31,7 +31,7 @@ func ExchangeStatsHandler(c *gin.Context) {
 
 	redisConn := Service.Redis.Master.Get()
 	defer redisConn.Close()
-	exchangeKey := GetStatsKey(req.StartTime, `exchange`)
+	exchangeKey := GetStatsKey(startTime, `exchange`)
 	if !req.IsRefresh {
 		var info PointStats
 		if bytes, err := redis.Bytes(redisConn.Do(`GET`, exchangeKey)); err == nil && bytes != nil {

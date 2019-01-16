@@ -183,8 +183,8 @@ func FriendsHandler(c *gin.Context) {
 		user.FirstDayActive = row.Bool(5)
 		user.SecondDayActive = row.Bool(6)
 		user.ThreeDayActive = row.Bool(7)
-		user.Bonus = fmt.Sprintf("%.1f", row.Float(8))
-		user.FirendType = FirendMap[row.Int(9)]
+		user.FriendBonus = fmt.Sprintf("%.1f", row.Float(8))
+		user.FriendType = FirendMap[row.Int(9)]
 		user.IsHaveAppId = row.Bool(10)
 		List = append(List, user)
 	}

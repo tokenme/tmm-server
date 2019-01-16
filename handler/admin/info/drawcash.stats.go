@@ -33,7 +33,7 @@ func DrawCashStatsHandler(c *gin.Context) {
 
 	redisConn := Service.Redis.Master.Get()
 	defer redisConn.Close()
-	drawcashKey := GetStatsKey(req.StartTime, `drawcash`)
+	drawcashKey := GetStatsKey(startTime, `drawcash`)
 	if !req.IsRefresh {
 		var info DrawCashStats
 		if bytes, err := redis.Bytes(redisConn.Do(`GET`, drawcashKey)); err == nil && bytes != nil {
