@@ -99,17 +99,17 @@ GROUP BY ib.user_id
 HAVING invites>=10 AND apps<invites/2) AS t
 ON DUPLICATE KEY UPDATE blocked=VALUES(blocked);`
 	_, _, err := db.Query(query)
-	query = `INSERT INTO tmm.user_settings (user_id, blocked)
-SELECT user_id, 1
+	query = `INSERT INTO tmm.user_settings (user_id, blocked, block_whitelist)
+SELECT user_id, 1, 0
 FROM (
     SELECT rl.user_id, SUM(IF(rl.ts>=1000, 1, 0)) AS ex, COUNT(*) AS c
     FROM tmm.reading_logs AS rl
     WHERE
         rl.point > 0
-        AND NOT EXISTS (SELECT 1 FROM tmm.user_settings AS us WHERE us.user_id=rl.user_id AND us.blocked=1 AND us.block_whitelist=0 LIMIT 1)
+        AND NOT EXISTS (SELECT 1 FROM tmm.user_settings AS us WHERE us.user_id=rl.user_id AND us.blocked=1 LIMIT 1)
     GROUP BY rl.user_id HAVING c>=60 AND ex/c>0.8
 ) AS t
-ON DUPLICATE KEY UPDATE blocked=VALUES(blocked)`
+ON DUPLICATE KEY UPDATE blocked=VALUES(blocked), block_whitelist=VALUES(block_whitelist)`
 	_, _, err = db.Query(query)
 	query = `INSERT INTO tmm.user_settings (user_id, blocked)
 SELECT DISTINCT d.user_id, 1 FROM tmm.devices AS d

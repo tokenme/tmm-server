@@ -252,7 +252,7 @@ func checkBlockUser(service *common.Service, deviceId string, haveCode bool) (is
 				log.Error(err.Error())
 			}
 		} else if secondCounter >= MaxUserRateLimitSecondBlockCounter {
-			_, _, err := db.Query(`INSERT INTO tmm.user_settings(user_id, blocked) VALUES (%d, 1) ON DUPLICATE KEY UPDATE blocked=VALUES(blocked)`, userId)
+			_, _, err := db.Query(`INSERT INTO tmm.user_settings(user_id, blocked, block_whitelist) VALUES (%d, 1, 0) ON DUPLICATE KEY UPDATE blocked=VALUES(blocked), block_whitelist=VALUES(block_whitelist)`, userId)
 			if err != nil {
 				log.Error(err.Error())
 			} else {
@@ -284,7 +284,7 @@ func checkBlockUser(service *common.Service, deviceId string, haveCode bool) (is
 				log.Error(err.Error())
 			}
 		} else if minuteCounter >= MaxUserRateLimitMinuteBlockCounter {
-			_, _, err := db.Query(`INSERT INTO tmm.user_settings(user_id, blocked) VALUES (%d, 1) ON DUPLICATE KEY UPDATE blocked=VALUES(blocked)`, userId)
+			_, _, err := db.Query(`INSERT INTO tmm.user_settings(user_id, blocked, block_whitelist) VALUES (%d, 1, 0) ON DUPLICATE KEY UPDATE blocked=VALUES(blocked), block_whitelist=VALUES(block_whitelist)`, userId)
 			if err != nil {
 				log.Error(err.Error())
 			} else {
