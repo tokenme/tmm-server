@@ -12,4 +12,5 @@ func AdminRouter(r *gin.Engine) {
 	InfoRouter(r)
 	AdRouter(r)
 	AccountRouter(r)
+	WithdrawRouter(r)
 }

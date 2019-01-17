@@ -31,7 +31,6 @@ type AddRequest struct {
 type UserStats struct {
 	TotalMakePoint        int       `json:"total_make_point"`
 	DeviceList            []*Device `json:"device_list"`
-	InsertedAt            string    `json:"inserted_at,omitempty"`
 	IsHaveEmulatorDevices bool      `json:"is_have_emulator_devices"`
 	IsActive              bool      `json:"is_active"`
 	FirstDayActive        bool      `json:"first_day_active"`
@@ -41,8 +40,7 @@ type UserStats struct {
 	IsHaveAppId           bool      `json:"is_have_app_id"`
 	FriendBonus           string    `json:"bonus,omitempty"`
 	FriendType            string    `json:"firend_type,omitempty"`
-	Parent                User      `json:"pre_user,omitempty"`
-	Root                  User      `json:"root,omitempty"`
+	Root                  *User     `json:"root,omitempty"`
 	OtherAccount          []string  `json:"other_account"`
 	WxInsertedAt          string    `json:"wx_inserted_at"`
 	WxOpenId              string    `json:"wx_open_id"`
@@ -52,6 +50,7 @@ type UserStats struct {
 	WithDrawCash
 	InviteStatus
 	User
+	ShareBlocked
 }
 
 type MakePoint struct {
@@ -59,6 +58,7 @@ type MakePoint struct {
 	PointByReading           int `json:"point_by_reading"`
 	PointByInvite            int `json:"point_by_invite"`
 	PointByDownLoadApp       int `json:"point_by_down_load_app"`
+	DaySign                  int `json:"day_sign"`
 	InviteNewUserActiveCount int `json:"invite_new_user_active_number"`
 	InviteNewUserByThreeDays int `json:"invite_new_user_by_three_days"`
 }
@@ -75,19 +75,26 @@ type WithDrawCash struct {
 	DrawCashByUc    string `json:"draw_cash_by_uc,omitempty"`
 }
 
+type ShareBlocked struct {
+	TenMinuteCount int `json:"ten_minute_count,omitempty"`
+	OneHourCount   int `json:"one_hour_count,omitempty"`
+}
+
 type User struct {
-	common.User
 	Blocked              int             `json:"blocked"`
 	Point                string          `json:"point"`
-	InviteBonus          decimal.Decimal `json:"invite_bonus,omitempty"`
 	DrawCash             string          `json:"draw_cash"`
-	InviteCount          int             `json:"invite_count,omitempty"`
 	Tmm                  string          `json:"tmm"`
+	InviteBonus          decimal.Decimal `json:"invite_bonus,omitempty"`
+	InviteCount          int             `json:"invite_count,omitempty"`
 	CompletedTaskCount   int             `json:"completed_task_count,omitempty"`
 	ExchangePointToUcoin decimal.Decimal `json:"exchange_point_to_ucoin"`
 	ExchangeCount        int             `json:"exchange_count"`
 	OnlineBFNumber       int             `json:"online_bf_number"`
 	OffLineBFNumber      int             `json:"off_line_bf_number"`
+	Created              string          `json:"inserted_at,omitempty"`
+	Parent               *User           `json:"pre_user,omitempty"`
+	common.User
 }
 
 type Device struct {

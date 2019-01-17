@@ -178,7 +178,7 @@ func FriendsHandler(c *gin.Context) {
 		user.Id = row.Uint64(0)
 		user.Mobile = row.Str(1)
 		user.Nick = row.Str(2)
-		user.InsertedAt = row.Str(3)
+		user.Created = row.Str(3)
 		user.Blocked = row.Int(4)
 		user.FirstDayActive = row.Bool(5)
 		user.SecondDayActive = row.Bool(6)
