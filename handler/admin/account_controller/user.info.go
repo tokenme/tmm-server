@@ -305,7 +305,7 @@ LIMIT 1
 	user.Id = row.Uint64(res.Map(`id`))
 	user.Mobile = row.Str(res.Map(`mobile`))
 	user.Nick = row.Str(res.Map(`nick`))
-	user.InsertedAt = row.Str(res.Map(`created`))
+	user.Created = row.Str(res.Map(`created`))
 	user.CountryCode = row.Uint(res.Map(`country_code`))
 	user.Level.Id = row.Uint(res.Map(`_level`))
 	user.Wallet = row.Str(res.Map(`addr`))
@@ -330,13 +330,13 @@ LIMIT 1
 		}
 	}
 
-	parent := admin.User{}
+	parent := &admin.User{}
 	parent.Id = row.Uint64(res.Map(`parent_id`))
 	parent.Blocked = row.Int(res.Map(`parent_blocked`))
 	parent.Nick = row.Str(res.Map(`parent_nick`))
 	user.Parent = parent
 
-	root := admin.User{}
+	root := &admin.User{}
 	root.Id = row.Uint64(res.Map(`root_id`))
 	root.Blocked = row.Int(res.Map(`root_blocked`))
 	root.Nick = row.Str(res.Map(`root_nick`))

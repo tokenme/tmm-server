@@ -10,12 +10,11 @@ import (
 )
 
 type UserActiveStats struct {
-	NewUser     int                `json:"new_user"`
-	LoginNumber uint               `json:"login_number"`
-	TodayActive Active             `json:"today_active"`
-	TwoActive   Active             `json:"two_active"`
-	ThreeActive Active             `json:"three_active"`
-	UserList    []*admin.UserStats `json:"user_list"`
+	NewUser        int           `json:"new_user"`
+	LoginNumber    uint          `json:"login_number"`
+	TodayActive    Active        `json:"today_active"`
+	TwoActive      Active        `json:"two_active"`
+	ThreeActive    Active        `json:"three_active"`
 }
 
 type Active struct {
@@ -27,7 +26,7 @@ type Active struct {
 }
 
 func UserFunnelStatsHandler(c *gin.Context) {
-	date := c.DefaultQuery(`start_date`,time.Now().Format(`2006-01-02`))
+	date := c.DefaultQuery(`start_date`, time.Now().Format(`2006-01-02`))
 
 	query := `
 SELECT 
@@ -55,21 +54,31 @@ ORDER BY id DESC
 	}
 
 	var Stats UserActiveStats
+
 	Stats.NewUser = len(UserList)
 	Stats.LoginNumber = LoginList
 
 	var todayActive, TwoActive, threeActive Active
 	tm, _ := time.Parse(`2006-01-02`, date)
 	if tm.Before(time.Now()) && len(UserList) > 0 {
-		UserList, todayActive = GetActive(UserList, tm.Format(`2006-01-02`))
+		UserList, todayActive,err = GetActive(UserList, tm.Format(`2006-01-02`))
+		if CheckErr(err,c){
+			return
+		}
 	}
 	if tm.AddDate(0, 0, 1).Before(time.Now()) && len(UserList) > 0 {
 		tm = tm.AddDate(0, 0, 1)
-		UserList, TwoActive = GetActive(UserList, tm.Format(`2006-01-02`))
+		UserList, TwoActive,err = GetActive(UserList, tm.Format(`2006-01-02`))
+		if CheckErr(err,c){
+			return
+		}
 	}
 	if tm.AddDate(0, 0, 1).Before(time.Now()) && len(UserList) > 0 {
 		tm = tm.AddDate(0, 0, 1)
-		_, threeActive = GetActive(UserList, tm.Format(`2006-01-02`))
+		_, threeActive,err = GetActive(UserList, tm.Format(`2006-01-02`))
+		if CheckErr(err,c){
+			return
+		}
 	}
 
 	Stats.TodayActive = todayActive
@@ -83,16 +92,16 @@ ORDER BY id DESC
 	})
 }
 
-func GetActive(idArray []string, when string) ([]string, Active) {
+func GetActive(idArray []string, when string) ([]string, Active,error) {
 	db := Service.Db
 	var active Active
 	query := `
 SELECT 
 	u.id,
-	IF(reading.user_id > 0,1,0) AS reading,	
-	IF(sha.task_id > 0,1,0) AS _share,	
-	IF(app.task_id > 0,1,0) AS _app,
-	IF(sign.days > 0,1,0) AS daysign
+	IF(COUNT(reading.user_id) > 0,1,0) AS reading,	
+	IF(COUNT(sha.task_id) > 0,1,0) AS _share,	
+	IF(COUNT(app.task_id) > 0,1,0) AS _app,
+	IF(COUNT(sign.days) > 0,1,0) AS daysign
 FROM 
 	ucoin.users AS u
 LEFT JOIN tmm.devices AS dev ON  (dev.user_id = u.id)
@@ -121,8 +130,8 @@ LEFT JOIN (
 	) AS app ON (app.device_id = dev.id )
 LEFT JOIN (	
 	SELECT 
-		user_id,
-		days
+		user_id AS user_id ,
+		days AS days 
 	FROM 
 		tmm.daily_bonus_logs  
 	WHERE	  
@@ -136,7 +145,7 @@ GROUP BY u.id
 		db.Escape(when), db.Escape(when), db.Escape(when), db.Escape(when),
 		strings.Join(idArray, ","))
 	if err != nil {
-		return nil, active
+		return nil, active,err
 	}
 	var newArray []string
 	for _, row := range rows {
@@ -148,5 +157,5 @@ GROUP BY u.id
 		active.DaySign += row.Int(4)
 	}
 
-	return newArray, active
+	return newArray, active,nil
 }

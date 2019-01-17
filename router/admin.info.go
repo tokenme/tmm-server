@@ -58,6 +58,10 @@ func InfoRouter(r *gin.Engine) {
 		InfoGroup.GET(`/trend/stats`, info.UserFunnelStatsHandler)
 	}
 	{
+		InfoGroup.GET(`/funnel/stats`,info.UserFunnelStatsHandler)
+		InfoGroup.GET(`/funnel/data`,info.GetFunnelDataHandler)
+	}
+	{
 		InfoGroup.GET(`/current/drawcash/data`, info.GetWithDrawDataHandler)
 		InfoGroup.GET(`/current/drawcash/stats`, info.GetTodayWithDrawStatsHandler)
 	}
