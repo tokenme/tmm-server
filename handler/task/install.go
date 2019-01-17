@@ -65,6 +65,18 @@ func AppInstallHandler(c *gin.Context) {
 		if CheckErr(err, c) {
 			return
 		}
+    } else if req.Status == 2 {
+        rows, _, err := db.Query(`SELECT 1 FROM tmm.device_app_tasks WHERE device_id='%s' AND task_id=%d AND status=-1 LIMIT 1`, db.Escape(deviceId), req.TaskId)
+		if CheckErr(err, c) {
+			return
+		}
+		if Check(len(rows) > 0, "You have been finished the task", c) {
+			return
+		}
+        _, _, err = db.Query(`UPDATE tmm.device_app_tasks SET status = 2 WHERE device_id='%s' AND task_id = %d`, db.Escape(deviceId), req.TaskId)
+		if CheckErr(err, c) {
+			return
+		}
 	} else if req.Status == 1 {
 		rows, _, err := db.Query(`SELECT 1 FROM tmm.device_app_tasks WHERE device_id='%s' AND task_id=%d AND status=-1 LIMIT 1`, db.Escape(deviceId), req.TaskId)
 		if CheckErr(err, c) {

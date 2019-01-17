@@ -48,7 +48,7 @@ func AppsCheckHandler(c *gin.Context) {
             WHERE
                 d.user_id=%d
             AND dat.device_id='%s'
-            AND dat.updated_at>DATE_SUB(NOW(), INTERVAL 7 DAY)`
+            AND (dat.updated_at>DATE_SUB(NOW(), INTERVAL 7 DAY) OR dat.status IN(1, 2))`
 	rows, _, err := db.Query(query, user.Id, db.Escape(deviceId))
 	if CheckErr(err, c) {
 		return

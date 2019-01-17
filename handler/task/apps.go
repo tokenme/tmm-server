@@ -19,6 +19,7 @@ type AppsRequest struct {
 	Imei     string          `json:"imei" form:"imei"`
 	Mac      string          `json:"mac" form:"mac"`
 	Platform common.Platform `json:"platform" form:"platform" binding:"required"`
+    TaskId   uint64          `json:"task_id" form:"task_id"`
 	MineOnly bool            `json:"mine_only" form:"mine_only"`
 }
 
@@ -60,6 +61,10 @@ func AppsHandler(c *gin.Context) {
 		orderBy = "a.id DESC"
 	}
 
+    if req.TaskId > 0 {
+        onlineStatusConstrain += fmt.Sprintf(" AND a.id = %d ", req.TaskId)
+    }
+
 	query := `SELECT
     a.id,
     a.platform,
@@ -78,12 +83,17 @@ func AppsHandler(c *gin.Context) {
     a.download_url,
     a.icon,
     a.size,
-    EXISTS (SELECT 1 FROM tmm.device_app_tasks AS dat WHERE dat.task_id=a.id AND dat.device_id='%s' AND dat.status=1 LIMIT 1)
+    (SELECT dat.status FROM tmm.device_app_tasks AS dat WHERE dat.task_id=a.id AND dat.device_id='%s' LIMIT 1),
+    a.details,
+    datc.status,
+    datc.images,
+    datc.comment
 FROM tmm.app_tasks AS a
 LEFT JOIN tmm.app_scheme_ids AS asi ON (asi.bundle_id = a.bundle_id)
+LEFT JOIN tmm.device_app_task_certificates AS datc ON (datc.task_id=a.id AND datc.device_id='%s')
 WHERE a.platform='%s' %s
 ORDER BY %s LIMIT %d, %d`
-	rows, _, err := db.Query(query, db.Escape(deviceId), db.Escape(req.Platform), onlineStatusConstrain, orderBy, (req.Page-1)*req.PageSize, req.PageSize)
+	rows, _, err := db.Query(query, db.Escape(deviceId), db.Escape(deviceId), db.Escape(req.Platform), onlineStatusConstrain, orderBy, (req.Page-1)*req.PageSize, req.PageSize)
 	if CheckErr(err, c) {
 		return
 	}
@@ -94,21 +104,25 @@ ORDER BY %s LIMIT %d, %d`
 		pointsLeft, _ := decimal.NewFromString(row.Str(7))
 		creator := row.Uint64(11)
 		task := common.AppTask{
-			Id:            row.Uint64(0),
-			Platform:      row.Str(1),
-			Name:          row.Str(2),
-			BundleId:      row.Str(3),
-			StoreId:       row.Uint64(4),
-			Bonus:         bonus,
-			Points:        points,
-			PointsLeft:    pointsLeft,
-			InsertedAt:    row.ForceLocaltime(9).Format(time.RFC3339),
-			UpdatedAt:     row.ForceLocaltime(10).Format(time.RFC3339),
-			SchemeId:      row.Uint64(12),
-			DownloadUrl:   row.Str(14),
-			Icon:          row.Str(15),
-			Size:          row.Uint(16),
-			InstallStatus: int8(row.Int(17)),
+			Id:                 row.Uint64(0),
+			Platform:           row.Str(1),
+			Name:               row.Str(2),
+			BundleId:           row.Str(3),
+			StoreId:            row.Uint64(4),
+			Bonus:              bonus,
+			Points:             points,
+			PointsLeft:         pointsLeft,
+			InsertedAt:         row.ForceLocaltime(9).Format(time.RFC3339),
+			UpdatedAt:          row.ForceLocaltime(10).Format(time.RFC3339),
+			SchemeId:           row.Uint64(12),
+			DownloadUrl:        row.Str(14),
+			Icon:               row.Str(15),
+			Size:               row.Uint(16),
+			InstallStatus:      int8(row.Int(17)),
+            Details:            row.Str(18),
+            CertificateStatus:  int8(row.Int(19)),
+            CertificateImages:  row.Str(20),
+            CertificateComment: row.Str(21),
 		}
 		if creator == user.Id {
 			task.Downloads = row.Uint(8)
