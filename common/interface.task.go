@@ -149,6 +149,7 @@ type AppTask struct {
 	Points        decimal.Decimal `json:"points,omitempty"`
 	PointsLeft    decimal.Decimal `json:"points_left,omitempty"`
 	Bonus         decimal.Decimal `json:"bonus,omitempty"`
+	Details       string          `json:"details,omitempty"`
 	DownloadUrl   string          `json:"download_url,omitempty"`
 	Downloads     uint            `json:"downloads,omitempty"`
 	InsertedAt    string          `json:"inserted_at,omitempty"`

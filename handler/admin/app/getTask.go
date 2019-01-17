@@ -16,7 +16,7 @@ func GetAppTaskHandler(c *gin.Context) {
 	if CheckErr(err, c) {
 		return
 	}
-	query := `SELECT id, bundle_id, name, size, bonus, download_url, icon, points 
+	query := `SELECT id, bundle_id, name, size, bonus, download_url, icon, points,details
 				FROM tmm.app_tasks 
 				WHERE id = %d  `
 	rows, res, err := db.Query(query, taskid)
@@ -43,6 +43,7 @@ func GetAppTaskHandler(c *gin.Context) {
 	task.Bonus = bonus
 	task.DownloadUrl = row.Str(res.Map(`download_url`))
 	task.Icon = row.Str(res.Map(`icon`))
+	task.Details = row.Str(res.Map(`details`))
 	task.Points = points
 	c.JSON(http.StatusOK, admin.Response{
 		Code:    0,
