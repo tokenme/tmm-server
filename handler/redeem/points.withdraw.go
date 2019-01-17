@@ -5,17 +5,12 @@ import (
 	//"github.com/davecgh/go-spew/spew"
 	"encoding/json"
 	//"github.com/ethereum/go-ethereum/params"
-	"github.com/FrontMage/xinge"
-	"github.com/FrontMage/xinge/auth"
-	xgreq "github.com/FrontMage/xinge/req"
 	"github.com/gin-gonic/gin"
 	"github.com/mkideal/log"
 	"github.com/nlopes/slack"
-	"github.com/nu7hatch/gouuid"
 	"github.com/shopspring/decimal"
 	"github.com/tokenme/tmm/common"
 	. "github.com/tokenme/tmm/handler"
-	"github.com/tokenme/tmm/tools/wechatpay"
 	//"github.com/tokenme/tmm/tools/ethgasstation-api"
 	"errors"
 	"github.com/tokenme/tmm/coins/eth"
@@ -23,11 +18,9 @@ import (
 	"github.com/tokenme/tmm/tools/forex"
 	"github.com/tokenme/tmm/tools/ykt"
 	commonutils "github.com/tokenme/tmm/utils"
-	"io/ioutil"
 	"math/big"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -140,11 +133,20 @@ WHERE (wx.user_id=%d OR wx.union_id='%s') AND wt.inserted_at >= DATE_SUB(NOW(), 
 		return
 	}
 
-	exceeded, _, err := common.ExceededDailyWithdraw(Service, Config)
+	exceeded, _, _, nextHour, err := common.ExceededDailyWithdraw(cny, Service, Config)
 	if CheckErr(err, c) {
 		return
 	}
-	if CheckWithCode(exceeded, EXCEEDED_DAILY_WITHDRAW_LIMIT_ERROR, "超出系统今日提现额度，请明天再试", c) {
+	exceededMsg := "超出系统今日提现额度，请明天再试"
+	if exceeded && nextHour.Day() <= time.Now().Day() {
+		loc, err := time.LoadLocation("Asia/Shanghai")
+		if CheckErr(err, c) {
+			return
+		}
+		t := nextHour.In(loc).Format(time.Kitchen)
+		exceededMsg = fmt.Sprintf("超出系统当前时段体现额度，请在%s后尝试。", t)
+	}
+	if CheckWithCode(exceeded, EXCEEDED_DAILY_WITHDRAW_LIMIT_ERROR, exceededMsg, c) {
 		_, _, err := db.Query(`INSERT INTO tmm.withdraw_logs (user_id, points, cny) VALUES (%d, %s, %s)`, user.Id, req.Points.String(), cny.String())
 		if err != nil {
 			log.Error(err.Error())
@@ -152,35 +154,6 @@ WHERE (wx.user_id=%d OR wx.union_id='%s') AND wt.inserted_at >= DATE_SUB(NOW(), 
 		return
 	}
 
-	tradeNumToken, err := uuid.NewV4()
-	if CheckErr(err, c) {
-		log.Error(err.Error())
-		return
-	}
-	tradeNum := commonutils.Md5(tradeNumToken.String())
-	payClient := wechatpay.NewClient(Config.Wechat.AppId, Config.Wechat.MchId, Config.Wechat.Key, Config.Wechat.CertCrt, Config.Wechat.CertKey)
-	payParams := &wechatpay.Request{
-		TradeNum:    tradeNum,
-		Amount:      cny.Mul(decimal.New(100, 0)).IntPart(),
-		CallbackURL: fmt.Sprintf("%s/wechat/pay/callback", Config.BaseUrl),
-		OpenId:      wxOpenId,
-		Ip:          ClientIP(c),
-		Desc:        "UCoin积分提现",
-	}
-	payParams.Nonce = commonutils.Md5(payParams.TradeNum)
-	payRes, err := payClient.Pay(payParams)
-	if CheckErr(err, c) {
-		log.Error(err.Error())
-		return
-	}
-	var errMsg = payRes.ErrCodeDesc
-	if payRes.ErrCode != "" && strings.Contains(payRes.ErrCodeDesc, "该用户今日付款次数超过限制") {
-		errMsg = "每个微信账号每天只能提现1次"
-	}
-	if Check(payRes.ErrCode != "", errMsg, c) {
-		log.Error(payRes.ErrCodeDesc)
-		return
-	}
 	var (
 		consumedTs decimal.Decimal
 		tmm        decimal.Decimal
@@ -194,7 +167,11 @@ WHERE (wx.user_id=%d OR wx.union_id='%s') AND wt.inserted_at >= DATE_SUB(NOW(), 
 	if err != nil {
 		log.Error(err.Error())
 	}
-	_, _, err = db.Query(`INSERT INTO tmm.point_withdraws (trade_num, user_id, device_id, points, cny) VALUES ('%s', %d, '%s', %s, %s)`, db.Escape(tradeNum), user.Id, db.Escape(req.DeviceId), req.Points.String(), cny.String())
+	verified := 0
+	if cny.LessThan(decimal.New(30, 0)) {
+		verified = 1
+	}
+	_, _, err = db.Query(`INSERT INTO tmm.point_withdraws (user_id, device_id, points, cny, client_ip, verified) VALUES (%d, '%s', %s, %s, '%s', %d)`, user.Id, db.Escape(req.DeviceId), req.Points.String(), cny.String(), ClientIP(c), verified)
 	if CheckErr(err, c) {
 		log.Error(err.Error())
 		return
@@ -202,7 +179,6 @@ WHERE (wx.user_id=%d OR wx.union_id='%s') AND wt.inserted_at >= DATE_SUB(NOW(), 
 
 	burnPool(c, tmm)
 
-	pushMsg(user.Id, cny)
 	slackParams := slack.PostMessageParameters{Parse: "full", UnfurlMedia: true, Markdown: true}
 	attachment := slack.Attachment{
 		Color:      "success",
@@ -229,11 +205,6 @@ WHERE (wx.user_id=%d OR wx.union_id='%s') AND wt.inserted_at >= DATE_SUB(NOW(), 
 			{
 				Title: "Points",
 				Value: req.Points.StringFixed(9),
-				Short: true,
-			},
-			{
-				Title: "TradeNum",
-				Value: tradeNum,
 				Short: true,
 			},
 		},
@@ -318,79 +289,4 @@ func burnPool(c *gin.Context, tmm decimal.Decimal) error {
 	}
 	log.Info("Burn %s in pool, tx: %s, because of points withdraw", tmm.String(), tx.Hash().Hex())
 	return nil
-}
-
-func pushMsg(userId uint64, cny decimal.Decimal) {
-	db := Service.Db
-	rows, _, err := db.Query(`SELECT d.push_token, d.language, d.platform FROM tmm.devices AS d WHERE d.user_id=%d ORDER BY lastping_at DESC LIMIT 1`, userId)
-	if err != nil {
-		log.Error(err.Error())
-		return
-	}
-	if len(rows) == 0 {
-		return
-	}
-	row := rows[0]
-	language := "en"
-	if strings.Contains(row.Str(1), "zh") {
-		language = "zh"
-	}
-	deviceToken := row.Str(0)
-	platform := row.Str(2)
-	var (
-		title   string
-		content string
-	)
-	switch language {
-	case "en":
-		title = "UCoin points withdraw notify"
-		content = fmt.Sprintf("You just received ¥%s from UCoin.", cny.String())
-	case "zh":
-		title = "UCoin 积分提现提醒"
-		content = fmt.Sprintf("您刚刚提现成功 ¥%s", cny.String())
-	}
-	var auther auth.Auther
-	var pushReq *http.Request
-	switch platform {
-	case "ios":
-		pushReq, _ = xgreq.NewPushReq(
-			&xinge.Request{},
-			xgreq.Platform(xinge.PlatformiOS),
-			xgreq.EnvProd(),
-			xgreq.AudienceType(xinge.AdToken),
-			xgreq.MessageType(xinge.MsgTypeNotify),
-			xgreq.TokenList([]string{deviceToken}),
-			xgreq.PushID("0"),
-			xgreq.Message(xinge.Message{
-				Title:   title,
-				Content: content,
-			}),
-		)
-		auther = auth.Auther{AppID: Config.IOSXinge.AppId, SecretKey: Config.IOSXinge.SecretKey}
-	case "android":
-		pushReq, _ = xgreq.NewPushReq(
-			&xinge.Request{},
-			xgreq.Platform(xinge.PlatformAndroid),
-			xgreq.EnvProd(),
-			xgreq.AudienceType(xinge.AdToken),
-			xgreq.MessageType(xinge.MsgTypeNotify),
-			xgreq.TokenList([]string{deviceToken}),
-			xgreq.PushID("0"),
-			xgreq.Message(xinge.Message{
-				Title:   title,
-				Content: content,
-			}),
-		)
-		auther = auth.Auther{AppID: Config.AndroidXinge.AppId, SecretKey: Config.AndroidXinge.SecretKey}
-	}
-	auther.Auth(pushReq)
-	rsp, err := http.DefaultClient.Do(pushReq)
-	if err != nil {
-		log.Error(err.Error())
-	}
-	defer rsp.Body.Close()
-	body, _ := ioutil.ReadAll(rsp.Body)
-	var r xinge.CommonRsp
-	json.Unmarshal(body, r)
-	log.Info("%+v", r)
 }

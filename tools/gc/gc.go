@@ -28,6 +28,7 @@ func (this *Handler) Start() {
 	log.Info("GC Start")
 	dailyTicker := time.NewTicker(24 * time.Hour)
 	minuteTicker := time.NewTicker(1 * time.Minute)
+	fiveMinuteTicker := time.NewTicker(5 * time.Minute)
 	for {
 		select {
 		case <-dailyTicker.C:
@@ -37,9 +38,12 @@ func (this *Handler) Start() {
 			this.expiredReadingLogKws()
 		case <-minuteTicker.C:
 			this.expiredMobileCode()
+		case <-fiveMinuteTicker.C:
 			this.blockBadUsers()
 		case <-this.exitCh:
 			dailyTicker.Stop()
+			minuteTicker.Stop()
+			fiveMinuteTicker.Stop()
 			return
 		}
 	}

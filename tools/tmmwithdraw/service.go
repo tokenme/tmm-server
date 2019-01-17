@@ -172,7 +172,21 @@ func (this *Service) WechatPay() error {
 		this.checkWechatPayCh <- struct{}{}
 	}()
 	db := this.service.Db
-	rows, _, err := db.Query(`SELECT wt.tx, wt.cny, wt.client_ip, oi.open_id, wt.user_id FROM tmm.withdraw_txs AS wt INNER JOIN tmm.wx AS wx ON (wx.user_id=wt.user_id) INNER JOIN tmm.wx_openids AS oi ON (oi.union_id=wx.union_id AND oi.app_id='%s') WHERE wt.tx_status=1 AND wt.withdraw_status=2 AND NOT EXISTS(SELECT 1 FROM tmm.user_settings AS us WHERE us.user_id=wx.user_id AND us.blocked=1 AND us.block_whitelist=0 LIMIT 1) ORDER BY wt.inserted_at ASC LIMIT 1000`, db.Escape(this.config.Wechat.AppId))
+	rows, _, err := db.Query(`SELECT
+        0, wt.tx, wt.cny, wt.client_ip, oi.open_id, wt.user_id
+        FROM tmm.withdraw_txs AS wt
+        INNER JOIN tmm.wx AS wx ON (wx.user_id=wt.user_id)
+        INNER JOIN tmm.wx_openids AS oi ON (oi.union_id=wx.union_id AND oi.app_id='%s')
+        WHERE wt.tx_status=1 AND wt.withdraw_status=2 AND wt.verified=1
+        AND NOT EXISTS(SELECT 1 FROM tmm.user_settings AS us WHERE us.user_id=wx.user_id AND us.blocked=1 AND us.block_whitelist=0 LIMIT 1)
+        UNION ALL
+        SELECT pw.id, '', pw.cny, pw.client_ip, oi.open_id, pw.user_id
+        FROM tmm.point_withdraws AS pw
+        INNER JOIN tmm.wx AS wx ON (wx.user_id=pw.user_id)
+        INNER JOIN tmm.wx_openids AS oi ON (oi.union_id=wx.union_id AND oi.app_id='%s')
+        WHERE pw.trade_num='' AND pw.verified=1
+        AND NOT EXISTS(SELECT 1 FROM tmm.user_settings AS us WHERE us.user_id=pw.user_id AND us.blocked=1 AND us.block_whitelist=0 LIMIT 1)
+        LIMIT 1000`, db.Escape(this.config.Wechat.AppId), db.Escape(this.config.Wechat.AppId))
 	if err != nil {
 		log.Error(err.Error())
 		return err
@@ -183,11 +197,12 @@ func (this *Service) WechatPay() error {
 	}
 	log.Info("WechatPay %d Accounts", len(rows))
 	for _, row := range rows {
-		txHex := row.Str(0)
-		cny, err := decimal.NewFromString(row.Str(1))
-		clientIp := row.Str(2)
-		openId := row.Str(3)
-		userId := row.Uint64(4)
+		txId := row.Uint64(0)
+		txHex := row.Str(1)
+		cny, err := decimal.NewFromString(row.Str(2))
+		clientIp := row.Str(3)
+		openId := row.Str(4)
+		userId := row.Uint64(5)
 		if err != nil {
 			log.Error(err.Error())
 			continue
@@ -197,6 +212,10 @@ func (this *Service) WechatPay() error {
 			log.Error(err.Error())
 			continue
 		}
+		paymentDesc := "UCoin提现"
+		if txId > 0 {
+			paymentDesc = "UCoin积分提现"
+		}
 		tradeNum := commonutils.Md5(tradeNumToken.String())
 		payClient := wechatpay.NewClient(this.config.Wechat.AppId, this.config.Wechat.MchId, this.config.Wechat.Key, this.config.Wechat.CertCrt, this.config.Wechat.CertKey)
 		payParams := &wechatpay.Request{
@@ -205,7 +224,7 @@ func (this *Service) WechatPay() error {
 			CallbackURL: fmt.Sprintf("%s/wechat/pay/callback", this.config.BaseUrl),
 			OpenId:      openId,
 			Ip:          clientIp,
-			Desc:        "UCoin提现",
+			Desc:        paymentDesc,
 		}
 		payParams.Nonce = commonutils.Md5(payParams.TradeNum)
 		payRes, err := payClient.Pay(payParams)
@@ -217,10 +236,18 @@ func (this *Service) WechatPay() error {
 			log.Error(payRes.ErrCodeDesc)
 			continue
 		}
-		log.Info("Transferred %d CNY to Account:%d", payParams.Amount, userId)
-		_, _, err = db.Query(`UPDATE tmm.withdraw_txs SET withdraw_status=1, trade_num='%s' WHERE tx='%s' AND withdraw_status=2`, db.Escape(tradeNum), db.Escape(txHex))
-		if err != nil {
-			log.Error(err.Error())
+		if txId == 0 {
+			log.Info("Transferred %d CNY to Account:%d, UC WITHDRAW", payParams.Amount, userId)
+			_, _, err = db.Query(`UPDATE tmm.withdraw_txs SET withdraw_status=1, trade_num='%s' WHERE tx='%s' AND withdraw_status=2`, db.Escape(tradeNum), db.Escape(txHex))
+			if err != nil {
+				log.Error(err.Error())
+			}
+		} else {
+			log.Info("Transferred %d CNY to Account:%d, POINT WITHDRAW", payParams.Amount, userId)
+			_, _, err = db.Query(`UPDATE tmm.point_withdraws SET trade_num='%s' WHERE id=%d`, db.Escape(tradeNum), txId)
+			if err != nil {
+				log.Error(err.Error())
+			}
 		}
 		this.PushMsg(userId, cny)
 	}
