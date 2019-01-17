@@ -10,11 +10,12 @@ import (
 )
 
 type UserActiveStats struct {
-	NewUser     int    `json:"new_user"`
-	LoginNumber int    `json:"login_number"`
-	TodayActive Active `json:"today_active"`
-	TwoActive   Active `json:"two_active"`
-	ThreeActive Active `json:"three_active"`
+	NewUser     int                `json:"new_user"`
+	LoginNumber uint               `json:"login_number"`
+	TodayActive Active             `json:"today_active"`
+	TwoActive   Active             `json:"two_active"`
+	ThreeActive Active             `json:"three_active"`
+	UserList    []*admin.UserStats `json:"user_list"`
 }
 
 type Active struct {
@@ -25,15 +26,8 @@ type Active struct {
 	Read        int `json:"read"`
 }
 
-func UserActiveTrendHandler(c *gin.Context) {
-	db := Service.Db
-	var date string
-	date = c.Query(`start_date`)
-	if date == "" {
-		date = time.Now().Format(`2006-01-02`)
-	}
-	tm, _ := time.Parse(`2006-01-02`, date)
-	var Stats UserActiveStats
+func UserFunnelStatsHandler(c *gin.Context) {
+	date := c.DefaultQuery(`start_date`,time.Now().Format(`2006-01-02`))
 
 	query := `
 SELECT 
@@ -43,41 +37,49 @@ FROM
 	ucoin.users AS us
 LEFT JOIN tmm.devices  AS dev ON (dev.user_id = us.id )
 WHERE created > '%s' AND created < DATE_ADD('%s', INTERVAL 1 DAY)
+ORDER BY id DESC 
 `
 	var UserList []string
-	var LoginList []uint
+	var LoginList uint
+	db := Service.Db
 	rows, _, err := db.Query(query, date, date)
 	if CheckErr(err, c) {
 		return
 	}
+
 	for _, row := range rows {
 		UserList = append(UserList, row.Str(0))
 		if row.Str(1) != "0" {
-			LoginList = append(LoginList, 0)
+			LoginList++
 		}
 	}
+
+	var Stats UserActiveStats
 	Stats.NewUser = len(UserList)
-	Stats.LoginNumber = len(LoginList)
+	Stats.LoginNumber = LoginList
+
 	var todayActive, TwoActive, threeActive Active
-	if tm.Before(time.Now()) && len(UserList) > 0{
+	tm, _ := time.Parse(`2006-01-02`, date)
+	if tm.Before(time.Now()) && len(UserList) > 0 {
 		UserList, todayActive = GetActive(UserList, tm.Format(`2006-01-02`))
 	}
-	if tm.AddDate(0, 0, 1).Before(time.Now()) && len(UserList) > 0{
+	if tm.AddDate(0, 0, 1).Before(time.Now()) && len(UserList) > 0 {
 		tm = tm.AddDate(0, 0, 1)
-		UserList,TwoActive = GetActive(UserList, tm.Format(`2006-01-02`))
+		UserList, TwoActive = GetActive(UserList, tm.Format(`2006-01-02`))
 	}
-	if tm.AddDate(0, 0, 1).Before(time.Now()) && len(UserList) > 0{
+	if tm.AddDate(0, 0, 1).Before(time.Now()) && len(UserList) > 0 {
 		tm = tm.AddDate(0, 0, 1)
-		_,threeActive = GetActive(UserList, tm.Format(`2006-01-02`))
+		_, threeActive = GetActive(UserList, tm.Format(`2006-01-02`))
 	}
+
 	Stats.TodayActive = todayActive
 	Stats.TwoActive = TwoActive
 	Stats.ThreeActive = threeActive
 
-	c.JSON(http.StatusOK,admin.Response{
-		Data:Stats,
-		Message:admin.API_OK,
-		Code:0,
+	c.JSON(http.StatusOK, admin.Response{
+		Data:    Stats,
+		Message: admin.API_OK,
+		Code:    0,
 	})
 }
 
@@ -131,7 +133,7 @@ AND (reading.user_id > 0 OR  sha.task_id > 0 OR app.task_id > 0 OR sign.days > 0
 GROUP BY u.id
 `
 	rows, _, err := db.Query(query, db.Escape(when), db.Escape(when),
-		db.Escape(when), db.Escape(when), db.Escape(when),db.Escape(when),
+		db.Escape(when), db.Escape(when), db.Escape(when), db.Escape(when),
 		strings.Join(idArray, ","))
 	if err != nil {
 		return nil, active
