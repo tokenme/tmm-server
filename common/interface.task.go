@@ -138,7 +138,7 @@ func (this ShareTask) Imp(deviceId string, bonus decimal.Decimal, service *Servi
 
 	{ // Update inviter bonus
 		query := `SELECT t.id, t.inviter_id, t.user_id, t.is_grand FROM
-(SELECT id, inviter_id, user_id, false FROM
+(SELECT id, inviter_id, user_id, false AS is_grand FROM
     (SELECT
     d.id,
     ic.parent_id AS inviter_id,
@@ -149,7 +149,7 @@ func (this ShareTask) Imp(deviceId string, bonus decimal.Decimal, service *Servi
     WHERE d2.id='%s' AND ic.parent_id > 0
     ORDER BY d.lastping_at DESC LIMIT 1) AS t1
     UNION
-    SELECT id, inviter_id, user_id, true FROM
+    SELECT id, inviter_id, user_id, true AS is_grand FROM
     (SELECT
     d.id,
     ic.grand_id AS inviter_id,
@@ -306,7 +306,7 @@ WHERE
 
 	{ // Give bonus to inviters
 		query := `SELECT t.id, t.inviter_id, t.is_grand FROM
-(SELECT id, user_id, false FROM
+(SELECT id, user_id, false AS is_grand FROM
     (SELECT
     d.id,
     d.user_id
@@ -316,7 +316,7 @@ WHERE
     AND NOT EXISTS (SELECT 1 FROM tmm.invite_bonus AS ib WHERE ib.user_id=d.user_id AND ib.from_user_id=ic.user_id AND task_type=2 AND task_id=%d LIMIT 1)
     ORDER BY d.lastping_at DESC LIMIT 1) AS t1
     UNION
-    SELECT id, user_id, true FROM
+    SELECT id, user_id, true AS is_grand FROM
     (SELECT
     d.id,
     d.user_id
