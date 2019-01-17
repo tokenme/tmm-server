@@ -102,6 +102,97 @@ func DecryptShareTaskLink(encryptedTaskId string, encryptedDeviceId string, conf
 	return taskId, deviceId, nil
 }
 
+func (this ShareTask) Imp(deviceId string, bonus decimal.Decimal, service *Service, config Config) error {
+	pointsPerTs, err := GetPointsPerTs(service)
+	if err != nil {
+		return err
+	}
+	db := service.Db
+	var bonusRate float64 = 1
+	{ // Getting bonus rate
+		rows, _, _ := db.Query(`SELECT ul.task_bonus_rate FROM tmm.user_settings AS us INNER JOIN tmm.user_levels AS ul ON (ul.id=us.level) INNER JOIN tmm.devices AS d ON (d.user_id=us.user_id) WHERE d.id='%s' LIMIT 1`, db.Escape(deviceId))
+		if len(rows) > 0 {
+			bonusRate = rows[0].ForceFloat(0) / 100
+		}
+	}
+
+	{ // Update device points
+		query := `UPDATE tmm.devices AS d, tmm.device_share_tasks AS dst, tmm.share_tasks AS st
+            SET
+                d.points = d.points + IF(st.points_left > st.bonus, st.bonus, st.points_left) * %.2f,
+                d.total_ts = d.total_ts + CEIL(IF(st.points_left > st.bonus, st.bonus, st.points_left) / %s),
+                dst.points = dst.points + IF(st.points_left > st.bonus, st.bonus, st.points_left) * %.2f,
+                dst.viewers = dst.viewers + 1,
+                st.points_left = IF(st.points_left > st.bonus, st.points_left - st.bonus, 0),
+                st.viewers = st.viewers + 1
+            WHERE
+                d.id='%s'
+            AND dst.device_id = d.id
+            AND dst.task_id = %d
+            AND st.id = dst.task_id`
+		_, _, err = db.Query(query, bonusRate, pointsPerTs.String(), bonusRate, db.Escape(deviceId), this.Id)
+		if err != nil {
+			return err
+		}
+	}
+
+	{ // Update inviter bonus
+		query := `SELECT t.id, t.inviter_id, t.user_id, t.is_grand FROM
+(SELECT id, inviter_id, user_id, false FROM
+    (SELECT
+    d.id,
+    ic.parent_id AS inviter_id,
+    ic.user_id
+    FROM tmm.invite_codes AS ic
+    LEFT JOIN tmm.devices AS d ON (d.user_id=ic.parent_id)
+    LEFT JOIN tmm.devices AS d2 ON (d2.user_id=ic.user_id)
+    WHERE d2.id='%s' AND ic.parent_id > 0
+    ORDER BY d.lastping_at DESC LIMIT 1) AS t1
+    UNION
+    SELECT id, inviter_id, user_id, true FROM
+    (SELECT
+    d.id,
+    ic.grand_id AS inviter_id,
+    ic.user_id
+    FROM tmm.invite_codes AS ic
+    LEFT JOIN tmm.devices AS d ON (d.user_id=ic.grand_id)
+    LEFT JOIN tmm.devices AS d2 ON (d2.user_id=ic.user_id)
+    WHERE d2.id='%s' AND ic.grand_id > 0
+    ORDER BY d.lastping_at DESC LIMIT 1) AS t2
+) AS t
+LEFT JOIN tmm.wx AS wx ON (wx.user_id=t.inviter_id)
+LEFT JOIN tmm.wx AS wx2 ON (wx2.user_id=t.user_id)
+WHERE ISNULL(wx.open_id) OR ISNULL(wx2.open_id) OR wx.open_id!=wx2.open_id`
+		rows, _, err := db.Query(query, db.Escape(deviceId), db.Escape(deviceId))
+		if err != nil {
+			return err
+		}
+		for _, row := range rows {
+			dId := row.Str(0)
+			inviterId := row.Uint64(1)
+			userId := row.Uint64(2)
+			isGrand := row.Bool(3)
+			var inviterBonus decimal.Decimal
+			if isGrand {
+				inviterBonus = bonus.Mul(decimal.NewFromFloat(bonusRate * config.InviteBonusRate * config.InviteBonusRate))
+			} else {
+				inviterBonus = bonus.Mul(decimal.NewFromFloat(bonusRate * config.InviteBonusRate))
+			}
+			_, ret, err := db.Query(`UPDATE tmm.devices SET points = points + %s, total_ts = total_ts + %d WHERE id='%s'`, inviterBonus.String(), inviterBonus.Div(pointsPerTs).IntPart(), db.Escape(dId))
+			if err != nil {
+				continue
+			}
+			if ret.AffectedRows() > 0 {
+				_, _, err = db.Query(`INSERT INTO tmm.invite_bonus (user_id, from_user_id, bonus, task_type, task_id) VALUES (%d, %d, %s, 1, %d)`, inviterId, userId, inviterBonus.String(), this.Id)
+				if err != nil {
+					continue
+				}
+			}
+		}
+	}
+	return nil
+}
+
 func (this ShareTask) CookieKey() string {
 	return fmt.Sprintf("share-task-%d", this.Id)
 }
@@ -214,8 +305,8 @@ WHERE
 	}
 
 	{ // Give bonus to inviters
-		query := `SELECT t.id, t.inviter_id, t.user_id FROM
-(SELECT id, user_id FROM
+		query := `SELECT t.id, t.inviter_id, t.is_grand FROM
+(SELECT id, user_id, false FROM
     (SELECT
     d.id,
     d.user_id
@@ -225,7 +316,7 @@ WHERE
     AND NOT EXISTS (SELECT 1 FROM tmm.invite_bonus AS ib WHERE ib.user_id=d.user_id AND ib.from_user_id=ic.user_id AND task_type=2 AND task_id=%d LIMIT 1)
     ORDER BY d.lastping_at DESC LIMIT 1) AS t1
     UNION
-    SELECT id, user_id FROM
+    SELECT id, user_id, true FROM
     (SELECT
     d.id,
     d.user_id
@@ -242,24 +333,24 @@ WHERE ISNULL(wx.open_id) OR ISNULL(wx2.open_id) OR wx.open_id!=wx2.open_id`
 		if err != nil {
 			return bonus, err
 		}
-		var (
-			inviterBonus = bonus.Mul(decimal.NewFromFloat(bonusRate * config.InviteBonusRate))
-			deviceIds    []string
-			insertLogs   []string
-		)
 		for _, row := range rows {
-			deviceIds = append(deviceIds, fmt.Sprintf("'%s'", db.Escape(row.Str(0))))
-			insertLogs = append(insertLogs, fmt.Sprintf("(%d, %d, %s, 2, %d)", row.Uint64(1), user.Id, inviterBonus.String(), this.Id))
-		}
-		if len(deviceIds) > 0 {
-			_, ret, err := db.Query(`UPDATE tmm.devices SET points = points + %s WHERE id IN (%s)`, inviterBonus.String(), strings.Join(deviceIds, ","))
+			dId := row.Str(0)
+			inviterId := row.Uint64(1)
+			isGrand := row.Bool(2)
+			var inviterBonus decimal.Decimal
+			if isGrand {
+				inviterBonus = bonus.Mul(decimal.NewFromFloat(bonusRate * config.InviteBonusRate * config.InviteBonusRate))
+			} else {
+				inviterBonus = bonus.Mul(decimal.NewFromFloat(bonusRate * config.InviteBonusRate))
+			}
+			_, ret, err := db.Query(`UPDATE tmm.devices SET points = points + %s, total_ts = total_ts + %d WHERE id='%s'`, inviterBonus.String(), inviterBonus.Div(pointsPerTs).IntPart(), db.Escape(dId))
 			if err != nil {
-				return bonus, err
+				continue
 			}
 			if ret.AffectedRows() > 0 {
-				_, _, err = db.Query(`INSERT INTO tmm.invite_bonus (user_id, from_user_id, bonus, task_type, task_id) VALUES %s`, strings.Join(insertLogs, ","))
+				_, _, err = db.Query(`INSERT INTO tmm.invite_bonus (user_id, from_user_id, bonus, task_type, task_id) VALUES (%d, %d, %s, 2, %d)`, inviterId, user.Id, inviterBonus.String(), this.Id)
 				if err != nil {
-					return bonus, err
+					continue
 				}
 			}
 		}
