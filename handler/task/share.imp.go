@@ -111,15 +111,16 @@ LIMIT 1`
 	{
 		redisConn := Service.Redis.Master.Get()
 		defer redisConn.Close()
-		ipV, err := redis.String(redisConn.Do("GET", ipKey))
-		if err == nil {
-			log.Warn("Share Imp IP Found: %s, time: %s", ipKey, ipV)
-			ipFound = true
-		}
-		if len(openid) > 0 {
-			openidV, err := redis.String(redisConn.Do("GET", openidKey))
-			if err == nil {
-				log.Warn("Share Imp Openid Found: %s, time: %s", openidKey, openidV)
+		cacheRet, err := redis.Strings(redisConn.Do("MGET", ipKey, openidKey))
+		if err != nil {
+			log.Error(err.Error())
+		} else {
+			if cacheRet[0] != "" {
+				log.Warn("Share Imp IP Found: %s, time: %s", ipKey, cacheRet[0])
+				ipFound = true
+			}
+			if cacheRet[1] != "" {
+				log.Warn("Share Imp Openid Found: %s, time: %s", openidKey, cacheRet[1])
 				openidFound = true
 			}
 		}
@@ -162,7 +163,7 @@ LIMIT 1`
 				if err != nil {
 					log.Error(err.Error())
 				}
-				if len(openid) > 0 {
+				if openid != "" {
 					_, err = redisConn.Do("SETEX", openidKey, 60*60*24*30, time.Now().Format("2006-01-02 15:04:05"))
 					if err != nil {
 						log.Error(err.Error())

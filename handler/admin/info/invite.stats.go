@@ -35,7 +35,7 @@ func InviteStatsHandler(c *gin.Context) {
 
 	redisConn := Service.Redis.Master.Get()
 	defer redisConn.Close()
-	inviteKey := GetStatsKey(req.StartTime, `invite`)
+	inviteKey := GetStatsKey(startTime, `invite`)
 	if !req.IsRefresh {
 		var info PointStats
 		if bytes, err := redis.Bytes(redisConn.Do(`GET`, inviteKey)); err == nil && bytes != nil {
@@ -66,7 +66,6 @@ func InviteStatsHandler(c *gin.Context) {
 	GROUP BY u.id  
 	ORDER BY total DESC 
 	LIMIT 10`
-
 	rows, _, err := db.Query(query, strings.Join(when, " "))
 	if CheckErr(err, c) {
 		return

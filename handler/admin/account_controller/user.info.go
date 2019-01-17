@@ -56,6 +56,7 @@ SELECT
 	IFNULL(root.nick,NULL) AS root_nick,
 	IF(us_set.user_id > 0,IF(us_set.blocked = us_set.block_whitelist,0,1),0) AS blocked,
 	us_set.comments AS message,
+	us_set.level AS _level,
 	IF(EXISTS(
 		SELECT 
 		1
@@ -280,46 +281,51 @@ LIMIT 1
 	tmm := balanceDecimal.Div(decimal.New(1, int32(decimals)))
 
 	user := &admin.UserStats{
-		DrawCashByUc:             fmt.Sprintf("%.2f", row.Float(res.Map(`uc_cny`))),
-		DrawCashByPoint:          fmt.Sprintf("%.2f", row.Float(res.Map(`point_cny`))),
-		DirectFriends:            row.Int(res.Map(`direct`)),
-		IndirectFriends:          row.Int(res.Map(`indirect`)),
-		ActiveFriends:            row.Int(res.Map(`active`)),
-		PointByShare:             int(row.Float(res.Map(`sha_points`))),
-		PointByReading:           int(row.Float(res.Map(`reading_point`))),
-		PointByInvite:            int(row.Float(res.Map(`inv_bonus`))),
-		PointByDownLoadApp:       int(row.Float(res.Map(`app_points`))),
-		IsActive:                 row.Bool(res.Map(`_active`)),
-		DirectBlockedCount:       row.Int(res.Map(`direct_blocked`)),
-		InDirectBlockedCount:     row.Int(res.Map(`indirect_blocked`)),
-		InviteNewUserByThreeDays: row.Int(res.Map(`invite_By_Number`)),
-		InviteNewUserActiveCount: row.Int(res.Map(`invite_firend_active`)),
+		IsActive:           row.Bool(res.Map(`_active`)),
 		IsHaveAppId:              row.Bool(res.Map(`app_id`)),
 		BlockedMessage:           row.Str(res.Map(`message`)),
 	}
+	user.DrawCashByPoint = fmt.Sprintf("%.2f", row.Float(res.Map(`point_cny`)))
+	user.DrawCashByUc = fmt.Sprintf("%.2f", row.Float(res.Map(`uc_cny`)))
+	user.DrawCash = fmt.Sprintf("%.2f", row.Float(res.Map(`cny`)))
+
+	user.DirectFriends = row.Int(res.Map(`direct`))
+	user.IndirectFriends = row.Int(res.Map(`indirect`))
+	user.ActiveFriends = row.Int(res.Map(`active`))
+	user.DirectBlockedCount = row.Int(res.Map(`direct_blocked`))
+	user.InDirectBlockedCount = row.Int(res.Map(`indirect_blocked`))
+	user.InviteNewUserByThreeDays = row.Int(res.Map(`invite_By_Number`))
+	user.InviteNewUserActiveCount = row.Int(res.Map(`invite_firend_active`))
+
+	user.PointByShare = int(row.Float(res.Map(`sha_points`)))
+	user.PointByReading = int(row.Float(res.Map(`reading_point`)))
+	user.PointByInvite = int(row.Float(res.Map(`inv_bonus`)))
+	user.PointByDownLoadApp = int(row.Float(res.Map(`app_points`)))
+
 	user.Id = row.Uint64(res.Map(`id`))
 	user.Mobile = row.Str(res.Map(`mobile`))
 	user.Nick = row.Str(res.Map(`nick`))
 	user.InsertedAt = row.Str(res.Map(`created`))
 	user.CountryCode = row.Uint(res.Map(`country_code`))
-	user.WxInsertedAt = row.Str(res.Map(`wx_inserted_at`))
-	user.OpenId = row.Str(res.Map(`open_id`))
-	user.WxExpires = row.Str(res.Map(`expires`))
+	user.Level.Id = row.Uint(res.Map(`_level`))
 	user.Wallet = row.Str(res.Map(`addr`))
-	user.WxUnionId = row.Str(res.Map(`union_id`))
 	user.Tmm = tmm.StringFixed(2)
 	user.Point = point.StringFixed(0)
-	user.DrawCash = fmt.Sprintf("%.2f", row.Float(res.Map(`cny`)))
 	user.Blocked = row.Int(res.Map(`blocked`))
+
+	user.WxInsertedAt = row.Str(res.Map(`wx_inserted_at`))
+	user.OpenId = row.Str(res.Map(`open_id`))
+	user.WxUnionId = row.Str(res.Map(`union_id`))
+
 	user.TotalMakePoint = user.PointByShare + user.PointByReading +
 		user.PointByInvite + user.PointByDownLoadApp
 	threeActiveCount := row.Float(res.Map(`total`))
 	if user.DirectFriends+user.IndirectFriends > 0 && threeActiveCount > 0 {
-		user.NotActive = fmt.Sprintf("%.2f", 100-threeActiveCount/float64(user.DirectFriends + user.IndirectFriends)*100) + "%"
+		user.NotActive = fmt.Sprintf("%.2f", 100-threeActiveCount/float64(user.DirectFriends+user.IndirectFriends)*100) + "%"
 	} else {
 		if user.DirectFriends+user.InDirectBlockedCount > 0 && threeActiveCount == 0 {
 			user.NotActive = fmt.Sprint("100%")
-		}else{
+		} else {
 			user.NotActive = fmt.Sprint("0%")
 		}
 	}
@@ -334,8 +340,8 @@ LIMIT 1
 	root.Id = row.Uint64(res.Map(`root_id`))
 	root.Blocked = row.Int(res.Map(`root_blocked`))
 	root.Nick = row.Str(res.Map(`root_nick`))
-
 	user.Root = root
+
 	rows, _, err = db.Query(`SELECT 
 		id,
 		platform,
@@ -366,6 +372,7 @@ WHERE
 	if CheckErr(err, c) {
 		return
 	}
+
 	for _, row := range rows {
 		device := &admin.Device{}
 		device.Id = row.Str(0)
@@ -392,6 +399,7 @@ WHERE
 		device.UpdatedAt = row.Str(21)
 		user.DeviceList = append(user.DeviceList, device)
 	}
+
 	if user.OpenId != "" {
 		rows, _, err = db.Query(`
 	select 
@@ -418,6 +426,7 @@ WHERE
 			user.OtherAccount = accountList
 		}
 	}
+
 	c.JSON(http.StatusOK, admin.Response{
 		Code:    0,
 		Message: admin.API_OK,

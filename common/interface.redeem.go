@@ -2,6 +2,7 @@ package common
 
 import (
 	"github.com/shopspring/decimal"
+	"time"
 )
 
 type RedeemCdp struct {
@@ -45,21 +46,60 @@ type TMMWithdrawRecord struct {
 	InsertedAt     string          `json:"inserted_at"`
 }
 
-func ExceededDailyWithdraw(service *Service, config Config) (exceeded bool, total decimal.Decimal, err error) {
+func ExceededDailyWithdraw(cash decimal.Decimal, service *Service, config Config) (exceeded bool, dailyTotal decimal.Decimal, chunkBudget decimal.Decimal, nextHour time.Time, err error) {
 	db := service.Db
-	rows, _, err := db.Query(`SELECT SUM(cny) FROM
+	{
+		rows, _, err := db.Query(`SELECT SUM(cny) FROM
 (
 SELECT IFNULL(SUM(cny), 0) AS cny FROM tmm.withdraw_txs AS wt WHERE tx_status!=0 AND inserted_at>=DATE(NOW())
 UNION ALL
 SELECT IFNULL(SUM(cny), 0) AS cny FROM tmm.point_withdraws AS pw WHERE inserted_at>=DATE(NOW())
 ) AS t`)
-	if err != nil {
-		return exceeded, total, err
+		if err != nil {
+			return exceeded, dailyTotal, chunkBudget, nextHour, err
+		}
+		if len(rows) == 0 {
+			return exceeded, dailyTotal, chunkBudget, nextHour, nil
+		}
+		dailyTotal, _ = decimal.NewFromString(rows[0].Str(0))
 	}
-	if len(rows) == 0 {
-		return exceeded, total, nil
-	}
+	var (
+		now                   = time.Now()
+		tomorrow              = now.Add(24 * time.Hour)
+		chunkSize         int = 3
+		maxChunks         int = 24 / chunkSize
+		currentChunk          = now.Hour() / chunkSize
+		startHour             = currentChunk * chunkSize
+		chunckTime            = time.Date(now.Year(), now.Month(), now.Day(), startHour, 0, 0, 0, now.Location())
+		currentChunkTotal decimal.Decimal
+	)
 	maxDailyWithdraw := decimal.New(config.MaxDailWithdraw, 0)
-	total, _ = decimal.NewFromString(rows[0].Str(0))
-	return total.GreaterThan(maxDailyWithdraw), total, nil
+	exceeded = dailyTotal.GreaterThan(maxDailyWithdraw)
+	if exceeded {
+		nextHour = time.Date(tomorrow.Year(), tomorrow.Month(), tomorrow.Day(), 0, 0, 0, 0, tomorrow.Location())
+		return exceeded, dailyTotal, chunkBudget, nextHour, nil
+	}
+	nextHour = chunckTime.Add(time.Duration(chunkSize) * time.Hour)
+	{
+
+		rows, _, err := db.Query(`SELECT SUM(cny) FROM
+(
+SELECT IFNULL(SUM(cny), 0) AS cny FROM tmm.withdraw_txs AS wt WHERE tx_status!=0 AND inserted_at>='%s'
+UNION ALL
+SELECT IFNULL(SUM(cny), 0) AS cny FROM tmm.point_withdraws AS pw WHERE inserted_at>='%s'
+) AS t`, chunckTime.Format("2006-01-02 15:04:05"), chunckTime.Format("2006-01-02 15:04:05"))
+		if err != nil {
+			return exceeded, dailyTotal, chunkBudget, nextHour, err
+		}
+		if len(rows) == 0 {
+			return exceeded, dailyTotal, chunkBudget, nextHour, nil
+		}
+		currentChunkTotal, _ = decimal.NewFromString(rows[0].Str(0))
+	}
+
+	todayLeft := maxDailyWithdraw.Sub(dailyTotal.Sub(currentChunkTotal))
+	chunksLeft := decimal.New(int64(maxChunks-currentChunk), 0)
+	chunkBudget = todayLeft.Div(chunksLeft)
+	exceeded = chunkBudget.LessThan(cash)
+	return exceeded, dailyTotal, chunkBudget, nextHour, nil
 }

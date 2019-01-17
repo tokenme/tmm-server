@@ -36,7 +36,7 @@ func PointStatsHandler(c *gin.Context) {
 
 	redisConn := Service.Redis.Master.Get()
 	defer redisConn.Close()
-	pointKey := GetStatsKey(req.StartTime, `point`)
+	pointKey := GetStatsKey(startTime, `point`)
 	if !req.IsRefresh {
 		var info PointStats
 		if bytes, err := redis.Bytes(redisConn.Do(`GET`, pointKey)); err == nil && bytes != nil {
