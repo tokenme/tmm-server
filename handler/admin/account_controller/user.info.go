@@ -71,7 +71,7 @@ SELECT
 		OR daily.user_id > 0)
 		LIMIT 1
 	),TRUE,FALSE) AS _active,
-	IF(dev_app.app_id IS NOT NULL,TRUE,FALSE) AS  app_id,
+	IF(COUNT(dev_app.app_id) > 0 ,TRUE,FALSE) AS app_id,
 	three_active.total AS total
 FROM 
 	ucoin.users AS u
