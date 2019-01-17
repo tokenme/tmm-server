@@ -45,6 +45,9 @@ func ModifyShareAppHandler(c *gin.Context) {
 		}
 		query = append(query, fmt.Sprintf(`online_status = %d`, task.OnlineStatus))
 	}
+	if task.Details != "" {
+		query = append(query, fmt.Sprintf(`details = '%s'`, db.Escape(task.Details)))
+	}
 	if Check(task.Id == 0, `Id Not Can Empty `, c) {
 		return
 	}
