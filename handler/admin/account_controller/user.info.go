@@ -281,9 +281,9 @@ LIMIT 1
 	tmm := balanceDecimal.Div(decimal.New(1, int32(decimals)))
 
 	user := &admin.UserStats{
-		IsActive:           row.Bool(res.Map(`_active`)),
-		IsHaveAppId:              row.Bool(res.Map(`app_id`)),
-		BlockedMessage:           row.Str(res.Map(`message`)),
+		IsActive:       row.Bool(res.Map(`_active`)),
+		IsHaveAppId:    row.Bool(res.Map(`app_id`)),
+		BlockedMessage: row.Str(res.Map(`message`)),
 	}
 	user.DrawCashByPoint = fmt.Sprintf("%.2f", row.Float(res.Map(`point_cny`)))
 	user.DrawCashByUc = fmt.Sprintf("%.2f", row.Float(res.Map(`uc_cny`)))
@@ -398,6 +398,9 @@ WHERE
 		device.InsertedAt = row.Str(20)
 		device.UpdatedAt = row.Str(21)
 		user.DeviceList = append(user.DeviceList, device)
+		if device.IsEmulator {
+			user.IsHaveEmulatorDevices = true
+		}
 	}
 
 	if user.OpenId != "" {

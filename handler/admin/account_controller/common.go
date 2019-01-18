@@ -51,7 +51,6 @@ var WithDrawMap = map[int]string{
 	Succeeded: "审核成功",
 	Refused:   "审核拒绝",
 }
-
 var StatusMap = map[int]string{
 	Waiting:   "等待",
 	Succeeded: "成功",
