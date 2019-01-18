@@ -8,7 +8,7 @@ import (
 
 func AuditRouter(r *gin.Engine) {
 	auditGroup := r.Group(`/admin/audit`)
-	auditGroup.Use(AuthMiddleware.MiddlewareFunc(), verify.VerifyAdminFunc())
+	auditGroup.Use(AdminAuthMiddleware.MiddlewareFunc(), verify.VerifyAdminFunc())
 	{
 		auditGroup.GET(`/app/list`, audit.AuditAppTaskListHandler)
 		auditGroup.POST(`/app/edit`, audit.EditAppTaskHandler)
