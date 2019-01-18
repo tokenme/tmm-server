@@ -75,7 +75,8 @@ func AppInstallHandler(c *gin.Context) {
 		if CheckErr(err, c) {
 			return
 		}
-	} else if req.Status == 1 {
+	} else if Check(req.Status == 1, "请先升级", c) {
+		return
 		appTask := common.AppTask{Id: req.TaskId}
 		bonus, err = appTask.Install(user, deviceId, Service, Config)
 		if CheckErr(err, c) {

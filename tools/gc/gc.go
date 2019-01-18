@@ -116,6 +116,12 @@ FROM (
 ON DUPLICATE KEY UPDATE blocked=VALUES(blocked), block_whitelist=VALUES(block_whitelist)`
 	_, _, err = db.Query(query)
 	query = `INSERT INTO tmm.user_settings (user_id, blocked)
+    SELECT DISTINCT d.user_id, 1
+    FROM tmm.devices AS d
+    WHERE d.is_emulator=1 AND NOT EXISTS(SELECT 1 FROM tmm.user_settings AS us WHERE us.user_id=d.user_id AND us.blocked=1 LIMIT 1)
+    ON DUPLICATE KEY UPDATE blocked=VALUES(blocked)`
+	_, _, err = db.Query(query)
+	query = `INSERT INTO tmm.user_settings (user_id, blocked)
 SELECT DISTINCT d.user_id, 1 FROM tmm.devices AS d
 WHERE
     NOT EXISTS(SELECT 1 FROM tmm.device_apps AS da WHERE da.device_id=d.id LIMIT 1)

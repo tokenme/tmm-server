@@ -18,6 +18,24 @@ const (
 	TrackFromUnknown ShareTaskTrackSource = 2
 )
 
+type GeneralTask struct {
+	Id                 uint64          `json:"id"`
+	Creator            uint64          `json:"creator,omitempty"`
+	Title              string          `json:"title,omitempty"`
+	Summary            string          `json:"summary,omitempty"`
+	Image              string          `json:"image,omitempty"`
+	Points             decimal.Decimal `json:"points,omitempty"`
+	PointsLeft         decimal.Decimal `json:"points_left,omitempty"`
+	Bonus              decimal.Decimal `json:"bonus,omitempty"`
+	InsertedAt         string          `json:"inserted_at,omitempty"`
+	UpdatedAt          string          `json:"updated_at,omitempty"`
+	OnlineStatus       int8            `json:"online_status,omitempty"`
+	Details            string          `json:"details,omitempty"`
+	CertificateStatus  int8            `json:"certificate_status,omitempty"`
+	CertificateImages  string          `json:"certificate_images,omitempty"`
+	CertificateComment string          `json:"certificate_comment,omitempty"`
+}
+
 type ShareTask struct {
 	Id            uint64          `json:"id"`
 	Creator       uint64          `json:"creator,omitempty"`
@@ -230,28 +248,28 @@ func WxCodeKey(code string) string {
 }
 
 type AppTask struct {
-	Id                  uint64          `json:"id"`
-	Creator             uint64          `json:"creator",omitempty`
-	Name                string          `json:"name,omitempty"`
-	Platform            Platform        `json:"platform,omitempty"`
-	SchemeId            uint64          `json:"scheme_id,omitempty"`
-	BundleId            string          `json:"bundle_id,omitempty"`
-	StoreId             uint64          `json:"store_id,omitempty"`
-	Icon                string          `json:"icon,omitempty"`
-	Points              decimal.Decimal `json:"points,omitempty"`
-	PointsLeft          decimal.Decimal `json:"points_left,omitempty"`
-	Bonus               decimal.Decimal `json:"bonus,omitempty"`
-	DownloadUrl         string          `json:"download_url,omitempty"`
-	Downloads           uint            `json:"downloads,omitempty"`
-	InsertedAt          string          `json:"inserted_at,omitempty"`
-	UpdatedAt           string          `json:"updated_at,omitempty"`
-	Size                uint            `json:"size,omitempty"`
-	OnlineStatus        int8            `json:"online_status,omitempty"`
-	InstallStatus       int8            `json:"install_status,omitempty"`
-    Details             string          `json:"details,omitempty"`
-    CertificateStatus   int8            `json:"certificate_status,omitempty"`
-    CertificateImages   string          `json:"certificate_images,omitempty"`
-    CertificateComment  string          `json:"certificate_comment,omitempty"`
+	Id                 uint64          `json:"id"`
+	Creator            uint64          `json:"creator",omitempty`
+	Name               string          `json:"name,omitempty"`
+	Platform           Platform        `json:"platform,omitempty"`
+	SchemeId           uint64          `json:"scheme_id,omitempty"`
+	BundleId           string          `json:"bundle_id,omitempty"`
+	StoreId            uint64          `json:"store_id,omitempty"`
+	Icon               string          `json:"icon,omitempty"`
+	Points             decimal.Decimal `json:"points,omitempty"`
+	PointsLeft         decimal.Decimal `json:"points_left,omitempty"`
+	Bonus              decimal.Decimal `json:"bonus,omitempty"`
+	DownloadUrl        string          `json:"download_url,omitempty"`
+	Downloads          uint            `json:"downloads,omitempty"`
+	InsertedAt         string          `json:"inserted_at,omitempty"`
+	UpdatedAt          string          `json:"updated_at,omitempty"`
+	Size               uint            `json:"size,omitempty"`
+	OnlineStatus       int8            `json:"online_status,omitempty"`
+	InstallStatus      int8            `json:"install_status,omitempty"`
+	Details            string          `json:"details,omitempty"`
+	CertificateStatus  int8            `json:"certificate_status,omitempty"`
+	CertificateImages  string          `json:"certificate_images,omitempty"`
+	CertificateComment string          `json:"certificate_comment,omitempty"`
 }
 
 func (this AppTask) Install(user User, deviceId string, service *Service, config Config) (bonus decimal.Decimal, err error) {
