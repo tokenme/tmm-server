@@ -2,13 +2,13 @@ package router
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/tokenme/tmm/handler/admin/verify"
 	"github.com/tokenme/tmm/handler/admin/account_controller"
+	"github.com/tokenme/tmm/handler/admin/verify"
 )
 
 func AccountRouter(r *gin.Engine) {
 	AccountGroup := r.Group(`admin/account`)
-	AccountGroup.Use(AuthMiddleware.MiddlewareFunc(), verify.VerifyAdminFunc())
+	AccountGroup.Use(AdminAuthMiddleware.MiddlewareFunc(), verify.VerifyAdminFunc())
 	{
 		AccountGroup.GET(`/list`, account_controller.GetAccountList)
 		AccountGroup.POST(`/user`, account_controller.EditAccountHandler)

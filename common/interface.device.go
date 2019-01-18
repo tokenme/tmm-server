@@ -22,7 +22,7 @@ type Device struct {
 	Mac          string          `json:"mac,omitempty"`
 	Imei         string          `json:"imei,omitempty"`
 	IsTablet     bool            `json:"is_tablet,omitempty"`
-	IsEmulator   bool 			 `json:"is_emulator,omitempty"`
+	IsEmulator   bool            `json:"is_emulator,omitempty"`
 	TotalTs      uint64          `json:"total_ts,omitempty"`
 	TotalApps    uint            `json:"total_apps,omitempty"`
 	Points       decimal.Decimal `json:"points,omitempty"`
