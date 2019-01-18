@@ -66,6 +66,8 @@ FROM(
 			COUNT(1) AS total 
         FROM
             tmm.point_withdraws AS pw
+		WHERE
+			pw.verified = 1
         GROUP BY pw.user_id
 				) AS tmp
 		GROUP BY user_id

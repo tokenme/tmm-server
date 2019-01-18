@@ -28,7 +28,8 @@ SELECT
 	tmm,
 	cny,
 	DATE_ADD(inserted_at,INTERVAL 8 HOUR),
-	tx_status
+	tx_status,
+	verified
 FROM 
 	tmm.withdraw_txs 
 WHERE 
@@ -57,6 +58,7 @@ LIMIT %d OFFSET %d`
 		drawMoney.Get = fmt.Sprintf("+%.2f CNY", row.Float(1))
 		drawMoney.When = row.Str(2)
 		drawMoney.Status = MsgMap[row.Int(3)]
+		drawMoney.Extra = WithDrawMap[row.Int(4)]
 		DrawMoneyList = append(DrawMoneyList, drawMoney)
 	}
 	rows, _, err = db.Query(`SELECT COUNT(1) FROM tmm.withdraw_txs WHERE user_id = %d  `, req.Id)

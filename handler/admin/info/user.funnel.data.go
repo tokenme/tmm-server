@@ -113,8 +113,8 @@ LEFT JOIN tmm.wx AS wx ON (wx.nick = u.id)
 LEFT JOIN tmm.devices AS dev ON  (dev.user_id = u.id)
 LEFT JOIN tmm.user_settings AS us ON (us.user_id = u.id)
 LEFT JOIN tmm.share_blocked_logs AS sbl ON (sbl.user_id = u.id AND sbl.record_on = '%s')
-LEFT JOIN tmm.withdraw_txs AS wt ON (wt.user_id = u.id AND wt.tx_status = 1 AND DATE(wt.inserted_at) = '%s' )
-LEFT JOIN tmm.point_withdraws AS pt ON (pt.user_id = u.id AND DATE(pt.inserted_at) = '%s')
+LEFT JOIN tmm.withdraw_txs AS wt ON (wt.user_id = u.id AND wt.tx_status = 1 AND wt.verified = 1 AND DATE(wt.inserted_at) = '%s' )
+LEFT JOIN tmm.point_withdraws AS pt ON (pt.user_id = u.id AND pt.verified = 1  AND DATE(pt.inserted_at) = '%s')
 LEFT JOIN ( 
 	SELECT 
 		user_id  AS user_id,

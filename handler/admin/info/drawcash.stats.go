@@ -75,7 +75,7 @@ FROM(
         FROM
             tmm.point_withdraws AS pw
         WHERE 
-			pw.cny > 0 %s
+			pw.verified  = 1  %s
 		GROUP BY pw.user_id
 				) AS tmp
 		GROUP BY user_id

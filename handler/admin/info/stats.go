@@ -63,7 +63,7 @@ SELECT
 FROM 
 		tmm.point_withdraws
 WHERE 
-		inserted_at > DATE_SUB(DATE(NOW()),INTERVAL 1 DAY)
+		inserted_at > DATE_SUB(DATE(NOW()),INTERVAL 1 DAY) AND verified = 1 
 ) AS points,
 (
 SELECT 
@@ -74,7 +74,7 @@ SELECT
 FROM 
 		tmm.withdraw_txs 
 WHERE 
-		inserted_at > DATE_SUB(DATE(NOW()),INTERVAL 1 DAY)   AND tx_status = 1
+		inserted_at > DATE_SUB(DATE(NOW()),INTERVAL 1 DAY)   AND tx_status = 1 AND verified = 1 
 ) AS tmm,
 ( 
 SELECT 

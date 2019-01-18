@@ -27,7 +27,8 @@ func DrawMoneyByPointHandler(c *gin.Context) {
 SELECT 
 	points,
 	cny,
-	DATE_ADD(inserted_at,INTERVAL 8 HOUR)
+	DATE_ADD(inserted_at,INTERVAL 8 HOUR),
+	verified
 FROM 
 	tmm.point_withdraws 
 WHERE 
@@ -55,7 +56,8 @@ LIMIT %d OFFSET %d`
 		drawMoney.Pay = fmt.Sprintf("-%.0f 积分", row.Float(0))
 		drawMoney.Get = fmt.Sprintf("+%.2f CNY", row.Float(1))
 		drawMoney.When = row.Str(2)
-		drawMoney.Status = MsgMap[Success]
+		drawMoney.Status = StatusMap[row.Int(3)]
+		drawMoney.Extra = WithDrawMap[row.Int(3)]
 		DrawMoneyList = append(DrawMoneyList, drawMoney)
 	}
 	rows, _, err = db.Query(`SELECT COUNT(1) FROM tmm.point_withdraws WHERE user_id = %d ORDER BY trade_num  `, req.Id)

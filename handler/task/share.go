@@ -274,7 +274,7 @@ func checkBlockUser(service *common.Service, deviceId string, haveCode bool) (is
 			db.Query(`INSERT INTO tmm.share_blocked_logs
 			(user_id,record_on,second_count,minute_count,blocked) VALUES(%d,'%s',%d,%d,%d) 
 			ON DUPLICATE KEY UPDATE second_count=second_count+VALUES(second_count), minute_count=minute_count+VALUES(minute_count),blocked=blocked+VALUES(blocked)`,
-				userId,time.Now().Format(`2006-01-02`),0,0,1)
+				userId, time.Now().Format(`2006-01-02`), 0, 0, 1)
 			return true, isRateLimited, nil
 		}
 
@@ -310,10 +310,12 @@ func checkBlockUser(service *common.Service, deviceId string, haveCode bool) (is
 		if isBlocked {
 			isblocked = 1
 		}
+		if secondCount > 0 || minuteConut > 0 || isblocked > 0{
 			db.Query(`INSERT INTO tmm.share_blocked_logs 
 			(user_id,record_on,second_count,minute_count,blocked) VALUES(%d,'%s',%d,%d,%d) 
 			ON DUPLICATE KEY UPDATE second_count=second_count+VALUES(second_count), minute_count=minute_count+VALUES(minute_count),blocked=blocked+VALUES(blocked)`,
-			userId,time.Now().Format(`2006-01-02`),secondCount,minuteConut,isblocked)
+				userId, time.Now().Format(`2006-01-02`), secondCount, minuteConut, isblocked)
+		}
 	}
 	return isBlocked, isRateLimited, nil
 }

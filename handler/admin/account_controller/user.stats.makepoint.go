@@ -34,7 +34,8 @@ func MakePointHandler(c *gin.Context) {
 		1 AS type ,
 		0  AS device_id,
 		0  AS invite_bonus_types,
-		0  AS tmm
+		0  AS tmm,
+		0  AS extra
 	FROM 
   		tmm.invite_bonus
 	WHERE 
@@ -48,7 +49,8 @@ func MakePointHandler(c *gin.Context) {
 		0 AS type,
 		0 AS device_id,
 		0  AS invite_bonus_types,
-		0  AS tmm
+		0  AS tmm,
+		ts AS extra
 	FROM 
  		tmm.reading_logs
  	WHERE
@@ -62,7 +64,8 @@ func MakePointHandler(c *gin.Context) {
 		2 AS type,
 		sha.device_id AS device_id,
 		0  AS invite_bonus_types,
-		0  AS tmm
+		0  AS tmm,
+		sha.viewers AS extra
 	FROM 
 		tmm.device_share_tasks AS sha
 	INNER JOIN tmm.devices AS dev ON (dev.id = sha.device_id)
@@ -78,7 +81,8 @@ func MakePointHandler(c *gin.Context) {
 		3 AS type ,
 		0  AS device_id,
 		task_type  AS invite_bonus_types,
-		tmm  AS tmm
+		tmm  AS tmm,
+		0 AS extra
 	FROM 
   		tmm.invite_bonus
 	WHERE 
@@ -92,7 +96,8 @@ func MakePointHandler(c *gin.Context) {
 		4 AS type, 
 		app.device_id AS device_id,
 		0  AS invite_bonus_types,
-		0  AS tmm 
+		0  AS tmm ,
+		0 AS extra
 	FROM
 		tmm.device_app_tasks AS app
 	INNER JOIN tmm.devices AS dev ON (dev.id = app.device_id)
@@ -105,7 +110,8 @@ func MakePointHandler(c *gin.Context) {
 		DATE_ADD(tmp.inserted_at,INTERVAL 8 HOUR) AS inserted_at, 	
 		tmp.type  AS type,
 		tmp.invite_bonus_types AS invite_bonus_types,
-		tmp.tmm  AS tmm
+		tmp.tmm  AS tmm,
+		tmp.extra AS extra
 	FROM(
 		%s
 	) AS tmp
@@ -127,9 +133,9 @@ func MakePointHandler(c *gin.Context) {
 
 	var taskList []*Task
 	var taskType string
-	var get string
 	for _, row := range rows {
-		get = fmt.Sprintf("+%.2f积分", row.Float(0))
+		extra:=""
+		get := fmt.Sprintf("+%.2f积分", row.Float(0))
 		if row.Int(3) > 0 {
 			taskType = InviteMap[row.Int(3)]
 			if row.Int(3) == 3 {
@@ -138,11 +144,16 @@ func MakePointHandler(c *gin.Context) {
 		} else {
 			taskType = typeMap[row.Int(2)]
 		}
+
+		if value, ok := ForMatMap[row.Int(2)]; ok {
+			extra = fmt.Sprintf(value, row.Int(5))
+		}
 		task := &Task{
 			Get:    get,
 			When:   row.Str(1),
 			Type:   taskType,
 			Status: TaskSuccessful,
+			Extra:  extra,
 		}
 		taskList = append(taskList, task)
 	}

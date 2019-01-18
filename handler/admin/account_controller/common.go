@@ -35,6 +35,28 @@ var typeMap = map[int]string{
 	AppTask: "安装app",
 }
 
+var ForMatMap = map[int]string{
+	Reading: "已阅读%d秒",
+	Share:   "分享%d次数",
+}
+
+const (
+	Waiting   = 0
+	Succeeded = 1
+	Refused   = -1
+)
+
+var WithDrawMap = map[int]string{
+	Waiting:   "等待审核",
+	Succeeded: "审核成功",
+	Refused:   "审核拒绝",
+}
+var StatusMap = map[int]string{
+	Waiting:   "等待",
+	Succeeded: "成功",
+	Refused:   "拒绝",
+}
+
 const (
 	ShareBonus      = 1
 	AppBonus        = 2
@@ -62,6 +84,7 @@ type Task struct {
 	Get    string `json:"get"`
 	When   string `json:"when"`
 	Status string `json:"status"`
+	Extra  string `json:"extra"`
 }
 
 type PageOptions struct {

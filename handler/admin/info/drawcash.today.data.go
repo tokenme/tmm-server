@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strconv"
 	"time"
+	"github.com/tokenme/tmm/handler/admin/withdraw"
 )
 
 type Transaction struct {
@@ -20,6 +21,7 @@ type Transaction struct {
 	InsertedAt     string `json:"inserted_at"`
 	Cny            string `json:"cny"`
 	Status         string `json:"status"`
+	Verified       string `json:"verified"`
 }
 
 const (
@@ -64,7 +66,8 @@ SELECT
 	tmp.created,
 	tmp.mobile,
 	tmp.types,
-	tmp.nick 
+	tmp.nick,
+	tmp.verified
 FROM (
 	SELECT 
 		point.user_id AS user_id ,
@@ -74,7 +77,8 @@ FROM (
 		u.created,
 		u.mobile ,
 		0 AS types,
-		IFNULL(wx.nick,u.nickname) AS nick
+		IFNULL(wx.nick,u.nickname) AS nick,
+		point.verified AS verified
 	FROM 
 		tmm.point_withdraws AS point
 	INNER JOIN 
@@ -94,7 +98,8 @@ FROM (
 		u.created,
 		u.mobile ,
 		1 AS types,
-		IFNULL(wx.nick,u.nickname) AS nick
+		IFNULL(wx.nick,u.nickname) AS nick,
+		uc.verified AS verified
 	FROM 
 		tmm.withdraw_txs AS uc
 	INNER JOIN 
@@ -145,8 +150,9 @@ FROM (
 			AccountCreated: row.Str(4),
 			Mobile:         row.Str(5),
 			Types:          DrawType[row.Int(6)],
-			Nick:          row.Str(7),
-		})
+			Nick:           row.Str(7),
+			Verified:       withdraw.StatsMap[row.Int(8)],
+		}, )
 	}
 
 	rows, _, err = db.Query(totalQuery, db.Escape(date), db.Escape(date))

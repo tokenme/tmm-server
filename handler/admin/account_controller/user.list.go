@@ -237,7 +237,7 @@ FROM (
 	FROM
 		tmm.point_withdraws 
 	WHERE
-		1 = 1  %s
+		verified = 1  %s
 	GROUP BY 
 		user_id
 	) AS tmp
@@ -254,7 +254,7 @@ LEFT JOIN (
 	FROM
 		tmm.point_withdraws  
 	WHERE
-		1 = 1 %s
+		verified = 1 %s
 	GROUP BY  
 		user_id 
 ) AS cny ON (cny.user_id = u.id )`, strings.Join(when, ` `))))

@@ -42,7 +42,8 @@ func GetShareAppHandler(c *gin.Context) {
 		offset = limit * (req.Page - 1)
 	}
 	query := `SELECT id, bundle_id, name, size, bonus, download_url, icon, 
-				downloads, points, points_left, online_status, inserted_at,details
+				(SELECT COUNT(1) FROM tmm.device_app_tasks WHERE task_id = id AND (status = 1  OR status = 2))  AS downloads,
+				points, points_left, online_status, inserted_at,details
 				FROM tmm.app_tasks 
 				WHERE 1 = 1 %s 
 				ORDER BY id DESC 
