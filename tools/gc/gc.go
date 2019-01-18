@@ -28,6 +28,7 @@ func (this *Handler) Start() {
 	log.Info("GC Start")
 	dailyTicker := time.NewTicker(24 * time.Hour)
 	minuteTicker := time.NewTicker(1 * time.Minute)
+	fiveMinuteTicker := time.NewTicker(5 * time.Minute)
 	for {
 		select {
 		case <-dailyTicker.C:
@@ -37,9 +38,12 @@ func (this *Handler) Start() {
 			this.expiredReadingLogKws()
 		case <-minuteTicker.C:
 			this.expiredMobileCode()
+		case <-fiveMinuteTicker.C:
 			this.blockBadUsers()
 		case <-this.exitCh:
 			dailyTicker.Stop()
+			minuteTicker.Stop()
+			fiveMinuteTicker.Stop()
 			return
 		}
 	}
@@ -107,9 +111,15 @@ FROM (
     WHERE
         rl.point > 0
         AND NOT EXISTS (SELECT 1 FROM tmm.user_settings AS us WHERE us.user_id=rl.user_id AND us.blocked=1 LIMIT 1)
-    GROUP BY rl.user_id HAVING c>=60 AND ex/c>0.8
+    GROUP BY rl.user_id HAVING c>=40 AND ex/c>0.6
 ) AS t
 ON DUPLICATE KEY UPDATE blocked=VALUES(blocked), block_whitelist=VALUES(block_whitelist)`
+	_, _, err = db.Query(query)
+	query = `INSERT INTO tmm.user_settings (user_id, blocked)
+    SELECT DISTINCT d.user_id, 1
+    FROM tmm.devices AS d
+    WHERE d.is_emulator=1 AND NOT EXISTS(SELECT 1 FROM tmm.user_settings AS us WHERE us.user_id=d.user_id AND us.blocked=1 LIMIT 1)
+    ON DUPLICATE KEY UPDATE blocked=VALUES(blocked)`
 	_, _, err = db.Query(query)
 	query = `INSERT INTO tmm.user_settings (user_id, blocked)
 SELECT DISTINCT d.user_id, 1 FROM tmm.devices AS d

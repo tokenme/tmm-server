@@ -146,11 +146,20 @@ WHERE (wx.user_id=%d OR wx.union_id='%s') AND wt.inserted_at >= DATE_SUB(NOW(), 
 		return
 	}
 
-	exceeded, _, err := common.ExceededDailyWithdraw(Service, Config)
+	exceeded, _, _, nextHour, err := common.ExceededDailyWithdraw(cny, Service, Config)
 	if CheckErr(err, c) {
 		return
 	}
-	if CheckWithCode(exceeded, EXCEEDED_DAILY_WITHDRAW_LIMIT_ERROR, "超出系统今日提现额度，请明天再试", c) {
+	exceededMsg := "超出系统今日提现额度，请明天再试"
+	if exceeded && nextHour.Day() <= time.Now().Day() {
+		loc, err := time.LoadLocation("Asia/Shanghai")
+		if CheckErr(err, c) {
+			return
+		}
+		t := nextHour.In(loc).Format(time.Kitchen)
+		exceededMsg = fmt.Sprintf("超出系统当前时段体现额度，请在%s后尝试。", t)
+	}
+	if CheckWithCode(exceeded, EXCEEDED_DAILY_WITHDRAW_LIMIT_ERROR, exceededMsg, c) {
 		_, _, err = db.Query(`INSERT INTO tmm.withdraw_logs (user_id, tmm, cny) VALUES (%d, %s, %s)`, user.Id, req.TMM.String(), cny.String())
 		if err != nil {
 			log.Error(err.Error())
@@ -210,7 +219,11 @@ WHERE (wx.user_id=%d OR wx.union_id='%s') AND wt.inserted_at >= DATE_SUB(NOW(), 
 	if err != nil {
 		log.Error(err.Error())
 	}
-	_, _, err = db.Query(`INSERT INTO tmm.withdraw_txs (tx, user_id, tmm, cny, client_ip) VALUES ('%s', %d, %s, %s, '%s')`, tx.Hash().Hex(), user.Id, req.TMM.String(), cny.String(), ClientIP(c))
+	verified := 0
+	if cny.LessThan(decimal.New(30, 0)) {
+		verified = 1
+	}
+	_, _, err = db.Query(`INSERT INTO tmm.withdraw_txs (tx, user_id, tmm, cny, client_ip, verified) VALUES ('%s', %d, %s, %s, '%s', %d)`, tx.Hash().Hex(), user.Id, req.TMM.String(), cny.String(), ClientIP(c), verified)
 	if CheckErr(err, c) {
 		log.Error(err.Error())
 		return

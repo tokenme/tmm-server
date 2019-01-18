@@ -29,13 +29,13 @@ func DailyWithdrawHandler(c *gin.Context, days int64) {
     SELECT
             DATE(tx.inserted_at) AS record_on, SUM(tx.cny) AS cny
     FROM tmm.withdraw_txs AS tx
-    WHERE tx.inserted_at>='%s'
+    WHERE tx.inserted_at>='%s' AND tx.verified!=-1
     GROUP BY record_on
     UNION ALL
     SELECT
             DATE(pw.inserted_at) AS record_on, SUM(pw.cny) AS cny
     FROM tmm.point_withdraws AS pw
-    WHERE pw.inserted_at >= '%s'
+    WHERE pw.inserted_at >= '%s' AND pw.verified!=-1
     GROUP BY record_on) AS t GROUP BY record_on ORDER BY record_on ASC`, startDate, startDate)
 	if CheckErr(err, c) {
 		return

@@ -13,6 +13,7 @@ func taskRouter(r *gin.Engine) {
 		taskGroup.GET("/shares", handler.ApiSignPassFunc(), task.SharesHandler)
 		taskGroup.GET("/apps", task.AppsHandler)
 		taskGroup.POST("/app/install", handler.ApiSignFunc(), task.AppInstallHandler)
+        taskGroup.POST("/app/certificates/upload", handler.ApiSignFunc(), task.AppCertificatesUploadHandler)
 		taskGroup.GET("/apps/check", task.AppsCheckHandler)
 		taskGroup.GET("/records", task.RecordsHandler)
 		taskGroup.POST("/share/add", handler.ApiSignFunc(), task.ShareAddHandler)
