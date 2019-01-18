@@ -51,9 +51,9 @@ func ExceededDailyWithdraw(cash decimal.Decimal, service *Service, config Config
 	{
 		rows, _, err := db.Query(`SELECT SUM(cny) FROM
 (
-SELECT IFNULL(SUM(cny), 0) AS cny FROM tmm.withdraw_txs AS wt WHERE tx_status!=0 AND inserted_at>=DATE(NOW())
+SELECT IFNULL(SUM(cny), 0) AS cny FROM tmm.withdraw_txs AS wt WHERE tx_status!=0 AND inserted_at>=DATE(NOW()) AND verified!=-1
 UNION ALL
-SELECT IFNULL(SUM(cny), 0) AS cny FROM tmm.point_withdraws AS pw WHERE inserted_at>=DATE(NOW())
+SELECT IFNULL(SUM(cny), 0) AS cny FROM tmm.point_withdraws AS pw WHERE inserted_at>=DATE(NOW()) AND verified!=-1
 ) AS t`)
 		if err != nil {
 			return exceeded, dailyTotal, chunkBudget, nextHour, err
@@ -84,9 +84,9 @@ SELECT IFNULL(SUM(cny), 0) AS cny FROM tmm.point_withdraws AS pw WHERE inserted_
 
 		rows, _, err := db.Query(`SELECT SUM(cny) FROM
 (
-SELECT IFNULL(SUM(cny), 0) AS cny FROM tmm.withdraw_txs AS wt WHERE tx_status!=0 AND inserted_at>='%s'
+SELECT IFNULL(SUM(cny), 0) AS cny FROM tmm.withdraw_txs AS wt WHERE tx_status!=0 AND verified!=-1 AND inserted_at>='%s'
 UNION ALL
-SELECT IFNULL(SUM(cny), 0) AS cny FROM tmm.point_withdraws AS pw WHERE inserted_at>='%s'
+SELECT IFNULL(SUM(cny), 0) AS cny FROM tmm.point_withdraws AS pw WHERE verified!=-1 AND inserted_at>='%s'
 ) AS t`, chunckTime.Format("2006-01-02 15:04:05"), chunckTime.Format("2006-01-02 15:04:05"))
 		if err != nil {
 			return exceeded, dailyTotal, chunkBudget, nextHour, err
