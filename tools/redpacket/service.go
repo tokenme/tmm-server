@@ -108,14 +108,14 @@ func (this *Service) CheckTransferBonus(ctx context.Context) error {
     rb.id AS id, u.wallet_addr AS wallet, rb.tmm AS tmm, u.id AS user_id
 FROM tmm.redpacket_recipients AS rb
 INNER JOIN ucoin.users AS u ON (u.id=rb.user_id)
-WHERE rb.tx=''
+WHERE rb.tx='' AND NOT EXISTS (SELECT 1 FROM tmm.user_settings AS us WHERE us.user_id=u.id AND us.blocked=1 AND us.block_whitelist=0 LIMIT 1)
 UNION
 SELECT
     rb.id AS id, u.wallet_addr AS wallet, rb.tmm AS tmm, u.id AS user_id
 FROM tmm.redpacket_recipients AS rb
 INNER JOIN tmm.wx AS wx ON (wx.union_id=rb.union_id)
 INNER JOIN ucoin.users AS u ON (u.id=wx.user_id)
-WHERE rb.user_id IS NULL AND rb.tx=''
+WHERE rb.user_id IS NULL AND rb.tx='' AND NOT EXISTS (SELECT 1 FROM tmm.user_settings AS us WHERE us.user_id=u.id AND us.blocked=1 AND us.block_whitelist=0 LIMIT 1)
 ORDER BY id ASC LIMIT 1000`
 	rows, _, err := db.Query(query)
 	if err != nil {

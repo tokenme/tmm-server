@@ -8,7 +8,7 @@ import (
 
 func WithdrawRouter(r *gin.Engine) {
 	AccountGroup := r.Group(`admin/withdraw`)
-	AccountGroup.Use(AuthMiddleware.MiddlewareFunc(), verify.VerifyAdminFunc())
+	AccountGroup.Use(AdminAuthMiddleware.MiddlewareFunc(), verify.VerifyAdminFunc())
 	{
 		AccountGroup.GET(`/list`, withdraw.GetWithDrawList)
 		AccountGroup.POST(`/edit`, withdraw.EditWithDrawHandler)

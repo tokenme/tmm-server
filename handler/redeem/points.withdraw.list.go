@@ -41,7 +41,7 @@ func PointsWithdrawListHandler(c *gin.Context) {
 		where = fmt.Sprintf(" AND device_id='%s'", db.Escape(req.DeviceId))
 	}
 	query := `SELECT
-        trade_num, points, cny, inserted_at
+        trade_num, points, cny, inserted_at, verified
         FROM tmm.point_withdraws
         WHERE user_id=%d%s ORDER BY inserted_at DESC LIMIT %d, %d`
 	rows, _, err := db.Query(query, user.Id, where, (req.Page-1)*req.PageSize, req.PageSize)
@@ -50,13 +50,22 @@ func PointsWithdrawListHandler(c *gin.Context) {
 	}
 	var records []common.TMMWithdrawRecord
 	for _, row := range rows {
+		tx := row.Str(0)
 		points, _ := decimal.NewFromString(row.Str(1))
 		cny, _ := decimal.NewFromString(row.Str(2))
+		verified := row.Int(4)
+		var withdrawStatus uint = 2
+		if verified == -1 {
+			withdrawStatus = 0
+		} else if verified == 1 && tx != "" {
+			withdrawStatus = 1
+		}
 		record := common.TMMWithdrawRecord{
-			Tx:         row.Str(0),
-			TMM:        points,
-			Cash:       cny,
-			InsertedAt: row.ForceLocaltime(3).Format(time.RFC3339),
+			Tx:             tx,
+			TMM:            points,
+			Cash:           cny,
+			WithdrawStatus: withdrawStatus,
+			InsertedAt:     row.ForceLocaltime(3).Format(time.RFC3339),
 		}
 		records = append(records, record)
 	}

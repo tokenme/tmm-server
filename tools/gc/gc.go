@@ -28,7 +28,7 @@ func (this *Handler) Start() {
 	log.Info("GC Start")
 	dailyTicker := time.NewTicker(24 * time.Hour)
 	minuteTicker := time.NewTicker(1 * time.Minute)
-	fiveMinuteTicker := time.NewTicker(5 * time.Minute)
+	hourTicker := time.NewTicker(1 * time.Hour)
 	for {
 		select {
 		case <-dailyTicker.C:
@@ -38,12 +38,12 @@ func (this *Handler) Start() {
 			this.expiredReadingLogKws()
 		case <-minuteTicker.C:
 			this.expiredMobileCode()
-		case <-fiveMinuteTicker.C:
+		case <-hourTicker.C:
 			this.blockBadUsers()
 		case <-this.exitCh:
 			dailyTicker.Stop()
 			minuteTicker.Stop()
-			fiveMinuteTicker.Stop()
+			hourTicker.Stop()
 			return
 		}
 	}
@@ -143,7 +143,7 @@ WHERE EXISTS (
         1
     FROM tmm.wx AS wx
     INNER JOIN tmm.user_settings AS us ON (us.user_id=wx.user_id)
-    WHERE us.blocked=1 AND us.block_whitelist=0 AND wx.open_id=ws.open_id AND wx.user_id!=ws.user_id LIMIT 1
+    WHERE us.blocked=1 AND wx.open_id=ws.open_id AND wx.user_id!=ws.user_id LIMIT 1
 ) AND NOT EXISTS (SELECT 1 FROM tmm.user_settings AS us WHERE us.user_id=ws.user_id AND us.blocked=1 LIMIT 1)
 ON DUPLICATE KEY UPDATE blocked=VALUES(blocked)`
 	_, _, err = db.Query(query)

@@ -2,13 +2,13 @@ package router
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/tokenme/tmm/handler/admin/verify"
 	"github.com/tokenme/tmm/handler/admin/ad"
+	"github.com/tokenme/tmm/handler/admin/verify"
 )
 
 func AdRouter(r *gin.Engine) {
 	adGroup := r.Group(`admin/ad`)
-	adGroup.Use(AuthMiddleware.MiddlewareFunc(), verify.VerifyAdminFunc())
+	adGroup.Use(AdminAuthMiddleware.MiddlewareFunc(), verify.VerifyAdminFunc())
 	{
 		adGroup.GET(`/token`, ad.GetUpdateToken)
 		adGroup.POST(`/creative/add`, ad.AddCreativeHandler)

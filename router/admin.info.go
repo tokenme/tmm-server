@@ -2,13 +2,13 @@ package router
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/tokenme/tmm/handler/admin/verify"
 	"github.com/tokenme/tmm/handler/admin/info"
+	"github.com/tokenme/tmm/handler/admin/verify"
 )
 
 func InfoRouter(r *gin.Engine) {
 	InfoGroup := r.Group(`/admin/info`)
-	InfoGroup.Use(AuthMiddleware.MiddlewareFunc(), verify.VerifyAdminFunc())
+	InfoGroup.Use(AdminAuthMiddleware.MiddlewareFunc(), verify.VerifyAdminFunc())
 	{
 		InfoGroup.GET(`/drawcash/data`, info.DrawCashDataHandler)
 		InfoGroup.GET(`/drawcash/info`, info.DrawCashStatsHandler)
@@ -58,8 +58,8 @@ func InfoRouter(r *gin.Engine) {
 		InfoGroup.GET(`/trend/stats`, info.UserFunnelStatsHandler)
 	}
 	{
-		InfoGroup.GET(`/funnel/stats`,info.UserFunnelStatsHandler)
-		InfoGroup.GET(`/funnel/data`,info.GetFunnelDataHandler)
+		InfoGroup.GET(`/funnel/stats`, info.UserFunnelStatsHandler)
+		InfoGroup.GET(`/funnel/data`, info.GetFunnelDataHandler)
 	}
 	{
 		InfoGroup.GET(`/current/drawcash/data`, info.GetWithDrawDataHandler)
