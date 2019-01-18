@@ -16,10 +16,12 @@ func TaskRouter(r *gin.Engine){
 	 	taskR.POST(`/modify`,task.ModifyTaskHandler)
 	 	taskR.GET(`/list`,task.GetTaskListHandler)
 	 	taskR.GET(`/edit`,task.GetTaskHandler)
-		taskR.POST(`/add-app`,app.AddShareAppHandler)
-		taskR.GET(`/list-app`,app.GetShareAppHandler)
-		taskR.POST(`/modify-app`,app.ModifyShareAppHandler)
-		taskR.GET(`/get-app`, app.GetAppTaskHandler)
+	 }
+	 {
+		 taskR.POST(`/add-app`,app.AddShareAppHandler)
+		 taskR.GET(`/list-app`,app.GetShareAppHandler)
+		 taskR.POST(`/modify-app`,app.ModifyShareAppHandler)
+		 taskR.GET(`/get-app`, app.GetAppTaskHandler)
 	 }
 }
 

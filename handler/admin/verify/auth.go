@@ -26,3 +26,15 @@ func VerifyAdminFunc() gin.HandlerFunc {
 		return
 	}
 }
+
+func RecordLoginHandler(c *gin.Context) {
+	userContext, exists := c.Get("USER")
+	if Check(!exists, `Need login`, c) {
+		return
+	}
+	user := userContext.(common.User)
+	if user.IsAdmin() {
+		db := Service.Db
+		db.Query(`INSERT INTO admin_login_logs(user_id,ip) VALUES(%d,'%s')`, user.Id, db.Escape(ClientIP(c)))
+	}
+}
