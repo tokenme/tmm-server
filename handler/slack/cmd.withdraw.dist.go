@@ -26,11 +26,13 @@ FROM (
     SELECT
         tx.user_id, SUM(tx.cny) AS cny
     FROM tmm.withdraw_txs AS tx
+    WHERE tx.verified!=-1
     GROUP BY tx.user_id
     UNION ALL
     SELECT
         pw.user_id, SUM(pw.cny) AS cny
     FROM tmm.point_withdraws AS pw
+    WHERE pw.verified!=-1
     GROUP BY pw.user_id) AS t GROUP BY user_id
 ) AS tmp
 GROUP BY l ORDER BY l`)

@@ -24,6 +24,7 @@ FROM (
     SELECT
         tx.user_id, IF(SUM(cny)=0, 0, FLOOR(SUM(cny)/50) * 50 + 1) AS l
     FROM tmm.point_withdraws AS tx
+    WHERE tx.verified!=-1
     GROUP BY tx.user_id
 ) AS tmp
 GROUP BY l ORDER BY l`)
