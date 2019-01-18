@@ -143,9 +143,11 @@ func main() {
 	defer log.Uninit(log.InitMultiFileAndConsole(logPath, "tmm.log", log.LvERROR))
 
 	raven.SetDSN(config.SentryDSN)
+	log.Warn("Connecting DB")
 	service := common.NewService(config)
 	defer service.Close()
 	service.Db.Reconnect()
+	log.Warn("Connected DB")
 
 	if accelerateTxFlag != "" && accelerateGasFlag > 0 {
 		err := txaccelerate.Accelerate(service, config, accelerateTxFlag, accelerateGasFlag, dataFlag, nonceFlag)
