@@ -15,7 +15,7 @@ type WithDrawStats struct {
 	WithdrawByUC     string `json:"withdraw_by_uc"`
 	UserCountByUC    int    `json:"user_count_by_uc"`
 	MaxDailWithdraw  int64  `json:"max_dail_withdraw"`
-	TotalCny         string    `json:"total_cny"`
+	TotalCny         string `json:"total_cny"`
 	TotalUser        int    `json:"total_user"`
 }
 
@@ -42,7 +42,7 @@ FROM (
 	FROM
 		tmm.point_withdraws
 	WHERE
-		DATE(inserted_at) = '%s'
+		DATE(inserted_at) = '%s' AND verified = 1 
 		
 	UNION ALL
 
@@ -67,7 +67,7 @@ FROM (
 	`
 
 	db := Service.Db
-	rows, _, err := db.Query(query, db.Escape(date), db.Escape(date),db.Escape(date))
+	rows, _, err := db.Query(query, db.Escape(date), db.Escape(date), db.Escape(date))
 	if CheckErr(err, c) {
 		return
 	}

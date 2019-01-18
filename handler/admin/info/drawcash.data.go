@@ -52,6 +52,8 @@ FROM (
             pw.user_id, SUM( pw.cny ) AS cny
         FROM
             tmm.point_withdraws AS pw
+		WHERE 
+			pw.verified = 1
         GROUP BY pw.user_id
 				) AS tmp
 	GROUP BY tmp.user_id

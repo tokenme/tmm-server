@@ -99,7 +99,7 @@ SELECT
 FROM 
 	tmm.point_withdraws 
 WHERE 
-	 inserted_at > '%s' AND inserted_at <  DATE_ADD('%s', INTERVAL 1 DAY)
+	 inserted_at > '%s' AND inserted_at <  DATE_ADD('%s', INTERVAL 1 DAY) AND verified = 1 
 GROUP BY date`, db.Escape(startTime), db.Escape(endTime)))
 
 	case PointPerson:
@@ -114,7 +114,7 @@ SELECT
 FROM 
 	tmm.point_withdraws 
 WHERE 
-	 inserted_at > '%s' AND inserted_at < DATE_ADD('%s', INTERVAL 1 DAY)
+	 inserted_at > '%s' AND inserted_at < DATE_ADD('%s', INTERVAL 1 DAY) AND verified = 1 
 GROUP BY date`, db.Escape(startTime), db.Escape(endTime)))
 	case TotalDrawCash_:
 		title = "提现总金额"
@@ -133,7 +133,7 @@ FROM
 		FROM
 			tmm.point_withdraws
 		WHERE
-	 		inserted_at < '%s' 
+	 		inserted_at < '%s'  AND verified = 1 
 	UNION ALL
 		SELECT
 			SUM(cny)  AS _value
