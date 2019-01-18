@@ -2,6 +2,7 @@ package common
 
 import (
 	"fmt"
+	"github.com/json-iterator/go"
 	"github.com/shopspring/decimal"
 	"github.com/tokenme/tmm/utils"
 )
@@ -71,6 +72,33 @@ type DeviceRequest struct {
 	Platform        Platform `json:"platform,omitempty"`
 }
 
+func UnmarshalDeviceRequest(val []byte) DeviceRequest {
+	return DeviceRequest{
+		Id:              jsoniter.Get(val, "id").ToString(),
+		IsEmulator:      jsoniter.Get(val, "isEmulator").ToBool(),
+		IsJailBrojen:    jsoniter.Get(val, "isJailBrojen").ToBool(),
+		IsTablet:        jsoniter.Get(val, "isTablet").ToBool(),
+		DeviceName:      jsoniter.Get(val, "deviceName").ToString(),
+		Carrier:         jsoniter.Get(val, "carrier").ToString(),
+		Country:         jsoniter.Get(val, "country").ToString(),
+		Timezone:        jsoniter.Get(val, "timezone,omitempty").ToString(),
+		SystemVersion:   jsoniter.Get(val, "systemVersion").ToString(),
+		AppName:         jsoniter.Get(val, "appName").ToString(),
+		AppVersion:      jsoniter.Get(val, "appVersion").ToString(),
+		AppBundleId:     jsoniter.Get(val, "appBundleID").ToString(),
+		AppBuildVersion: jsoniter.Get(val, "appBuildVersion").ToString(),
+		Ip:              jsoniter.Get(val, "ip").ToString(),
+		Language:        jsoniter.Get(val, "language").ToString(),
+		Idfa:            jsoniter.Get(val, "idfa").ToString(),
+		Imei:            jsoniter.Get(val, "imei").ToString(),
+		Mac:             jsoniter.Get(val, "mac").ToString(),
+		OpenIDFA:        jsoniter.Get(val, "openIDFA").ToString(),
+		DeviceType:      jsoniter.Get(val, "deviceType").ToString(),
+		OsVersion:       jsoniter.Get(val, "osVersion").ToString(),
+		Platform:        jsoniter.Get(val, "platform").ToString(),
+	}
+}
+
 func (this DeviceRequest) DeviceId() string {
 	if len(this.Idfa) > 0 {
 		this.Platform = IOS
@@ -104,6 +132,38 @@ type PingRequest struct {
 	Logs   string        `json:"logs,omitempty"`
 	Ts     int64         `json:"duration,omitempty"`
 	Device DeviceRequest `json:"device,omitempty"`
+}
+
+func UnmarshalPingRequest(val []byte) PingRequest {
+	var req PingRequest
+	req.Logs = jsoniter.Get(val, "logs").ToString()
+	req.Ts = jsoniter.Get(val, "duration").ToInt64()
+	j := jsoniter.Get(val, "device")
+	req.Device = DeviceRequest{
+		Id:              j.Get("id").ToString(),
+		IsEmulator:      j.Get("isEmulator").ToBool(),
+		IsJailBrojen:    j.Get("isJailBrojen").ToBool(),
+		IsTablet:        j.Get("isTablet").ToBool(),
+		DeviceName:      j.Get("deviceName").ToString(),
+		Carrier:         j.Get("carrier").ToString(),
+		Country:         j.Get("country").ToString(),
+		Timezone:        j.Get("timezone,omitempty").ToString(),
+		SystemVersion:   j.Get("systemVersion").ToString(),
+		AppName:         j.Get("appName").ToString(),
+		AppVersion:      j.Get("appVersion").ToString(),
+		AppBundleId:     j.Get("appBundleID").ToString(),
+		AppBuildVersion: j.Get("appBuildVersion").ToString(),
+		Ip:              j.Get("ip").ToString(),
+		Language:        j.Get("language").ToString(),
+		Idfa:            j.Get("idfa").ToString(),
+		Imei:            j.Get("imei").ToString(),
+		Mac:             j.Get("mac").ToString(),
+		OpenIDFA:        j.Get("openIDFA").ToString(),
+		DeviceType:      j.Get("deviceType").ToString(),
+		OsVersion:       j.Get("osVersion").ToString(),
+		Platform:        j.Get("platform").ToString(),
+	}
+	return req
 }
 
 type PingCache struct {

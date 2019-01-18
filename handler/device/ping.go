@@ -3,10 +3,10 @@ package device
 import (
 	"fmt"
 	//"github.com/davecgh/go-spew/spew"
+	"encoding/json"
 	"github.com/garyburd/redigo/redis"
 	"github.com/getsentry/raven-go"
 	"github.com/gin-gonic/gin"
-	"github.com/json-iterator/go"
 	"github.com/mkideal/log"
 	"github.com/shopspring/decimal"
 	"github.com/tokenme/probab/dst"
@@ -31,12 +31,9 @@ func PingHandler(c *gin.Context) {
 		return
 	}
 	var pingRequest common.PingRequest
-	err = jsoniter.Unmarshal(decrepted, &pingRequest)
-	if CheckErr(err, c) {
-		log.Error(err.Error())
-		log.Warn("%s", string(decrepted))
-		raven.CaptureError(err, nil)
-		return
+	err = json.Unmarshal(decrepted, &pingRequest)
+	if err != nil {
+		pingRequest = common.UnmarshalPingRequest(decrepted)
 	}
 	if Check(pingRequest.Device.IsEmulator || pingRequest.Device.IsJailBrojen, "invalid request", c) {
 		device := pingRequest.Device
@@ -182,7 +179,7 @@ func validatePingRequest(pingRequest common.PingRequest, deviceId string, appId 
 	cachejs, _ := redis.Bytes(redisConn.Do("GET", pingKey))
 	nowTs := time.Now().Unix()
 	var cacheData common.PingCache
-	jsoniter.Unmarshal(cachejs, &cacheData)
+	json.Unmarshal(cachejs, &cacheData)
 	if nowTs-cacheData.Ts < 50 {
 		log.Warn("Too fast Ping %d, Device:%s, AppId:%s", nowTs-cacheData.Ts, deviceId, appId)
 		return false
@@ -196,7 +193,7 @@ func validatePingRequest(pingRequest common.PingRequest, deviceId string, appId 
 		//log.Warn("PingLog: %s, Device:%s, AppId:%s", logReq, deviceId, appId)
 		//return false
 	}
-	js, err := jsoniter.Marshal(common.PingCache{
+	js, err := json.Marshal(common.PingCache{
 		Ts:   nowTs,
 		Logs: logReq,
 		Cap:  cacheData.Cap + pingRequest.Ts,

@@ -1,8 +1,8 @@
 package device
 
 import (
+	"encoding/json"
 	"fmt"
-	"github.com/json-iterator/go"
 	//"github.com/davecgh/go-spew/spew"
 	"github.com/garyburd/redigo/redis"
 	"github.com/getsentry/raven-go"
@@ -30,10 +30,9 @@ func PointsHandler(c *gin.Context) {
 		return
 	}
 	var deviceRequest common.DeviceRequest
-	err = jsoniter.Unmarshal(decrepted, &deviceRequest)
-	if CheckErr(err, c) {
-		raven.CaptureError(err, nil)
-		return
+	err = json.Unmarshal(decrepted, &deviceRequest)
+	if err != nil {
+		deviceRequest = common.UnmarshalDeviceRequest(decrepted)
 	}
 	/*if Check(deviceRequest.IsEmulator || deviceRequest.IsJailBrojen, "invalid request", c) {
 		return
