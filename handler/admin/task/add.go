@@ -73,8 +73,6 @@ func AddShareHandler(c *gin.Context) {
 	(%s) 
 	VALUES (%s)`
 
-	fieldList = append(fieldList, `creator`)
-	valueList = append(valueList, fmt.Sprintf(`%d`, 0))
 
 	_, res, err := db.Query(query, strings.Join(fieldList, `,`), strings.Join(valueList, `,`))
 	if CheckErr(err, c) {

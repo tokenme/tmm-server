@@ -12,8 +12,7 @@ import (
 )
 
 type SearchOptions struct {
-	Page                 int `form:"page"`
-	Limit                int `form:"limit"`
+	admin.Pages
 	Cid                  int `form:"cid"`
 	Nocid                int `form:"nocid"`
 	Online               int `form:"online_status"`

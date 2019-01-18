@@ -2,6 +2,7 @@ package router
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/tokenme/tmm/handler/admin/verify"
 	"github.com/tokenme/tmm/handler/auth"
 	"github.com/tokenme/tmm/middlewares/jwt"
 	"time"
@@ -41,7 +42,7 @@ var AdminAuthMiddleware = &jwt.GinJWTMiddleware{
 }
 
 func AdminRouter(r *gin.Engine) {
-	r.POST(`/admin/auth/login`, AdminAuthMiddleware.LoginHandler)
+	r.POST(`/admin/auth/login`, AdminAuthMiddleware.LoginHandler,verify.RecordLoginHandler)
 	AricleRouter(r)
 	TaskRouter(r)
 	UserRouter(r)
@@ -49,4 +50,5 @@ func AdminRouter(r *gin.Engine) {
 	AdRouter(r)
 	AccountRouter(r)
 	WithdrawRouter(r)
+	AuditRouter(r)
 }

@@ -53,6 +53,11 @@ type UserStats struct {
 	ShareBlocked
 }
 
+type Pages struct{
+	Page                 int `form:"page"`
+	Limit                int `form:"limit"`
+}
+
 type MakePoint struct {
 	PointByShare             int `json:"point_by_share"`
 	PointByReading           int `json:"point_by_reading"`
