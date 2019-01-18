@@ -182,6 +182,11 @@ func TransferHandler(c *gin.Context) {
 			Status:     2,
 			InsertedAt: time.Now().Format(time.RFC3339),
 		}
+
+		_, _, err = db.Query(`INSERT INTO tmm.transfer_txs (tx, from_addr, to_addr, amount) VALUES ('%s', '%s', '%s', %s)`, db.Escape(receipt.Receipt), db.Escape(user.Wallet), db.Escape(strings.ToLower(req.To)), receipt.Value.String())
+		if err != nil {
+			log.Error(err.Error())
+		}
 		c.JSON(http.StatusOK, receipt)
 	} else {
 		ethBalance, err := eth.BalanceOf(Service.Geth, c, user.Wallet)
