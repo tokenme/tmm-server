@@ -19,6 +19,11 @@ type AppTask struct {
 	Points     string   `json:"points,omitempty"`
 	PointsLeft string   `json:"points_left,omitempty"`
 	Bonus      string   `json:"bonus,omitempty"`
+	UserId     uint64     `json:"user_id,omitempty"`
+	Nick       string   `json:"nick,omitempty"`
+	Mobile     string   `json:"mobile,omitempty"`
+	Avatar     string   `json:"avatar,omitempty"`
+	Blocked    int      `json:"blocked"`
 }
 
 type Request struct {
@@ -55,11 +60,19 @@ SELECT
 	at.bonus,
 	at.download_url,
 	at.points,
-	at.points_left
+	at.points_left,
+	u.id,
+	u.mobile,
+	IFNULL(u.avatar,wx.avatar),
+	IFNULL(wx.nick,u.nickname),
+	IF(us.user_id > 0,IF(us.blocked = us.block_whitelist,0,1),0) AS blocked
 FROM 
 	tmm.device_app_task_certificates AS dc
 INNER JOIN tmm.app_tasks AS at ON (at.id = dc.task_id)
-
+INNER JOIN tmm.devices AS dev ON (dev.id = dc.device_id)
+INNER JOIN ucoin.users AS u ON (u.id = dev.user_id)
+LEFT  JOIN tmm.wx AS wx ON (wx.user_id = dev.user_id)
+LEFT  JOIN tmm.user_settings AS us ON (us.user_id = dev.user_id)
 WHERE dc.status = %d
 ORDER BY dc.inserted_at DESC 
 LIMIT %d OFFSET %d
@@ -85,11 +98,16 @@ LIMIT %d OFFSET %d
 		appTask.Name = row.Str(7)
 		appTask.Icon = row.Str(8)
 		appTask.Details = row.Str(9)
-		appTask.Bonus = fmt.Sprintf("%.2f",row.Float(10))
+		appTask.Bonus = fmt.Sprintf("%.2f", row.Float(10))
 		appTask.DownloadUrl = row.Str(11)
-		appTask.Points = fmt.Sprintf("%.2f",row.Float(12))
-		appTask.PointsLeft = fmt.Sprintf("%.2f",row.Float(13))
-		data = append(data,appTask)
+		appTask.Points = fmt.Sprintf("%.2f", row.Float(12))
+		appTask.PointsLeft = fmt.Sprintf("%.2f", row.Float(13))
+		appTask.UserId = row.Uint64(14)
+		appTask.Mobile = row.Str(15)
+		appTask.Avatar = row.Str(16)
+		appTask.Nick = row.Str(17)
+		appTask.Blocked = row.Int(18)
+		data = append(data, appTask)
 	}
 
 	var total int
