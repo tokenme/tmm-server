@@ -110,6 +110,20 @@ func inviteBonus(user common.User, deviceId string, c *gin.Context) error {
 		return err
 	}
 
+	{ // Check if have been gave bonus
+		rows, _, err := db.Query(`SELECT IFNULL(ib.user_id, 0) FROM tmm.invite_code AS ic LEFT JOIN tmm.invite_bonus AS ib ON (ib.from_user_id=ic.user_id) WHERE ic.user_id=%d AND ic.parent_id>0 AND ib.task_type=0 LIMIT 1`, user.Id)
+		if err != nil {
+			return err
+		}
+		if len(rows) == 0 {
+			return nil
+		}
+		ibUser := rows[0].Uint64(0)
+		if ibUser > 0 {
+			return nil
+		}
+	}
+
 	query := `SELECT
 d.id,
 d.user_id
@@ -176,6 +190,7 @@ FROM tmm.user_levels AS ul
 INNER JOIN (
     SELECT ic.parent_id, COUNT(DISTINCT ic.user_id) AS invites
     FROM tmm.invite_codes AS ic
+    INNER JOIN tmm.wx AS wx ON (wx.user_id=ic.user_id)
     LEFT JOIN tmm.user_settings AS us ON (us.user_id=ic.user_id)
     WHERE ic.parent_id=%d AND (IFNULL(us.blocked, 0)=0 OR us.block_whitelist=1)
 ) AS i ON (i.invites >= ul.invites AND parent_id IS NOT NULL)

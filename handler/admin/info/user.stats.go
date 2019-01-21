@@ -3,8 +3,8 @@ package info
 import (
 	"github.com/gin-gonic/gin"
 	. "github.com/tokenme/tmm/handler"
-	"net/http"
 	"github.com/tokenme/tmm/handler/admin"
+	"net/http"
 )
 
 type UserStats struct {
@@ -16,14 +16,12 @@ type UserStats struct {
 func UserStatsHandler(c *gin.Context) {
 	db := Service.Db
 
-	query := `SELECT 
-	COUNT(*) AS total , 
-	COUNT(IF(created > date_sub(NOW(),interval 7 day),0,NULL)) AS serverDay,
-	COUNT(IF(created > date_sub(NOW(),interval 1 MONTH),0,NULL)) AS _month 
-FROM ucoin.users 
-WHERE NOT EXISTS
-	(SELECT 1 FROM user_settings AS us
-	WHERE us.blocked= 1 AND us.user_id= id  AND us.block_whitelist=0  LIMIT 1)`
+	query := `SELECT
+    COUNT(u.id) AS total,
+    COUNT(IF(created > date_sub(NOW(),interval 7 day),0,NULL)) AS serverDay,
+    COUNT(IF(created > date_sub(NOW(),interval 1 MONTH),0,NULL)) AS _month
+FROM ucoin.users AS u
+WHERE NOT EXISTS (SELECT 1 FROM tmm.user_settings AS us WHERE us.blocked= 1 AND us.user_id= id AND us.block_whitelist=0  LIMIT 1)`
 	rows, _, err := db.Query(query)
 	if CheckErr(err, c) {
 		return

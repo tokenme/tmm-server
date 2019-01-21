@@ -163,6 +163,7 @@ func (this ShareTask) Imp(deviceId string, bonus decimal.Decimal, service *Servi
     ic.parent_id AS inviter_id,
     ic.user_id
     FROM tmm.invite_codes AS ic
+    INNER JOIN tmm.wx AS wx ON (wx.user_id=ic.user_id)
     LEFT JOIN tmm.devices AS d ON (d.user_id=ic.parent_id)
     LEFT JOIN tmm.devices AS d2 ON (d2.user_id=ic.user_id)
     WHERE d2.id='%s' AND ic.parent_id > 0
@@ -174,6 +175,7 @@ func (this ShareTask) Imp(deviceId string, bonus decimal.Decimal, service *Servi
     ic.grand_id AS inviter_id,
     ic.user_id
     FROM tmm.invite_codes AS ic
+    INNER JOIN tmm.wx AS wx ON (wx.user_id=ic.user_id)
     LEFT JOIN tmm.devices AS d ON (d.user_id=ic.grand_id)
     LEFT JOIN tmm.devices AS d2 ON (d2.user_id=ic.user_id)
     WHERE d2.id='%s' AND ic.grand_id > 0
@@ -331,9 +333,10 @@ WHERE
     (SELECT
     d.id,
     d.user_id AS inviter_id,
-	ic.user_id 
+	ic.user_id
     FROM tmm.devices AS d
     LEFT JOIN tmm.invite_codes AS ic ON (ic.parent_id=d.user_id)
+    INNER JOIN tmm.wx AS wx ON (wx.user_id=ic.user_id)
     WHERE ic.user_id = %d AND d.user_id > 0
     AND NOT EXISTS (SELECT 1 FROM tmm.invite_bonus AS ib WHERE ib.user_id=d.user_id AND ib.from_user_id=ic.user_id AND task_type=2 AND task_id=%d LIMIT 1)
     ORDER BY d.lastping_at DESC LIMIT 1) AS t1
@@ -342,9 +345,10 @@ WHERE
     (SELECT
     d.id,
     d.user_id AS inviter_id,
-	ic.user_id 
+	ic.user_id
     FROM tmm.devices AS d
     LEFT JOIN tmm.invite_codes AS ic ON (ic.grand_id=d.user_id)
+    INNER JOIN tmm.wx AS wx ON (wx.user_id=ic.user_id)
     WHERE ic.user_id = %d AND d.user_id > 0
     AND NOT EXISTS (SELECT 1 FROM tmm.invite_bonus AS ib WHERE ib.user_id=d.user_id AND ib.from_user_id=ic.user_id AND task_type=2 AND task_id=%d LIMIT 1)
     ORDER BY d.lastping_at DESC LIMIT 1) AS t2

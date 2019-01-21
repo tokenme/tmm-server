@@ -266,7 +266,7 @@ func getCreatives(cid uint, page uint, platform string) (map[int][]*common.Adgro
 
 func getRedpacket(service *common.Service, config common.Config) (rp common.Redpacket, err error) {
 	db := service.Db
-	rows, _, err := db.Query(`SELECT id, message FROM tmm.redpackets ORDER BY online_status DESC, id ASC LIMIT 1`)
+	rows, _, err := db.Query(`SELECT id, message FROM tmm.redpackets ORDER BY online_status DESC, id DESC LIMIT 1`)
 	if err != nil {
 		return rp, err
 	}
