@@ -46,15 +46,15 @@ SELECT
 	s.viewers,
 	s.online_status,
     s.inserted_at,
-	COUNT(log.user_id) AS users,
+	COUNT(DISTINCT log.user_id) AS users,
 	SUM(log.ts) AS ts,
 	s.updated_at 
 FROM 
 	tmm.share_tasks AS s
 LEFT JOIN 
-	tmm.reading_logs AS log ON log.task_id = s.id
+	tmm.reading_logs AS log ON (log.task_id = s.id)
 LEFT JOIN 
-	share_task_categories AS stc ON  stc.task_id = s.id
+	share_task_categories AS stc ON  (stc.task_id = s.id)
 WHERE
 	 %s 
 GROUP BY 
@@ -62,6 +62,7 @@ GROUP BY
 ORDER BY 
 	%s
 LIMIT %d OFFSET %d `
+
 	sumquery := `
 SELECT 
 	count(1) 
@@ -131,8 +132,10 @@ WHERE
 	}
 
 	var sharelist []*common.ShareTask
+	var taskIdList []string
 	for _, row := range rows {
 		var cidList []int
+		taskIdList = append(taskIdList,row.Str(res.Map(`id`)))
 		points, err := decimal.NewFromString(row.Str(res.Map(`points`)))
 		if CheckErr(err, c) {
 			return
@@ -172,12 +175,32 @@ WHERE
 		sharelist = append(sharelist, share)
 	}
 
+	rows,_,err=db.Query(`SELECT SUM(pv),task_id FROM tmm.share_task_stats WHERE task_id IN (%s) GROUP BY task_id `,strings.Join(taskIdList,`,`))
+	if CheckErr(err,c){
+		return
+	}
+
+	pvMap:= make(map[uint64]int)
+	for _,row:=range rows{
+		pvMap[row.Uint64(1)] = row.Int(0)
+	}
+
+	for _,share:=range sharelist{
+		if value,ok:=pvMap[share.Id];ok{
+			share.Pv = value
+		}
+	}
+
 	rows, _, err = db.Query(sumquery, strings.Join(sumwhere, ` AND `))
 	if CheckErr(err, c) {
 		return
 	}
 
-	count := rows[0].Int(0)
+	var count int
+	if len(rows) > 0 {
+		count = rows[0].Int(0)
+	}
+
 	c.JSON(http.StatusOK, admin.Response{
 		Code:    0,
 		Message: admin.API_OK,
