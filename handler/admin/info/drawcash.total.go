@@ -1,14 +1,14 @@
 package info
 
 import (
-	"github.com/gin-gonic/gin"
-	"net/http"
-	"github.com/tokenme/tmm/handler/admin"
-	. "github.com/tokenme/tmm/handler"
 	"encoding/json"
-	"github.com/garyburd/redigo/redis"
 	"fmt"
+	"github.com/garyburd/redigo/redis"
+	"github.com/gin-gonic/gin"
 	"github.com/shopspring/decimal"
+	. "github.com/tokenme/tmm/handler"
+	"github.com/tokenme/tmm/handler/admin"
+	"net/http"
 )
 
 const totalDrawCashKey = `info-total-draw`
@@ -33,45 +33,50 @@ func TotalDrawCashHandler(c *gin.Context) {
 	}
 	query := `
 SELECT
-    COUNT(*) AS users,
-    SUM(tmp.cny) AS cny,
-	SUM(tmp.total) AS total,
-	SUM(tmp.tmm) AS tmm ,
-	SUM(tmp.points) AS points
-FROM (
-    SELECT 
- user_id, 
- SUM(cny) AS cny,
- SUM(total) AS total,
- SUM(tmm) AS tmm,
- SUM(points) AS points
-FROM(
-		SELECT
-            tx.user_id, 
-			SUM( tx.cny) AS cny,		 
-			SUM(tx.tmm)  AS tmm,		
-			0    AS points,				
-			COUNT(1) AS total 
+    COUNT( * ) AS users,
+    SUM( tmp.cny ) AS cny,
+    SUM( tmp.total ) AS total,
+    SUM( tmp.tmm ) AS tmm,
+    SUM( tmp.points ) AS points
+FROM
+    (
+    SELECT
+        user_id,
+        SUM( cny ) AS cny,
+        SUM( total ) AS total,
+        SUM( tmm ) AS tmm,
+        SUM( points ) AS points
+    FROM
+        (
+        SELECT
+            tx.user_id,
+            SUM( tx.cny ) AS cny,
+            SUM( tx.tmm ) AS tmm,
+            0 AS points,
+            COUNT( 1 ) AS total
         FROM
             tmm.withdraw_txs AS tx
-		WHERE
-			tx.tx_status = 1
+        WHERE
+            tx.tx_status = 1
+            AND tx.verified != - 1
         GROUP BY
             tx.user_id UNION ALL
         SELECT
-            pw.user_id, 
-			SUM( pw.cny ) AS cny,
-			SUM(0)  AS tmm,
-			SUM(pw.points) AS points,
-			COUNT(1) AS total 
+            pw.user_id,
+            SUM( pw.cny ) AS cny,
+            SUM( 0 ) AS tmm,
+            SUM( pw.points ) AS points,
+            COUNT( 1 ) AS total
         FROM
             tmm.point_withdraws AS pw
-		WHERE
-			pw.verified = 1
-        GROUP BY pw.user_id
-				) AS tmp
-		GROUP BY user_id
-) AS tmp
+        WHERE
+            pw.verified != - 1
+        GROUP BY
+            pw.user_id
+        ) AS tmp
+    GROUP BY
+    user_id
+    ) AS tmp
 `
 	rows, res, err := db.Query(query)
 	if CheckErr(err, c) {
