@@ -5,6 +5,7 @@ import (
 	"net/http"
 	. "github.com/tokenme/tmm/handler"
 	"github.com/tokenme/tmm/handler/admin"
+	"github.com/tokenme/tmm/common"
 )
 
 func EditAppTaskHandler(c *gin.Context) {
@@ -17,6 +18,14 @@ func EditAppTaskHandler(c *gin.Context) {
 	db := Service.Db
 	if _, _, err := db.Query(query, task.Status, db.Escape(task.Comment), db.Escape(task.DeviceId), task.Id); CheckErr(err, c) {
 		return
+	}
+	if task.Status == 2 {
+		var user common.User
+		user.Id = task.UserId
+		_, err := task.Install(user, task.DeviceId, Service, Config)
+		if CheckErr(err, c) {
+			return
+		}
 	}
 
 	c.JSON(http.StatusOK, admin.Response{

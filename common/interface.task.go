@@ -324,23 +324,24 @@ WHERE
 		}
 		bonus, _ = decimal.NewFromString(rows[0].Str(0))
 	}
-
 	{ // Give bonus to inviters
 		query := `SELECT t.id, t.inviter_id, t.is_grand FROM
-(SELECT id, user_id, false AS is_grand FROM
+(SELECT id, inviter_id,user_id, false AS is_grand FROM
     (SELECT
     d.id,
-    d.user_id
+    d.user_id AS inviter_id,
+	ic.user_id 
     FROM tmm.devices AS d
     LEFT JOIN tmm.invite_codes AS ic ON (ic.parent_id=d.user_id)
     WHERE ic.user_id = %d AND d.user_id > 0
     AND NOT EXISTS (SELECT 1 FROM tmm.invite_bonus AS ib WHERE ib.user_id=d.user_id AND ib.from_user_id=ic.user_id AND task_type=2 AND task_id=%d LIMIT 1)
     ORDER BY d.lastping_at DESC LIMIT 1) AS t1
     UNION
-    SELECT id, user_id, true AS is_grand FROM
+    SELECT id,inviter_id, user_id, true AS is_grand FROM
     (SELECT
     d.id,
-    d.user_id
+    d.user_id AS inviter_id,
+	ic.user_id 
     FROM tmm.devices AS d
     LEFT JOIN tmm.invite_codes AS ic ON (ic.grand_id=d.user_id)
     WHERE ic.user_id = %d AND d.user_id > 0
