@@ -1,19 +1,13 @@
 package info
 
 import (
+	"fmt"
 	"github.com/gin-gonic/gin"
 	. "github.com/tokenme/tmm/handler"
-	"fmt"
-	"time"
-	"net/http"
 	"github.com/tokenme/tmm/handler/admin"
+	"net/http"
+	"time"
 )
-
-/*
-6. UC提现金额/UC人数趋势图
-7.积分提现金/积分人数趋势图
-8. 提现总金额趋势图
-*/
 
 const (
 	DrawCashByUc = iota
@@ -21,6 +15,8 @@ const (
 	DrawCashByPoint
 	PointPerson
 	TotalDrawCash_
+	DemandCash
+	DemandByUser
 )
 
 func DrawCashTrendHandler(c *gin.Context) {
@@ -29,6 +25,7 @@ func DrawCashTrendHandler(c *gin.Context) {
 	if CheckErr(c.Bind(&req), c) {
 		return
 	}
+
 	startTime := time.Now().AddDate(0, 0, -7).Format(`2006-01-02`)
 	endTime := time.Now().Format(`2006-01-02`)
 	if req.StartTime != "" {
@@ -37,9 +34,10 @@ func DrawCashTrendHandler(c *gin.Context) {
 	if req.EndTime != "" {
 		endTime = req.EndTime
 	}
-	s, _ := time.Parse(`2006-01-02`, startTime)
-	e, _ := time.Parse(`2006-01-02`, endTime)
-	if s.Unix() > e.Unix() {
+
+	tm, _ := time.Parse(`2006-01-02`, startTime)
+	end, _ := time.Parse(`2006-01-02`, endTime)
+	if tm.Unix() > end.Unix() {
 		c.JSON(http.StatusOK, admin.Response{
 			Code:    1,
 			Message: "起始日期不能超过结束日期",
@@ -47,6 +45,7 @@ func DrawCashTrendHandler(c *gin.Context) {
 		})
 		return
 	}
+
 	query := `
 SELECT
 	tmp._value AS _value,
@@ -58,11 +57,13 @@ FROM(
 GROUP BY tmp.date
 ORDER BY tmp.date 
 `
+
 	var data Data
 	var title string
 	seriesName := "金额"
 	yaxisName := "金额"
 	switch req.Type {
+
 	case DrawCashByUc:
 		title = "UC提现金额"
 		query = fmt.Sprintf(query, fmt.Sprintf(`
@@ -74,7 +75,8 @@ FROM
 	tmm.withdraw_txs 
 WHERE 
 	tx_status = 1 AND inserted_at > '%s'  AND inserted_at <  DATE_ADD('%s', INTERVAL 1 DAY)
-GROUP BY date`,  db.Escape(startTime), db.Escape(endTime)))
+GROUP BY date`, db.Escape(startTime), db.Escape(endTime)))
+
 	case UcPerson:
 		title = "UC提现人数"
 		yaxisName = "人数"
@@ -89,6 +91,7 @@ FROM
 WHERE 
 	tx_status = 1 AND inserted_at > '%s'  AND inserted_at <  DATE_ADD('%s', INTERVAL 1 DAY)
 GROUP BY date`, db.Escape(startTime), db.Escape(endTime)))
+
 	case DrawCashByPoint:
 		title = "积分提现金额"
 		query = fmt.Sprintf(query, fmt.Sprintf(`
@@ -116,6 +119,7 @@ FROM
 WHERE 
 	 inserted_at > '%s' AND inserted_at < DATE_ADD('%s', INTERVAL 1 DAY) AND verified = 1 
 GROUP BY date`, db.Escape(startTime), db.Escape(endTime)))
+
 	case TotalDrawCash_:
 		title = "提现总金额"
 		query = fmt.Sprintf(query, fmt.Sprintf(`
@@ -170,26 +174,102 @@ FROM(
 	GROUP BY 
 		date
 ) AS tmp  ON 1 = 1
-`, 			db.Escape(endTime),
+`, db.Escape(endTime),
 			db.Escape(startTime), db.Escape(startTime),
 			db.Escape(startTime), db.Escape(endTime),
 			db.Escape(startTime), db.Escape(endTime)))
+
+	case DemandCash:
+		title = "提现总需求"
+		query = fmt.Sprintf(query, fmt.Sprintf(`
+SELECT 
+	SUM(tmp.cny) AS _value,
+	tmp.date AS date,
+	0 AS cash
+FROM(
+	SELECT 
+		SUM(cny) AS cny ,
+		DATE(inserted_at) AS date 
+	FROM 
+		tmm.withdraw_txs 
+	WHERE tx_status = 1 AND  inserted_at > '%s' AND inserted_at <  DATE_ADD('%s', INTERVAL 1 DAY)
+	GROUP BY date 
+
+		UNION ALL 
+
+	SELECT 
+		SUM(cny) AS cny,
+		DATE(inserted_at) AS date 
+	FROM 	
+		tmm.point_withdraws 
+	WHERE verified = 1 AND  inserted_at > '%s' AND inserted_at <  DATE_ADD('%s', INTERVAL 1 DAY)
+	GROUP BY date
+
+		UNION ALL
+
+	SELECT 
+		SUM(cny) AS cny,
+		DATE(inserted_at) AS date
+	FROM 
+		tmm.withdraw_logs 
+	WHERE  inserted_at > '%s' AND inserted_at <  DATE_ADD('%s', INTERVAL 1 DAY)
+	GROUP BY date 
+) AS tmp 
+GROUP BY tmp.date `,
+			db.Escape(startTime), db.Escape(endTime), db.Escape(startTime),
+			db.Escape(endTime), db.Escape(startTime), db.Escape(endTime)))
+
+	case DemandByUser:
+		title = "提现需求总人数"
+		yaxisName = "人数"
+		seriesName = "人数"
+		query = fmt.Sprintf(query, fmt.Sprintf(`
+ SELECT 
+	COUNT(distinct tmp.user_id) AS _value,
+	tmp.date AS date,
+	0 AS cash
+FROM(
+	SELECT 
+		user_id,
+		DATE(inserted_at) AS date 
+	FROM 
+		tmm.withdraw_txs 
+	WHERE tx_status = 1 AND  inserted_at > '%s' AND inserted_at <  DATE_ADD('%s', INTERVAL 1 DAY)
+		UNION ALL 
+	SELECT 
+		user_id,
+		DATE(inserted_at) AS date 
+	FROM 	
+		tmm.point_withdraws 
+	WHERE verified = 1 AND  inserted_at > '%s' AND inserted_at <  DATE_ADD('%s', INTERVAL 1 DAY)
+		UNION ALL
+	SELECT 
+		user_id ,
+		DATE(inserted_at) AS date
+	FROM 
+		tmm.withdraw_logs 
+	WHERE  inserted_at > '%s' AND inserted_at <  DATE_ADD('%s', INTERVAL 1 DAY)
+) AS tmp 
+GROUP BY tmp.date `,
+			db.Escape(startTime), db.Escape(endTime), db.Escape(startTime),
+			db.Escape(endTime), db.Escape(startTime), db.Escape(endTime)))
 	}
+
 	rows, _, err := db.Query(query)
 	if CheckErr(err, c) {
 		return
 	}
-	var indexName, valueList []string
+
 	format := "%.2f"
-	if req.Type == UcPerson || req.Type == PointPerson {
+	if req.Type == UcPerson || req.Type == PointPerson || req.Type == DemandByUser{
 		format = "%.0f"
 	}
-	tm, _ := time.Parse(`2006-01-02`, startTime)
-	end, _ := time.Parse(`2006-01-02`, endTime)
+
 	var cash float64
-	if req.Type == TotalDrawCash_{
+	if req.Type == TotalDrawCash_ {
 		cash = rows[0].Float(2)
 	}
+
 	dataMap := make(map[string]float64)
 	for _, row := range rows {
 		if req.Type == TotalDrawCash_ {
@@ -199,9 +279,12 @@ FROM(
 			dataMap[row.Str(1)] = row.Float(0)
 		}
 	}
-	if req.Type == TotalDrawCash_{
+
+	if req.Type == TotalDrawCash_ {
 		cash = rows[0].Float(2)
 	}
+
+	var indexName, valueList []string
 	for {
 		if tm.Equal(end) {
 			if value, ok := dataMap[tm.Format(`2006-01-02`)]; ok {
@@ -221,7 +304,7 @@ FROM(
 			indexName = append(indexName, tm.Format(`2006-01-02`))
 			valueList = append(valueList, fmt.Sprintf(format, value))
 			cash = value
-			tm = tm.AddDate(0,0,1)
+			tm = tm.AddDate(0, 0, 1)
 		} else {
 			indexName = append(indexName, tm.Format(`2006-01-02`))
 			if req.Type == TotalDrawCash_ {
@@ -229,9 +312,10 @@ FROM(
 			} else {
 				valueList = append(valueList, fmt.Sprintf(format, 0.0))
 			}
-			tm = tm.AddDate(0,0,1)
+			tm = tm.AddDate(0, 0, 1)
 		}
 	}
+
 	data.Title.Text = title
 	data.Xaxis.Data = indexName
 	data.Xaxis.Name = "日期"
