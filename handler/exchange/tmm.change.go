@@ -47,10 +47,9 @@ func TMMChangeHandler(c *gin.Context) {
 		return
 	}
 
-	if req.Direction == -1 {
-		c.JSON(http.StatusOK, gin.H{"code": 400, "msg": "系统更新中，请稍候再试"})
-		return
-	}
+    if CheckWithCode(req.Direction == -1, TOKEN_CHANGE_POINTS_INVALID_ERROR, "token change to points is invalid", c) {
+        return
+    }
 
 	redisConn := Service.Redis.Master.Get()
 	defer redisConn.Close()

@@ -73,6 +73,7 @@ const (
 	UNACTIVATED_USER_ERROR               ErrorCode = 502
 	NOT_ENOUGH_TOKEN_ERROR               ErrorCode = 600
 	NOT_ENOUGH_TOKEN_IN_POOL_ERROR       ErrorCode = 602
+    TOKEN_CHANGE_POINTS_INVALID_ERROR    ErrorCode = 603
 	DAILY_BONUS_COMMITTED_ERROR          ErrorCode = 601
 	NOT_ENOUGH_POINTS_ERROR              ErrorCode = 700
 	INVALID_MIN_POINTS_ERROR             ErrorCode = 701
