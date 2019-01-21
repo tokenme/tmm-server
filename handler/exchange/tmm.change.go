@@ -47,8 +47,7 @@ func TMMChangeHandler(c *gin.Context) {
 		return
 	}
 
-	if req.Direction == -1 {
-		c.JSON(http.StatusOK, gin.H{"code": 400, "msg": "系统更新中，请稍候再试"})
+	if CheckWithCode(req.Direction == -1, FEATURE_NOT_AVAILABLE_ERROR, "feature not available", c) {
 		return
 	}
 
