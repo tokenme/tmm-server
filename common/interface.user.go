@@ -114,6 +114,10 @@ func (this User) Reset(ctx context.Context, service *Service, config Config, loc
 	if err != nil {
 		return "", err
 	}
+	_, _, err = db.Query(`UPDATE tmm.user_settings SET level=0 WHERE user_id=%d`, this.Id)
+	if err != nil {
+		return "", err
+	}
 	agentPrivKey, err := commonutils.AddressDecrypt(config.TMMAgentWallet.Data, config.TMMAgentWallet.Salt, config.TMMAgentWallet.Key)
 	if err != nil {
 		return "", err

@@ -100,80 +100,9 @@ func UpdateHandler(c *gin.Context) {
 		if CheckWithCode(ret.AffectedRows() == 0, INVALID_INVITE_CODE_ERROR, "invalid invite code", c) {
 			return
 		}
-		query := `SELECT
-d.id,
-d.user_id
-FROM tmm.devices AS d
-LEFT JOIN tmm.invite_codes AS ic ON (ic.parent_id=d.user_id)
-LEFT JOIN tmm.user_settings AS us ON (us.user_id=d.user_id)
-WHERE ic.user_id = %d AND (IFNULL(us.blocked, 0)=0 OR us.block_whitelist=1)
-ORDER BY d.lastping_at DESC LIMIT 1`
-		rows, _, err := db.Query(query, user.Id)
-		if CheckErr(err, c) {
-			raven.CaptureError(err, nil)
-			return
-		}
-		if CheckWithCode(len(rows) == 0, NOTFOUND_ERROR, "not found", c) {
-			return
-		}
-		/*
-			inviterCashBonus := decimal.New(int64(Config.InviterCashBonus), 0)
-			pointPrice := common.GetPointPrice(Service, Config)
-			forexRate := forex.Rate(Service, "USD", "CNY")
-			pointCnyPrice := pointPrice.Mul(forexRate)
-				inviterPointBonus := inviterCashBonus.Div(pointCnyPrice)
-				maxInviterBonus := decimal.New(Config.MaxInviteBonus, 0)
-				if inviterPointBonus.GreaterThanOrEqual(maxInviterBonus) {
-					inviterPointBonus = maxInviterBonus
-				}
-		*/
-		inviterPointBonus := decimal.New(int64(Config.InviterBonus), 0)
 
-		inviterDeviceId := rows[0].Str(0)
-		inviterUserId := rows[0].Uint64(1)
-		pointsPerTs, _ := common.GetPointsPerTs(Service)
-		inviterTs := inviterPointBonus.Div(pointsPerTs)
-		forexRate := forex.Rate(Service, "USD", "CNY")
-		tx, tmm, err := _transferToken(user.Id, forexRate, c)
+		err = _inviteBonus(c, user.Id, Service)
 		if CheckErr(err, c) {
-			log.Error("Bonus Transfer failed")
-			raven.CaptureError(err, nil)
-			return
-		}
-		//log.Warn("Inviter bonus: %s, inviter:%d", inviterPointBonus.String(), inviterUserId)
-		_, _, err = db.Query(`UPDATE tmm.devices AS d2 SET d2.points = d2.points + %s, d2.total_ts = d2.total_ts + %d WHERE d2.id='%s'`, inviterPointBonus.String(), inviterTs.IntPart(), db.Escape(inviterDeviceId))
-		if CheckErr(err, c) {
-			log.Error(err.Error())
-			raven.CaptureError(err, nil)
-			return
-		}
-		_, _, err = db.Query(`INSERT INTO tmm.invite_bonus (user_id, from_user_id, bonus, tmm, tmm_tx) VALUES (%d, %d, 0, %s, '%s'), (%d, %d, %s, 0, '')`, user.Id, user.Id, tmm.String(), db.Escape(tx), inviterUserId, user.Id, inviterPointBonus.String())
-		if err != nil {
-			log.Error(err.Error())
-			raven.CaptureError(err, nil)
-		}
-		_, _, err = db.Query(`UPDATE tmm.invite_codes AS t1, tmm.invite_codes AS t2 SET t1.grand_id=t2.parent_id WHERE t2.user_id=t1.parent_id AND t2.parent_id!=t1.user_id AND t2.user_id=%d`, user.Id)
-		if CheckErr(err, c) {
-			log.Error(err.Error())
-			raven.CaptureError(err, nil)
-			return
-		}
-		_, _, err = db.Query(`INSERT INTO user_settings (user_id, level)
-(
-SELECT
-i.parent_id, ul.id
-FROM tmm.user_levels AS ul
-INNER JOIN (
-    SELECT ic.parent_id, COUNT(DISTINCT ic.user_id) AS invites
-    FROM tmm.invite_codes AS ic
-    LEFT JOIN tmm.user_settings AS us ON (us.user_id=ic.user_id)
-    WHERE ic.parent_id=%d AND (IFNULL(us.blocked, 0)=0 OR us.block_whitelist=1)
-) AS i ON (i.invites >= ul.invites AND parent_id IS NOT NULL)
-ORDER BY ul.id DESC LIMIT 1
-) ON DUPLICATE KEY UPDATE level=VALUES(level)`, inviterUserId)
-		if CheckErr(err, c) {
-			log.Error(err.Error())
-			raven.CaptureError(err, nil)
 			return
 		}
 	} else if req.WxUnionId != "" {
@@ -199,6 +128,11 @@ ORDER BY ul.id DESC LIMIT 1
 			raven.CaptureError(err, nil)
 			return
 		}
+
+		err = _inviteBonus(c, user.Id, Service)
+		if CheckErr(err, c) {
+			return
+		}
 	}
 	if len(updateFields) == 0 {
 		c.JSON(http.StatusOK, APIResponse{Msg: "ok"})
@@ -212,6 +146,97 @@ ORDER BY ul.id DESC LIMIT 1
 		return
 	}
 	c.JSON(http.StatusOK, APIResponse{Msg: "ok"})
+}
+
+func _inviteBonus(c *gin.Context, userId uint64, service *common.Service) error {
+	db := service.Db
+	{ // Check if have been gave bonus
+		rows, _, err := db.Query(`SELECT IFNULL(ib.user_id, 0) FROM tmm.invite_codes AS ic INNER JOIN tmm.wx ON (wx.user_id=ic.user_id) LEFT JOIN tmm.invite_bonus AS ib ON (ib.from_user_id=ic.user_id) WHERE ic.user_id=%d AND ic.parent_id>0 AND ib.task_type=0 LIMIT 1`, userId)
+		if err != nil {
+			return err
+		}
+		if len(rows) == 0 {
+			return nil
+		}
+		ibUser := rows[0].Uint64(0)
+		if ibUser > 0 {
+			return nil
+		}
+	}
+
+	query := `SELECT
+d.id,
+d.user_id
+FROM tmm.devices AS d
+LEFT JOIN tmm.invite_codes AS ic ON (ic.parent_id=d.user_id)
+LEFT JOIN tmm.user_settings AS us ON (us.user_id=d.user_id)
+WHERE ic.user_id = %d AND (IFNULL(us.blocked, 0)=0 OR us.block_whitelist=1)
+ORDER BY d.lastping_at DESC LIMIT 1`
+	rows, _, err := db.Query(query, userId)
+	if err != nil {
+		raven.CaptureError(err, nil)
+		return err
+	}
+	if len(rows) == 0 {
+		return errors.New("not found")
+	}
+	inviterPointBonus := decimal.New(int64(Config.InviterBonus), 0)
+	inviterDeviceId := rows[0].Str(0)
+	inviterUserId := rows[0].Uint64(1)
+	pointsPerTs, _ := common.GetPointsPerTs(Service)
+	inviterTs := inviterPointBonus.Div(pointsPerTs)
+	forexRate := forex.Rate(Service, "USD", "CNY")
+	tx, tmm, err := _transferToken(userId, forexRate, c)
+	if err != nil {
+		log.Error("Bonus Transfer failed")
+		raven.CaptureError(err, nil)
+		return err
+	}
+	//log.Warn("Inviter bonus: %s, inviter:%d", inviterPointBonus.String(), inviterUserId)
+	{ // UPDATE inviter bonus
+		_, _, err := db.Query(`UPDATE tmm.devices AS d2 SET d2.points = d2.points + %s, d2.total_ts = d2.total_ts + %d WHERE d2.id='%s'`, inviterPointBonus.String(), inviterTs.IntPart(), db.Escape(inviterDeviceId))
+		if err != nil {
+			log.Error(err.Error())
+			raven.CaptureError(err, nil)
+			return err
+		}
+		_, _, err = db.Query(`INSERT INTO tmm.invite_bonus (user_id, from_user_id, bonus, tmm, tmm_tx) VALUES (%d, %d, 0, %s, '%s'), (%d, %d, %s, 0, '')`, userId, userId, tmm.String(), db.Escape(tx), inviterUserId, userId, inviterPointBonus.String())
+		if err != nil {
+			log.Error(err.Error())
+			raven.CaptureError(err, nil)
+		}
+	}
+	{ // UPDATE user grand id
+		_, _, err := db.Query(`UPDATE tmm.invite_codes AS t1, tmm.invite_codes AS t2 SET t1.grand_id=t2.parent_id WHERE t2.user_id=t1.parent_id AND t2.parent_id!=t1.user_id AND t2.user_id=%d`, userId)
+		if err != nil {
+			log.Error(err.Error())
+			raven.CaptureError(err, nil)
+			return err
+		}
+	}
+
+	{ // UPDATE inviter credit level
+		_, _, err := db.Query(`INSERT INTO user_settings (user_id, level)
+(
+SELECT
+i.parent_id, ul.id
+FROM tmm.user_levels AS ul
+INNER JOIN (
+    SELECT ic.parent_id, COUNT(DISTINCT ic.user_id) AS invites
+    FROM tmm.invite_codes AS ic
+    INNER JOIN tmm.wx AS wx ON (wx.user_id=ic.user_id)
+    LEFT JOIN tmm.user_settings AS us ON (us.user_id=ic.user_id)
+    WHERE ic.parent_id=%d AND (IFNULL(us.blocked, 0)=0 OR us.block_whitelist=1)
+) AS i ON (i.invites >= ul.invites AND parent_id IS NOT NULL)
+ORDER BY ul.id DESC LIMIT 1
+) ON DUPLICATE KEY UPDATE level=VALUES(level)`, inviterUserId)
+		if CheckErr(err, c) {
+			log.Error(err.Error())
+			raven.CaptureError(err, nil)
+			return err
+		}
+	}
+	return nil
 }
 
 func _transferToken(userId uint64, forexRate decimal.Decimal, c *gin.Context) (receipt string, tokenAmount decimal.Decimal, err error) {

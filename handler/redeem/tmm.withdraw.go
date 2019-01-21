@@ -220,7 +220,7 @@ WHERE (wx.user_id=%d OR wx.union_id='%s') AND wt.inserted_at >= DATE_SUB(NOW(), 
 		log.Error(err.Error())
 	}
 	verified := 0
-	if cny.LessThan(decimal.New(30, 0)) {
+	if cny.LessThan(decimal.New(5, 0)) {
 		verified = 1
 	}
 	_, _, err = db.Query(`INSERT INTO tmm.withdraw_txs (tx, user_id, tmm, cny, client_ip, verified) VALUES ('%s', %d, %s, %s, '%s', %d)`, tx.Hash().Hex(), user.Id, req.TMM.String(), cny.String(), ClientIP(c), verified)

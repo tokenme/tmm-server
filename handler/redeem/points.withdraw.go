@@ -168,7 +168,7 @@ WHERE (wx.user_id=%d OR wx.union_id='%s') AND wt.inserted_at >= DATE_SUB(NOW(), 
 		log.Error(err.Error())
 	}
 	verified := 0
-	if cny.LessThan(decimal.New(30, 0)) {
+	if cny.LessThan(decimal.New(5, 0)) {
 		verified = 1
 	}
 	_, _, err = db.Query(`INSERT INTO tmm.point_withdraws (user_id, device_id, points, cny, client_ip, verified) VALUES (%d, '%s', %s, %s, '%s', %d)`, user.Id, db.Escape(req.DeviceId), req.Points.String(), cny.String(), ClientIP(c), verified)
