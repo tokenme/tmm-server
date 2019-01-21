@@ -46,7 +46,7 @@ type SearchOptions struct {
 	Id                      int          `form:"id"`
 	Mobile                  string       `form:"mobile"`
 	WxNick                  string       `form:"wx_nick"`
-	Abnormal                bool         `form:"abnormal"`
+	//Abnormal                bool         `form:"abnormal"`
 	Page                    int          `form:"page"`
 	Limit                    int          `form:"limit"`
 
@@ -85,8 +85,7 @@ SELECT
 	ex.tmm_to_point AS tmm_to_point,
 	IFNULL(inv.online,0) AS online,
 	IFNULL(inv.offline,0) AS offline,
-	IF(us_set.user_id > 0,IF(us_set.blocked = us_set.block_whitelist,0,1),0) AS blocked,
-	dev_point.points AS current_points
+	IF(us_set.user_id > 0,IF(us_set.blocked = us_set.block_whitelist,0,1),0) AS blocked
 FROM 
 	ucoin.users AS u
 LEFT JOIN tmm.wx AS wx ON (wx.user_id = u.id)
@@ -130,14 +129,7 @@ LEFT JOIN tmm.devices AS dev ON (dev.user_id = inv.user_id)
 GROUP BY  id
 ) AS tmp 
 GROUP BY tmp.id
-) AS inv ON (inv.id = u.id)
-LEFT JOIN (
-SELECT 
-	SUM(points) AS points,
-	user_id AS user_id 
-FROM tmm.devices 
-GROUP BY user_id 
-) AS dev_point ON (dev_point.user_id = u.id)  
+) AS inv ON (inv.id = u.id) 
 %s 
 WHERE 
     1 = 1 %s
@@ -467,9 +459,9 @@ LEFT JOIN (
 	if search.WxNick != "" {
 		where = append(where, fmt.Sprintf(`  AND wx.nick LIKE '%s' `, search.WxNick+"%"))
 	}
-	if search.Abnormal {
-		where = append(where, fmt.Sprintf(`  AND dev_point.points > point.point+1000 `))
-	}
+	//if search.Abnormal {
+	//	where = append(where, fmt.Sprintf(`  AND dev_point.points > point.point+1000 `))
+	//}
 
 	rows, res, err := db.Query(query, strings.Join(when, " "),
 		strings.Join(leftJoin, " "), strings.Join(where, " "), search.Limit, offset)
@@ -494,7 +486,7 @@ LEFT JOIN (
 			OffLineBFNumber:      row.Int(res.Map(`offline`)),
 			ExchangePointToUcoin: pointToUcoin.Ceil(),
 		}
-		user.CurrentPoint = fmt.Sprintf("%.0f", row.Float(res.Map(`current_points`)))
+		//user.CurrentPoint = fmt.Sprintf("%.0f", row.Float(res.Map(`current_points`)))
 		user.Point = point.StringFixed(0)
 		user.DrawCash = fmt.Sprintf("%.2f", row.Float(res.Map(`cny`)))
 		user.Blocked = row.Int(res.Map(`blocked`))

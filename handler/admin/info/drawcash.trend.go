@@ -15,8 +15,8 @@ const (
 	DrawCashByPoint
 	PointPerson
 	TotalDrawCash_
-	DemandCash
-	DemandByUser
+	//DemandCash
+	//DemandByUser
 )
 
 func DrawCashTrendHandler(c *gin.Context) {
@@ -178,82 +178,82 @@ FROM(
 			db.Escape(startTime), db.Escape(startTime),
 			db.Escape(startTime), db.Escape(endTime),
 			db.Escape(startTime), db.Escape(endTime)))
-
-	case DemandCash:
-		title = "提现总需求"
-		query = fmt.Sprintf(query, fmt.Sprintf(`
-SELECT 
-	SUM(tmp.cny) AS _value,
-	tmp.date AS date,
-	0 AS cash
-FROM(
-	SELECT 
-		SUM(cny) AS cny ,
-		DATE(inserted_at) AS date 
-	FROM 
-		tmm.withdraw_txs 
-	WHERE tx_status = 1 AND  inserted_at > '%s' AND inserted_at <  DATE_ADD('%s', INTERVAL 1 DAY)
-	GROUP BY date 
-
-		UNION ALL 
-
-	SELECT 
-		SUM(cny) AS cny,
-		DATE(inserted_at) AS date 
-	FROM 	
-		tmm.point_withdraws 
-	WHERE verified = 1 AND  inserted_at > '%s' AND inserted_at <  DATE_ADD('%s', INTERVAL 1 DAY)
-	GROUP BY date
-
-		UNION ALL
-
-	SELECT 
-		SUM(cny) AS cny,
-		DATE(inserted_at) AS date
-	FROM 
-		tmm.withdraw_logs 
-	WHERE  inserted_at > '%s' AND inserted_at <  DATE_ADD('%s', INTERVAL 1 DAY)
-	GROUP BY date 
-) AS tmp 
-GROUP BY tmp.date `,
-			db.Escape(startTime), db.Escape(endTime), db.Escape(startTime),
-			db.Escape(endTime), db.Escape(startTime), db.Escape(endTime)))
-
-	case DemandByUser:
-		title = "提现需求总人数"
-		yaxisName = "人数"
-		seriesName = "人数"
-		query = fmt.Sprintf(query, fmt.Sprintf(`
- SELECT 
-	COUNT(distinct tmp.user_id) AS _value,
-	tmp.date AS date,
-	0 AS cash
-FROM(
-	SELECT 
-		user_id,
-		DATE(inserted_at) AS date 
-	FROM 
-		tmm.withdraw_txs 
-	WHERE tx_status = 1 AND  inserted_at > '%s' AND inserted_at <  DATE_ADD('%s', INTERVAL 1 DAY)
-		UNION ALL 
-	SELECT 
-		user_id,
-		DATE(inserted_at) AS date 
-	FROM 	
-		tmm.point_withdraws 
-	WHERE verified = 1 AND  inserted_at > '%s' AND inserted_at <  DATE_ADD('%s', INTERVAL 1 DAY)
-		UNION ALL
-	SELECT 
-		user_id ,
-		DATE(inserted_at) AS date
-	FROM 
-		tmm.withdraw_logs 
-	WHERE  inserted_at > '%s' AND inserted_at <  DATE_ADD('%s', INTERVAL 1 DAY)
-) AS tmp 
-GROUP BY tmp.date `,
-			db.Escape(startTime), db.Escape(endTime), db.Escape(startTime),
-			db.Escape(endTime), db.Escape(startTime), db.Escape(endTime)))
 	}
+	//	case DemandCash:
+	//		title = "提现总需求"
+	//		query = fmt.Sprintf(query, fmt.Sprintf(`
+	//SELECT
+	//	SUM(tmp.cny) AS _value,
+	//	tmp.date AS date,
+	//	0 AS cash
+	//FROM(
+	//	SELECT
+	//		SUM(cny) AS cny ,
+	//		DATE(inserted_at) AS date
+	//	FROM
+	//		tmm.withdraw_txs
+	//	WHERE tx_status = 1 AND  inserted_at > '%s' AND inserted_at <  DATE_ADD('%s', INTERVAL 1 DAY)
+	//	GROUP BY date
+	//
+	//		UNION ALL
+	//
+	//	SELECT
+	//		SUM(cny) AS cny,
+	//		DATE(inserted_at) AS date
+	//	FROM
+	//		tmm.point_withdraws
+	//	WHERE verified = 1 AND  inserted_at > '%s' AND inserted_at <  DATE_ADD('%s', INTERVAL 1 DAY)
+	//	GROUP BY date
+	//
+	//		UNION ALL
+	//
+	//	SELECT
+	//		SUM(cny) AS cny,
+	//		DATE(inserted_at) AS date
+	//	FROM
+	//		tmm.withdraw_logs
+	//	WHERE  inserted_at > '%s' AND inserted_at <  DATE_ADD('%s', INTERVAL 1 DAY)
+	//	GROUP BY date
+	//) AS tmp
+	//GROUP BY tmp.date `,
+	//			db.Escape(startTime), db.Escape(endTime), db.Escape(startTime),
+	//			db.Escape(endTime), db.Escape(startTime), db.Escape(endTime)))
+	//
+	//	case DemandByUser:
+	//		title = "提现需求总人数"
+	//		yaxisName = "人数"
+	//		seriesName = "人数"
+	//		query = fmt.Sprintf(query, fmt.Sprintf(`
+	// SELECT
+	//	COUNT(distinct tmp.user_id) AS _value,
+	//	tmp.date AS date,
+	//	0 AS cash
+	//FROM(
+	//	SELECT
+	//		user_id,
+	//		DATE(inserted_at) AS date
+	//	FROM
+	//		tmm.withdraw_txs
+	//	WHERE tx_status = 1 AND  inserted_at > '%s' AND inserted_at <  DATE_ADD('%s', INTERVAL 1 DAY)
+	//		UNION ALL
+	//	SELECT
+	//		user_id,
+	//		DATE(inserted_at) AS date
+	//	FROM
+	//		tmm.point_withdraws
+	//	WHERE verified = 1 AND  inserted_at > '%s' AND inserted_at <  DATE_ADD('%s', INTERVAL 1 DAY)
+	//		UNION ALL
+	//	SELECT
+	//		user_id ,
+	//		DATE(inserted_at) AS date
+	//	FROM
+	//		tmm.withdraw_logs
+	//	WHERE  inserted_at > '%s' AND inserted_at <  DATE_ADD('%s', INTERVAL 1 DAY)
+	//) AS tmp
+	//GROUP BY tmp.date `,
+	//			db.Escape(startTime), db.Escape(endTime), db.Escape(startTime),
+	//			db.Escape(endTime), db.Escape(startTime), db.Escape(endTime)))
+	//	}
 
 	rows, _, err := db.Query(query)
 	if CheckErr(err, c) {
@@ -261,7 +261,7 @@ GROUP BY tmp.date `,
 	}
 
 	format := "%.2f"
-	if req.Type == UcPerson || req.Type == PointPerson || req.Type == DemandByUser{
+	if req.Type == UcPerson || req.Type == PointPerson {
 		format = "%.0f"
 	}
 

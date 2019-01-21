@@ -24,13 +24,13 @@ func EditAccountHandler(c *gin.Context) {
 	VALUES(%d,%d,%d,'%s')  
     ON DUPLICATE KEY UPDATE blocked=VALUES(blocked),block_whitelist=VALUES(block_whitelist),comments=VALUES(comments)`
 	var blockWhitelist int
-	var resetPoint string
+	//var resetPoint string
 	if !req.Ban {
 		blockWhitelist = 1
-		resetPoint = `
-		UPDATE tmm.devices SET points = 0
-		WHERE user_id = %d 
-		`
+		//resetPoint = `
+		//UPDATE tmm.devices SET points = 0
+		//WHERE user_id = %d
+		//`
 	}
 
 	db := Service.Db
@@ -38,15 +38,15 @@ func EditAccountHandler(c *gin.Context) {
 		return
 	}
 
-	if resetPoint != "" {
-		rows, _, err := db.Query(`SELECT 1 FROM tmm.devices WHERE user_id = %d`, req.Id)
-		if CheckErr(err, c) {
-			return
-		}
-		if len(rows) > 0 && len(rows) < 5 {
-			db.Query(resetPoint, req.Id)
-		}
-	}
+	//if resetPoint != "" {
+	//	rows, _, err := db.Query(`SELECT 1 FROM tmm.devices WHERE user_id = %d`, req.Id)
+	//	if CheckErr(err, c) {
+	//		return
+	//	}
+	//	if len(rows) > 0 && len(rows) < 5 {
+	//		db.Query(resetPoint, req.Id)
+	//	}
+	//}
 
 	c.JSON(http.StatusOK, admin.Response{
 		Code:    0,
