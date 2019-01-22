@@ -13,7 +13,6 @@ func EditCreativeHanlder(c *gin.Context) {
 	var req EditRequest
 	db := Service.Db
 	if CheckErr(c.Bind(&req), c) {
-		fmt.Println(req)
 		return
 	}
 	if Check(req.Id == 0, `Invalid param`, c) {

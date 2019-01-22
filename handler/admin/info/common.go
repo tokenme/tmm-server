@@ -116,24 +116,7 @@ type Series struct {
 	Type string   `json:"type,omitempty"`
 }
 
-type StatsData struct {
-	PointExchangeNumber int    `json:"point_exchange_number"`
-	UcoinExchangeNumber int    `json:"ucoin_exchange_number"`
-	Cash                string `json:"cash"`
-	PointSupply         string `json:"point_supply"`
-	UcSupply            string `json:"uc_supply"`
-	TotalTaskUser       int    `json:"total_task_user"`
-	TotalFinishTask     int    `json:"total_finish_task"`
-	InviteNumber        int    `json:"invite_number"`
-	Active              int    `json:"active"`
-	NewUsers            int    `json:"new_users"`
-	AllActiveUsers      int    `json:"all_active_users"`
-}
 
-type StatsList struct {
-	Yesterday StatsData `json:"yesterday"`
-	Today     StatsData `json:"today"`
-}
 
 func GetPercentList(valueList []string) (PercentList []string) {
 	var total float64
@@ -152,5 +135,5 @@ func GetPercentList(valueList []string) (PercentList []string) {
 }
 
 func GetStatsKey(date string, types string) string {
-	return  fmt.Sprintf("top10-%s-%s",types,date)
+	return fmt.Sprintf("top10-%s-%s", types, date)
 }

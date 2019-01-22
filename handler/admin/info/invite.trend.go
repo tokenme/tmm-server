@@ -41,7 +41,7 @@ func InviteTrendHandler(c *gin.Context) {
 	if req.Type == 1 {
 		data.Title.Text = "好友活跃数"
 		query = fmt.Sprintf(`SELECT
-    COUNT(user_id) AS users,
+    COUNT(DISTINCT user_id) AS users,
     record_on
 FROM
 (
@@ -81,7 +81,7 @@ GROUP BY record_on`, startTime, endTime)
 	} else {
 		data.Title.Text = "用户活跃"
 		query = fmt.Sprintf(`SELECT
-    COUNT(user_id) AS users,
+    COUNT(DISTINCT user_id) AS users,
     record_on
 FROM
 (
