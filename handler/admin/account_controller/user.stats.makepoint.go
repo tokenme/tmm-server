@@ -25,108 +25,132 @@ func MakePointHandler(c *gin.Context) {
 		offset = 0
 	}
 
-	var froms []string
+	var (
+		froms      []string
+		countForms []string
+	)
+	db := Service.Db
 	if req.Types == Invite || req.Types == -1 {
 		froms = append(froms, fmt.Sprintf(`
-	SELECT 
+	SELECT
 		bonus AS point,
-		inserted_at AS inserted_at,	
+		DATE_ADD(inserted_at,INTERVAL 8 HOUR) AS inserted_at,
 		1 AS type ,
 		0  AS device_id,
 		0  AS invite_bonus_types,
 		0  AS tmm,
 		0  AS extra
-	FROM 
-  		tmm.invite_bonus
-	WHERE 
-		user_id = %d AND task_type = 0 AND user_id != from_user_id`, req.Id))
+	FROM tmm.invite_bonus
+	WHERE user_id=%d AND task_type=0 AND user_id!=from_user_id`, req.Id))
 	}
+	countForms = append(countForms, fmt.Sprintf(`SELECT COUNT(1) AS num FROM tmm.invite_bonus WHERE user_id=%d AND task_type=0 AND user_id!=from_user_id`, req.Id))
 	if req.Types == Reading || req.Types == -1 {
-		froms = append(froms, fmt.Sprintf(`	
-	SELECT 
+		froms = append(froms, fmt.Sprintf(`
+	SELECT
 		point AS point,
-		inserted_at AS inserted_at,
+		DATE_ADD(inserted_at,INTERVAL 8 HOUR) AS inserted_at,
 		0 AS type,
 		0 AS device_id,
 		0  AS invite_bonus_types,
 		0  AS tmm,
 		ts AS extra
-	FROM 
- 		tmm.reading_logs
- 	WHERE
-		user_id = %d`, req.Id))
+	FROM tmm.reading_logs
+ 	WHERE user_id=%d`, req.Id))
+		countForms = append(countForms, fmt.Sprintf(`SELECT COUNT(1) AS num FROM tmm.reading_logs WHERE user_id=%d`, req.Id))
 	}
 	if req.Types == Share || req.Types == -1 {
-		froms = append(froms, fmt.Sprintf(`
-	SELECT 
-		sha.points AS point,
-		sha.inserted_at AS inserted_at,
-		2 AS type,
-		sha.device_id AS device_id,
-		0  AS invite_bonus_types,
-		0  AS tmm,
-		sha.viewers AS extra
-	FROM 
-		tmm.device_share_tasks AS sha
-	INNER JOIN tmm.devices AS dev ON (dev.id = sha.device_id)
-	WHERE 
-		dev.user_id = %d  `, req.Id))
+		var (
+			q      string
+			countQ string
+		)
+		if req.Devices != "" {
+			q = fmt.Sprintf(`
+    SELECT
+        sha.points AS point,
+        DATE_ADD(sha.inserted_at,INTERVAL 8 HOUR) AS inserted_at,
+        2 AS type,
+        sha.device_id AS device_id,
+        0  AS invite_bonus_types,
+        0  AS tmm,
+        sha.viewers AS extra
+    FROM
+        tmm.device_share_tasks AS sha
+    INNER JOIN tmm.devices AS dev ON (dev.id=sha.device_id)
+    WHERE dev.user_id=%d AND dev.device_id='%s'`, req.Id, db.Escape(req.Devices))
+			countQ = fmt.Sprintf(`SELECT COUNT(1) AS num FROM tmm.device_share_tasks AS dst INNER JOIN tmm.devices AS d ON (d.id=dst.device_id) WHERE d.user_id=%d AND d.id='%s'`, req.Id, db.Escape(req.Devices))
+		} else {
+			q = fmt.Sprintf(`
+    SELECT
+        sha.points AS point,
+        DATE_ADD(sha.inserted_at,INTERVAL 8 HOUR) AS inserted_at,
+        2 AS type,
+        sha.device_id AS device_id,
+        0  AS invite_bonus_types,
+        0  AS tmm,
+        sha.viewers AS extra
+    FROM
+        tmm.device_share_tasks AS sha
+    INNER JOIN tmm.devices AS dev ON (dev.id=sha.device_id)
+    WHERE dev.user_id=%d`, req.Id)
+			countQ = fmt.Sprintf(`SELECT COUNT(1) AS num FROM tmm.device_share_tasks AS dst INNER JOIN tmm.devices AS d ON (d.id=dst.device_id) WHERE d.user_id=%d`, req.Id)
+		}
+		froms = append(froms, q)
+		countForms = append(countForms, countQ)
 	}
 	if req.Types == BfBouns || req.Types == -1 {
 		froms = append(froms, fmt.Sprintf(
 			`
-	SELECT 
+	SELECT
 		bonus AS point,
-		inserted_at AS inserted_at,	
+		DATE_ADD(inserted_at,INTERVAL 8 HOUR) AS inserted_at,
 		3 AS type ,
 		0  AS device_id,
 		task_type  AS invite_bonus_types,
 		tmm  AS tmm,
 		0 AS extra
-	FROM 
-  		tmm.invite_bonus
-	WHERE 
-		user_id = %d AND task_type != 0 `, req.Id))
+	FROM tmm.invite_bonus
+	WHERE user_id=%d AND task_type!=0`, req.Id))
+		countForms = append(countForms, fmt.Sprintf(`SELECT COUNT(1) AS num FROM tmm.invite_bonus WHERE user_id=%d AND task_type!=0`, req.Id))
 	}
 	if req.Types == AppTask || req.Types == -1 {
-		froms = append(froms, fmt.Sprintf(`
-	SELECT 
-		app.points AS point,
-		app.inserted_at AS inserted_at,
-		4 AS type, 
-		app.device_id AS device_id,
-		0  AS invite_bonus_types,
-		0  AS tmm ,
-		0 AS extra
-	FROM
-		tmm.device_app_tasks AS app
-	INNER JOIN tmm.devices AS dev ON (dev.id = app.device_id)
-	WHERE 
-		dev.user_id = %d  AND app.status = 1 `, req.Id))
+		var (
+			countQ string
+			q      string
+		)
+		if req.Devices != "" {
+			q = fmt.Sprintf(`
+    SELECT
+        app.points AS point,
+        DATE_ADD(app.inserted_at,INTERVAL 8 HOUR) AS inserted_at,
+        4 AS type,
+        app.device_id AS device_id,
+        0  AS invite_bonus_types,
+        0  AS tmm,
+        0 AS extra
+    FROM tmm.device_app_tasks AS app
+    INNER JOIN tmm.devices AS dev ON (dev.id=app.device_id)
+    WHERE dev.user_id=%d AND app.status=1 AND d.id='%s'`, req.Id, db.Escape(req.Devices))
+			countQ = fmt.Sprintf(`SELECT COUNT(1) AS num FROM tmm.device_app_tasks AS dat INNER JOIN tmm.devices AS d ON (d.id=dat.device_id) WHERE d.user_id=%d AND dat.status=1 AND d.id='%s'`, req.Id, db.Escape(req.Devices))
+		} else {
+			q = fmt.Sprintf(`
+    SELECT
+        app.points AS point,
+        DATE_ADD(app.inserted_at,INTERVAL 8 HOUR) AS inserted_at,
+        4 AS type,
+        app.device_id AS device_id,
+        0  AS invite_bonus_types,
+        0  AS tmm,
+        0 AS extra
+    FROM tmm.device_app_tasks AS app
+    INNER JOIN tmm.devices AS dev ON (dev.id=app.device_id)
+    WHERE dev.user_id=%d AND app.status=1`, req.Id)
+			countQ = fmt.Sprintf(`SELECT COUNT(1) AS num FROM tmm.device_app_tasks AS dat INNER JOIN tmm.devices AS d ON (d.id=dat.device_id) WHERE d.user_id=%d AND dat.status=1`, req.Id)
+		}
+		froms = append(froms, q)
+		countForms = append(countForms, countQ)
 	}
-	query := `
-	SELECT 
-		IFNULL(tmp.point,0) AS point,
-		DATE_ADD(tmp.inserted_at,INTERVAL 8 HOUR) AS inserted_at, 	
-		tmp.type  AS type,
-		tmp.invite_bonus_types AS invite_bonus_types,
-		tmp.tmm  AS tmm,
-		tmp.extra AS extra
-	FROM(
-		%s
-	) AS tmp
-	 %s
-	ORDER BY 
-		tmp.inserted_at DESC
-	LIMIT %d OFFSET %d
-	`
-
-	var where string
-	db := Service.Db
-	if req.Devices != "" && (req.Types == AppTask || req.Types == Share) {
-		where = fmt.Sprintf(" WHERE tmp.device_id ='%s'", db.Escape(req.Devices))
-	}
-	rows, _, err := db.Query(query, strings.Join(froms, " UNION "), where, req.Limit, offset)
+	query := `%s ORDER BY inserted_at DESC LIMIT %d OFFSET %d`
+	rows, _, err := db.Query(query, strings.Join(froms, " UNION "), req.Limit, offset)
 	if CheckErr(err, c) {
 		return
 	}
@@ -134,7 +158,7 @@ func MakePointHandler(c *gin.Context) {
 	var taskList []*Task
 	var taskType string
 	for _, row := range rows {
-		extra:=""
+		extra := ""
 		get := fmt.Sprintf("+%.2f积分", row.Float(0))
 		if row.Int(3) > 0 {
 			taskType = InviteMap[row.Int(3)]
@@ -159,13 +183,8 @@ func MakePointHandler(c *gin.Context) {
 	}
 
 	var total int
-	rows, _, err = db.Query(`
-	SELECT 
-		COUNT(1)
-	FROM(
-		%s
-	) AS tmp 
-	%s `, strings.Join(froms, " UNION "), where)
+	countQuery := `SELECT SUM(num) FROM (%s) AS tmp`
+	rows, _, err = db.Query(countQuery, strings.Join(countForms, " UNION "))
 	if len(rows) > 0 {
 		total = rows[0].Int(0)
 	}
