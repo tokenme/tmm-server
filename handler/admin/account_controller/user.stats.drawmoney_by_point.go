@@ -24,15 +24,13 @@ func DrawMoneyByPointHandler(c *gin.Context) {
 		offset = 0
 	}
 	query := `
-SELECT 
+SELECT
 	points,
 	cny,
 	DATE_ADD(inserted_at,INTERVAL 8 HOUR),
 	verified
-FROM 
-	tmm.point_withdraws 
-WHERE 
-	user_id = %d
+FROM tmm.point_withdraws
+WHERE user_id=%d
 ORDER BY inserted_at DESC
 LIMIT %d OFFSET %d`
 	rows, _, err := db.Query(query, req.Id, req.Limit, offset)
@@ -60,7 +58,7 @@ LIMIT %d OFFSET %d`
 		drawMoney.Extra = WithDrawMap[row.Int(3)]
 		DrawMoneyList = append(DrawMoneyList, drawMoney)
 	}
-	rows, _, err = db.Query(`SELECT COUNT(1) FROM tmm.point_withdraws WHERE user_id = %d ORDER BY trade_num  `, req.Id)
+	rows, _, err = db.Query(`SELECT COUNT(1) FROM tmm.point_withdraws WHERE user_id=%d`, req.Id)
 	if CheckErr(err, c) {
 		return
 	}

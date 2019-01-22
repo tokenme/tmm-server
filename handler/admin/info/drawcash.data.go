@@ -1,13 +1,13 @@
 package info
 
 import (
-	"fmt"
-	"github.com/gin-gonic/gin"
-	"net/http"
-	"github.com/tokenme/tmm/handler/admin"
-	. "github.com/tokenme/tmm/handler"
 	"encoding/json"
+	"fmt"
 	"github.com/garyburd/redigo/redis"
+	"github.com/gin-gonic/gin"
+	. "github.com/tokenme/tmm/handler"
+	"github.com/tokenme/tmm/handler/admin"
+	"net/http"
 )
 
 const drawDataKey = `info-data-draw`
@@ -30,48 +30,38 @@ func DrawCashDataHandler(c *gin.Context) {
 		return
 	}
 	query := `
-SELECT
-    COUNT(*) AS users,
-    l,
-	SUM(cny)
-FROM (
-	SELECT 
-		user_id, 
- 		IF(SUM(cny)=0, 0,FLOOR((SUM(cny)-1)/100) * 100 + 1) AS l,
- 		SUM(tmp.cny) AS cny
-	FROM(
-		SELECT
-            tx.user_id, SUM( tx.cny ) AS cny
-        FROM
-            tmm.withdraw_txs AS tx
-		WHERE 
-			tx.tx_status = 1
-        GROUP BY
-            tx.user_id UNION ALL
-        SELECT
-            pw.user_id, SUM( pw.cny ) AS cny
-        FROM
-            tmm.point_withdraws AS pw
-		WHERE 
-			pw.verified = 1
-        GROUP BY pw.user_id
-				) AS tmp
-	GROUP BY tmp.user_id
+SELECT l, COUNT(1) AS users, SUM(cny)
+FROM
+(
+    SELECT
+        user_id,
+        IF(SUM(cny)=0, 0,FLOOR((SUM(cny)-1)/100) * 100 + 1) AS l,
+        SUM(cny) AS cny
+    FROM(
+        SELECT tx.user_id AS user_id, SUM(tx.cny) AS cny
+        FROM tmm.withdraw_txs AS tx
+            WHERE tx.tx_status = 1
+            GROUP BY user_id
+        UNION ALL
+        SELECT pw.user_id AS user_id, SUM(pw.cny) AS cny
+        FROM tmm.point_withdraws AS pw
+        WHERE pw.verified != -1
+        GROUP BY user_id
+    ) AS tmp
+    GROUP BY user_id
 ) AS tmp
-GROUP BY l ORDER BY l
-`
-
+GROUP BY l ORDER BY l`
 	rows, _, err := db.Query(query)
 	if CheckErr(err, c) {
 		return
 	}
 	var indexName []string
 	var valueList []string
-	var cnyList   []string
+	var cnyList []string
 	for _, row := range rows {
-		valueList = append(valueList, row.Str(0))
+		valueList = append(valueList, row.Str(1))
 		cnyList = append(cnyList, fmt.Sprintf("%.0f", row.Float(2)))
-		name := fmt.Sprintf(`%d-%d`, row.Int(1), row.Int(1)+100)
+		name := fmt.Sprintf(`%d-%d`, row.Int(0), row.Int(0)+100)
 		indexName = append(indexName, name)
 	}
 	var data Data
@@ -79,9 +69,9 @@ GROUP BY l ORDER BY l
 	data.Xaxis.Data = indexName
 	data.Xaxis.Name = "提现金额区间"
 	data.Yaxis.Name = "人数"
-	data.Series = append(data.Series,Series{Data:valueList,Name:"提现人数"})
-	data.Series = append(data.Series,Series{Data:GetPercentList(valueList),Name:"占比"})
-	data.Series = append(data.Series,Series{Data:GetPercentList(cnyList),Name:"金额占比"})
+	data.Series = append(data.Series, Series{Data: valueList, Name: "提现人数"})
+	data.Series = append(data.Series, Series{Data: GetPercentList(valueList), Name: "占比"})
+	data.Series = append(data.Series, Series{Data: GetPercentList(cnyList), Name: "金额占比"})
 	bytes, err := json.Marshal(&data)
 	if CheckErr(err, c) {
 		return

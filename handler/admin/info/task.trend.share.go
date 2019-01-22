@@ -1,18 +1,19 @@
 package info
 
 import (
-	"github.com/gin-gonic/gin"
 	"fmt"
-	"time"
+	"github.com/gin-gonic/gin"
 	. "github.com/tokenme/tmm/handler"
-	"net/http"
 	"github.com/tokenme/tmm/handler/admin"
+	"net/http"
+	"time"
 )
 
 const (
 	ShareArticleUser = iota
 	ShareActicleNumber
 )
+
 func ShareTrendHandler(c *gin.Context) {
 	db := Service.Db
 	var req StatsRequest
@@ -28,49 +29,16 @@ func ShareTrendHandler(c *gin.Context) {
 		endTime = req.EndTime
 	}
 
-	query := `
-SELECT
-	tmp.date,
-	tmp.value
-FROM(
-%s
-	) AS tmp`
 	var data TrendData
 	var yaxisName string
-	if req.Type == ShareActicleNumber {
-		yaxisName = "次数"
-	} else {
-		yaxisName = "人数"
-	}
 	switch req.Type {
 	case ShareArticleUser:
 		data.Title = "分享文章人数"
-		shareArticleUser := fmt.Sprintf(`
-	SELECT 
-		COUNT(DISTINCT dev.user_id) AS value, 
-		DATE(sha.inserted_at) AS date 
-	FROM 
-		tmm.device_share_tasks AS sha
-	INNER JOIN 
-		tmm.devices AS dev ON ( dev.id = sha.device_id )
-	WHERE 
-		sha.inserted_at > '%s'  AND sha.inserted_at < DATE_ADD('%s', INTERVAL 1 DAY)
-	GROUP BY date
-	`, startTime, endTime)
-		query = fmt.Sprintf(query, shareArticleUser)
+		yaxisName = "人数"
+
 	case ShareActicleNumber:
 		data.Title = "分享文章量"
-		shareArticleNumber := fmt.Sprintf(`
-	SELECT 
-		COUNT(1) AS value, 
-		DATE(sha.inserted_at) AS date
-	FROM 
-		tmm.device_share_tasks AS sha
-	WHERE 
-		sha.inserted_at > '%s'  AND sha.inserted_at < DATE_ADD('%s', INTERVAL 1 DAY)
-	GROUP BY date 
-	`, startTime, endTime)
-		query = fmt.Sprintf(query, shareArticleNumber)
+		yaxisName = "次数"
 	default:
 		c.JSON(http.StatusOK, admin.Response{
 			Code:    0,
@@ -79,7 +47,17 @@ FROM(
 		})
 		return
 	}
-	rows, _, err := db.Query(query)
+	query := `
+    SELECT
+        DATE(dst.inserted_at) AS record_on,
+        COUNT(1) AS times,
+        COUNT(DISTINCT d.user_id) AS users
+    FROM tmm.device_share_tasks AS dst
+    INNER JOIN tmm.devices AS d ON ( d.id = dst.device_id )
+    WHERE dst.inserted_at BETWEEN '%s' AND DATE_ADD('%s', INTERVAL 1 DAY)
+    GROUP BY record_on
+    `
+	rows, _, err := db.Query(query, startTime, endTime)
 	if CheckErr(err, c) {
 		return
 	}
@@ -88,7 +66,14 @@ FROM(
 
 	dataMap := make(map[string]int)
 	for _, row := range rows {
-		dataMap[row.Str(0)] = row.Int(1)
+		switch req.Type {
+		case ShareArticleUser:
+			dataMap[row.Str(0)] = row.Int(2)
+		case ShareActicleNumber:
+			dataMap[row.Str(0)] = row.Int(1)
+		default:
+			continue
+		}
 	}
 	tm, _ := time.Parse(`2006-01-02`, startTime)
 	end, _ := time.Parse(`2006-01-02`, endTime)
