@@ -1,12 +1,12 @@
 package info
 
 import (
+	"fmt"
 	"github.com/gin-gonic/gin"
 	. "github.com/tokenme/tmm/handler"
-	"time"
-	"net/http"
 	"github.com/tokenme/tmm/handler/admin"
-	"fmt"
+	"net/http"
+	"time"
 )
 
 /*
@@ -36,59 +36,30 @@ func PointTrendHandler(c *gin.Context) {
 		})
 		return
 	}
-	query := `
-SELECT
-	SUM(tmp.points),
-	tmp.Date
-FROM(
-	SELECT
-		DATE(inserted_at) AS date,
-		SUM(points) AS points
-	FROM 
-		tmm.device_share_tasks
-	WHERE 
-		inserted_at > '%s' AND inserted_at <  DATE_ADD('%s', INTERVAL 1 DAY)
-	GROUP BY 
-		date
-	UNION ALL
-	SELECT	
-		DATE(app.inserted_at) AS date,
-		SUM(app.points) AS points
-	FROM
-		tmm.device_app_tasks AS app
-	WHERE
-		app.inserted_at > '%s' AND app.status = 1 AND app.inserted_at <  DATE_ADD('%s', INTERVAL 1 DAY) 
-	GROUP BY 
-		date
-	UNION ALL
-	SELECT
-		DATE(inserted_at) AS date,	
-		SUM(point) AS points
-	FROM
-		tmm.reading_logs
-	WHERE 
-		inserted_at > '%s' AND inserted_at <  DATE_ADD('%s', INTERVAL 1 DAY)
-	GROUP BY 
-		date
-	UNION ALL
-	SELECT
-		DATE(inserted_at) AS date,	
-		SUM(bonus) AS points
-	FROM
-		tmm.invite_bonus
-	WHERE 
-		inserted_at > '%s' AND inserted_at <  DATE_ADD('%s', INTERVAL 1 DAY)
-	GROUP BY
-		date
+	query := `SELECT
+    SUM(points) AS points,
+    record_on
+FROM
+(
+SELECT dst.points AS points, DATE(dst.inserted_at) AS record_on
+FROM tmm.device_share_tasks AS dst
+WHERE dst.inserted_at BETWEEN '%s' AND DATE_ADD('%s', INTERVAL 1 DAY)
+UNION ALL
+SELECT dat.points AS points, DATE(dat.inserted_at) AS record_on
+FROM tmm.device_app_tasks AS dat
+WHERE dat.status=1 AND dat.inserted_at BETWEEN '%s' AND DATE_ADD('%s', INTERVAL 1 DAY)
+UNION ALL
+SELECT rl.point AS points, DATE(rl.inserted_at) AS record_on
+FROM tmm.reading_logs AS rl
+WHERE rl.inserted_at BETWEEN '%s' AND DATE_ADD('%s', INTERVAL 1 DAY)
+UNION ALL
+SELECT ib.bonus AS points, DATE(ib.inserted_at) AS record_on
+FROM tmm.invite_bonus AS ib
+WHERE ib.inserted_at BETWEEN '%s' AND DATE_ADD('%s', INTERVAL 1 DAY)
 ) AS tmp
-GROUP BY tmp.date
-ORDER BY tmp.date  
+GROUP BY record_on
 	`
-	rows, _, err := db.Query(query,
-		db.Escape(startTime), db.Escape(endTime),
-		db.Escape(startTime), db.Escape(endTime),
-		db.Escape(startTime), db.Escape(endTime),
-		db.Escape(startTime), db.Escape(endTime))
+	rows, _, err := db.Query(query, startTime, endTime, startTime, endTime, startTime, endTime, startTime, endTime)
 	if CheckErr(err, c) {
 		return
 	}

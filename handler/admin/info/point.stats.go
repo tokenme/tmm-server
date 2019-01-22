@@ -1,15 +1,14 @@
 package info
 
 import (
+	"encoding/json"
+	"fmt"
+	"github.com/garyburd/redigo/redis"
 	"github.com/gin-gonic/gin"
 	. "github.com/tokenme/tmm/handler"
-	"net/http"
 	"github.com/tokenme/tmm/handler/admin"
-	"fmt"
+	"net/http"
 	"time"
-	"strings"
-	"github.com/garyburd/redigo/redis"
-	"encoding/json"
 )
 
 func PointStatsHandler(c *gin.Context) {
@@ -18,20 +17,12 @@ func PointStatsHandler(c *gin.Context) {
 	if CheckErr(c.Bind(&req), c) {
 		return
 	}
-
-	var shareWhen, appTaskWhen, when []string
 	var startTime string
 	db := Service.Db
 	if req.StartTime != "" {
 		startTime = req.StartTime
-		shareWhen = append(shareWhen, fmt.Sprintf(" AND sha.inserted_at >= '%s' ", db.Escape(startTime)))
-		appTaskWhen = append(appTaskWhen, fmt.Sprintf(" AND  app.inserted_at >= '%s' ", db.Escape(startTime)))
-		when = append(when, fmt.Sprintf(" inserted_at >= '%s' ", db.Escape(startTime)))
 	} else {
 		startTime = time.Now().AddDate(0, 0, -7).Format("2006-01-02")
-		shareWhen = append(shareWhen, fmt.Sprintf(" AND sha.inserted_at >= '%s' ", db.Escape(startTime)))
-		appTaskWhen = append(appTaskWhen, fmt.Sprintf(" AND  app.inserted_at >= '%s' ", db.Escape(startTime)))
-		when = append(when, fmt.Sprintf("  inserted_at >= '%s' ", db.Escape(startTime)))
 	}
 
 	redisConn := Service.Redis.Master.Get()
@@ -52,61 +43,43 @@ func PointStatsHandler(c *gin.Context) {
 	} else {
 		redisConn.Do(`EXPIRE`, pointKey, 1)
 	}
+	var query string
+	if startTime != "1970-01-01" {
+		query = fmt.Sprintf(`SELECT tmp.user_id AS id, wx.nick AS nick, SUM(tmp.points) AS points, u.mobile AS mobile
+FROM
+(
+    SELECT d.user_id AS user_id, dst.points AS points
+    FROM tmm.device_share_tasks AS dst
+    INNER JOIN tmm.devices AS d ON (d.id=dst.device_id)
+    WHERE dst.inserted_at>='%s'
+    UNION ALL
+    SELECT d.user_id AS user_id, app.points AS points
+    FROM tmm.device_app_tasks AS app
+    INNER JOIN tmm.devices AS d ON (d.id=app.device_id)
+    WHERE app.status = 1 AND app.inserted_at>='%s'
+    UNION ALL
+    SELECT ib.user_id AS user_id, SUM(ib.bonus) AS points
+    FROM tmm.invite_bonus AS ib
+    WHERE ib.inserted_at>='%s'
+    UNION ALL
+    SELECT rl.user_id AS user_id, rl.point AS points
+    FROM tmm.reading_logs AS rl
+    WHERE rl.inserted_at>='%s'
+) AS tmp
+INNER JOIN ucoin.users AS u ON (u.id=tmp.user_id)
+LEFT JOIN tmm.wx AS wx ON (wx.user_id = u.id)
+WHERE NOT EXISTS (SELECT 1 FROM user_settings AS us WHERE us.blocked=1 AND us.user_id=tmp.user_id AND us.block_whitelist=0 LIMIT 1)
+GROUP BY tmp.user_id ORDER BY points DESC LIMIT 10`, startTime, startTime, startTime, startTime)
+	} else {
+		query = `SELECT d.user_id AS id, wx.nick AS nick, SUM(d.points) AS points, u.mobile AS mobile
+FROM tmm.devices AS d
+INNER JOIN ucoin.users AS u ON (u.id=d.user_id)
+LEFT JOIN tmm.wx AS wx ON (wx.user_id = u.id)
+WHERE NOT EXISTS (SELECT 1 FROM user_settings AS us WHERE us.blocked=1 AND us.user_id=d.user_id AND us.block_whitelist=0  LIMIT 1)
+GROUP BY d.user_id ORDER BY points DESC LIMIT 10`
+	}
 
-	query := `
-SELECT
-	us.id AS id,
-	wx.nick AS nick ,
-	IFNULL(tmp.points,0)+IFNULL(inv.bonus,0)+IFNULL(reading.points,0) AS points,
-	us.mobile AS mobile
-FROM ucoin.users AS us
-LEFT JOIN (
-	SELECT 
-	SUM(tmp.points) AS points,
-	dev.user_id   AS user_id
-	FROM   tmm.devices AS dev
-	LEFT JOIN (
-	SELECT 
-		 sha.device_id, 
-		 SUM(sha.points) AS points
-	FROM 
-		 tmm.device_share_tasks AS sha	
-	WHERE 
-		 sha.points > 0 %s
-	GROUP BY
-       sha.device_id UNION ALL
-	SELECT 
-		 app.device_id, 
-		 SUM(app.points) AS points
-	FROM 
-		 tmm.device_app_tasks AS app   
-	WHERE
-		 app.status = 1 %s
-	GROUP BY
-     	 app.device_id  
-	) AS tmp ON (tmp.device_id = dev.id)
-	GROUP BY dev.user_id 
-) AS tmp ON (tmp.user_id = us.id )
-LEFT JOIN tmm.wx AS wx ON (wx.user_id = us.id)
-LEFT JOIN (SELECT SUM(bonus) AS bonus,user_id AS user_id FROM tmm.invite_bonus  
- 		  WHERE %s
-   		  GROUP BY user_id)AS inv ON (inv.user_id = us.id )  
-LEFT JOIN (SELECT 
-		   SUM(point) AS points ,
-			user_id AS user_id 
-		FROM tmm.reading_logs 
-		WHERE %s 
-		GROUP BY user_id) AS reading ON(reading.user_id = us.id)
-WHERE IFNULL(tmp.points,0)+IFNULL(inv.bonus,0)+IFNULL(reading.points,0)  > 0 
-AND NOT EXISTS  
-		(SELECT 1 FROM user_settings AS us  WHERE us.blocked= 1 AND us.user_id=us.id AND us.block_whitelist=0  LIMIT 1)
-GROUP BY 
-		 us.id
-ORDER BY points DESC 
-LIMIT 10`
-
-	rows, res, err := db.Query(query, strings.Join(shareWhen, " "),
-		strings.Join(appTaskWhen, " "), strings.Join(when, " "), strings.Join(when, " "))
+	rows, res, err := db.Query(query)
 	if CheckErr(err, c) {
 		return
 	}

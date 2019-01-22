@@ -1,12 +1,13 @@
 package info
 
 import (
-	"github.com/gin-gonic/gin"
-	. "github.com/tokenme/tmm/handler"
 	"fmt"
-	"time"
-	"net/http"
+	"github.com/gin-gonic/gin"
+	//"github.com/mkideal/log"
+	. "github.com/tokenme/tmm/handler"
 	"github.com/tokenme/tmm/handler/admin"
+	"net/http"
+	"time"
 )
 
 /*
@@ -47,17 +48,7 @@ func DrawCashTrendHandler(c *gin.Context) {
 		})
 		return
 	}
-	query := `
-SELECT
-	tmp._value AS _value,
-	tmp.date AS date,
-	tmp.cash AS cash
-FROM(
-%s
-) AS tmp
-GROUP BY tmp.date
-ORDER BY tmp.date 
-`
+	var query string
 	var data Data
 	var title string
 	seriesName := "金额"
@@ -65,115 +56,78 @@ ORDER BY tmp.date
 	switch req.Type {
 	case DrawCashByUc:
 		title = "UC提现金额"
-		query = fmt.Sprintf(query, fmt.Sprintf(`
-SELECT  
+		query = fmt.Sprintf(`
+SELECT
 	SUM(cny) AS _value,
-	DATE(inserted_at) AS date,
-	0 AS cash
-FROM 
-	tmm.withdraw_txs 
-WHERE 
-	tx_status = 1 AND inserted_at > '%s'  AND inserted_at <  DATE_ADD('%s', INTERVAL 1 DAY)
-GROUP BY date`,  db.Escape(startTime), db.Escape(endTime)))
+	DATE(inserted_at) AS record_on
+FROM tmm.withdraw_txs
+WHERE tx_status = 1 AND inserted_at > '%s'  AND inserted_at <  DATE_ADD('%s', INTERVAL 1 DAY)
+GROUP BY record_on`, db.Escape(startTime), db.Escape(endTime))
 	case UcPerson:
 		title = "UC提现人数"
 		yaxisName = "人数"
 		seriesName = "人数"
-		query = fmt.Sprintf(query, fmt.Sprintf(`
-SELECT  
+		query = fmt.Sprintf(`
+SELECT
 	COUNT(distinct user_id) AS _value,
-	DATE(inserted_at) AS date,
-	0 AS cash
-FROM 
-	tmm.withdraw_txs 
-WHERE 
-	tx_status = 1 AND inserted_at > '%s'  AND inserted_at <  DATE_ADD('%s', INTERVAL 1 DAY)
-GROUP BY date`, db.Escape(startTime), db.Escape(endTime)))
+	DATE(inserted_at) AS record_on
+FROM tmm.withdraw_txs
+WHERE tx_status = 1 AND inserted_at > '%s'  AND inserted_at <  DATE_ADD('%s', INTERVAL 1 DAY)
+GROUP BY record_on`, db.Escape(startTime), db.Escape(endTime))
 	case DrawCashByPoint:
 		title = "积分提现金额"
-		query = fmt.Sprintf(query, fmt.Sprintf(`
-SELECT  
+		query = fmt.Sprintf(`
+SELECT
 	SUM(cny) AS _value,
-	DATE(inserted_at) AS date,
-	0 AS cash
-FROM 
-	tmm.point_withdraws 
-WHERE 
-	 inserted_at > '%s' AND inserted_at <  DATE_ADD('%s', INTERVAL 1 DAY) AND verified = 1 
-GROUP BY date`, db.Escape(startTime), db.Escape(endTime)))
+	DATE(inserted_at) AS record_on
+FROM tmm.point_withdraws
+WHERE inserted_at > '%s' AND inserted_at <  DATE_ADD('%s', INTERVAL 1 DAY) AND verified!=-1
+GROUP BY record_on`, db.Escape(startTime), db.Escape(endTime))
 
 	case PointPerson:
 		title = "积分提现人数"
 		yaxisName = "人数"
 		seriesName = "人数"
-		query = fmt.Sprintf(query, fmt.Sprintf(`
-SELECT  
+		query = fmt.Sprintf(`
+SELECT
 	COUNT(distinct user_id) AS _value,
-	DATE(inserted_at) AS date,
-	0 AS cash
-FROM 
-	tmm.point_withdraws 
-WHERE 
-	 inserted_at > '%s' AND inserted_at < DATE_ADD('%s', INTERVAL 1 DAY) AND verified = 1 
-GROUP BY date`, db.Escape(startTime), db.Escape(endTime)))
+	DATE(inserted_at) AS record_on
+FROM tmm.point_withdraws
+WHERE inserted_at > '%s' AND inserted_at < DATE_ADD('%s', INTERVAL 1 DAY) AND verified!=-1
+GROUP BY record_on`, db.Escape(startTime), db.Escape(endTime))
 	case TotalDrawCash_:
 		title = "提现总金额"
-		query = fmt.Sprintf(query, fmt.Sprintf(`
-SELECT 
-	IFNULL(tmp._value,0) AS _value,
-	IFNULL(tmp.date,'%s') AS date,
+		query = fmt.Sprintf(`
+SELECT
+	IFNULL(t._value, 0) AS _value,
+	IFNULL(t.record_on, '%s') AS record_on,
 	beforecash.cash AS cash
 FROM
 (
-	SELECT
-		SUM(tmp._value) AS cash
+	SELECT SUM(tmp._value) AS cash
 	FROM (
-		SELECT
-			SUM(cny) AS _value
-		FROM
-			tmm.point_withdraws
-		WHERE
-	 		inserted_at < '%s'  AND verified = 1 
+		SELECT SUM(cny) AS _value
+		FROM tmm.point_withdraws
+		WHERE inserted_at<'%s' AND verified!=-1
 	UNION ALL
-		SELECT
-			SUM(cny)  AS _value
-		FROM
-			tmm.withdraw_txs
-		WHERE
-			tx_status = 1 AND inserted_at < '%s'  
-		) AS tmp
+		SELECT SUM(cny)  AS _value
+		FROM tmm.withdraw_txs
+		WHERE tx_status=1 AND inserted_at<'%s'
+	) AS tmp
 ) AS beforecash
 LEFT JOIN(
-SELECT
-	SUM(tmp._value) AS _value,
-	tmp.date AS date
-FROM(
-	SELECT
-		SUM(cny) AS _value,
-		DATE(inserted_at) AS date
-	FROM
-		tmm.point_withdraws
-	WHERE
-		inserted_at > '%s' AND inserted_at <  DATE_ADD('%s', INTERVAL 1 DAY)
-	GROUP BY date
-	UNION ALL
-	SELECT
-		SUM(cny)  AS _value,
-		DATE(inserted_at) AS date
-	FROM
-		tmm.withdraw_txs
-	WHERE
-		tx_status = 1 AND inserted_at > '%s' AND inserted_at <  DATE_ADD('%s', INTERVAL 1 DAY)
-	GROUP BY 
-		date
-	) AS tmp
-	GROUP BY 
-		date
-) AS tmp  ON 1 = 1
-`, 			db.Escape(endTime),
-			db.Escape(startTime), db.Escape(startTime),
-			db.Escape(startTime), db.Escape(endTime),
-			db.Escape(startTime), db.Escape(endTime)))
+    SELECT SUM(cny) AS _value, record_on
+    FROM(
+        SELECT cny, DATE(inserted_at) AS record_on
+        FROM tmm.point_withdraws
+        WHERE inserted_at BETWEEN '%s' AND DATE_ADD('%s', INTERVAL 1 DAY)
+        UNION ALL
+        SELECT cny, DATE(inserted_at) AS record_on
+        FROM tmm.withdraw_txs
+        WHERE tx_status=1 AND inserted_at BETWEEN '%s' AND DATE_ADD('%s', INTERVAL 1 DAY)
+    ) AS tmp
+) AS t ON (1=1)
+`, db.Escape(endTime), db.Escape(startTime), db.Escape(startTime), db.Escape(startTime), db.Escape(endTime), db.Escape(startTime), db.Escape(endTime))
 	}
 	rows, _, err := db.Query(query)
 	if CheckErr(err, c) {
@@ -187,7 +141,7 @@ FROM(
 	tm, _ := time.Parse(`2006-01-02`, startTime)
 	end, _ := time.Parse(`2006-01-02`, endTime)
 	var cash float64
-	if req.Type == TotalDrawCash_{
+	if req.Type == TotalDrawCash_ {
 		cash = rows[0].Float(2)
 	}
 	dataMap := make(map[string]float64)
@@ -199,7 +153,7 @@ FROM(
 			dataMap[row.Str(1)] = row.Float(0)
 		}
 	}
-	if req.Type == TotalDrawCash_{
+	if req.Type == TotalDrawCash_ {
 		cash = rows[0].Float(2)
 	}
 	for {
@@ -221,7 +175,7 @@ FROM(
 			indexName = append(indexName, tm.Format(`2006-01-02`))
 			valueList = append(valueList, fmt.Sprintf(format, value))
 			cash = value
-			tm = tm.AddDate(0,0,1)
+			tm = tm.AddDate(0, 0, 1)
 		} else {
 			indexName = append(indexName, tm.Format(`2006-01-02`))
 			if req.Type == TotalDrawCash_ {
@@ -229,7 +183,7 @@ FROM(
 			} else {
 				valueList = append(valueList, fmt.Sprintf(format, 0.0))
 			}
-			tm = tm.AddDate(0,0,1)
+			tm = tm.AddDate(0, 0, 1)
 		}
 	}
 	data.Title.Text = title

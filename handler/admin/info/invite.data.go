@@ -1,23 +1,23 @@
 package info
 
 import (
+	"encoding/json"
+	"fmt"
+	"github.com/garyburd/redigo/redis"
 	"github.com/gin-gonic/gin"
 	. "github.com/tokenme/tmm/handler"
-	"fmt"
-	"net/http"
 	"github.com/tokenme/tmm/handler/admin"
-	"encoding/json"
-	"github.com/garyburd/redigo/redis"
+	"net/http"
 )
 
-const  inviteDataKey = `info-data-invite`
+const inviteDataKey = `info-data-invite`
 
 func InviteDataHandler(c *gin.Context) {
 	db := Service.Db
 	redisConn := Service.Redis.Master.Get()
 	defer redisConn.Close()
 	context, err := redis.Bytes(redisConn.Do(`GET`, inviteDataKey))
-	if context != nil && err ==nil{
+	if context != nil && err == nil {
 		var data Data
 		if !CheckErr(json.Unmarshal(context, &data), c) {
 			c.JSON(http.StatusOK, admin.Response{
@@ -34,13 +34,10 @@ func InviteDataHandler(c *gin.Context) {
     COUNT(*) AS users,
     l
 FROM (
-    SELECT
-        ic.parent_id, FLOOR((COUNT(1)-1)/50)*50+1 AS l
+    SELECT ic.parent_id, FLOOR((COUNT(1)-1)/50)*50+1 AS l
     FROM tmm.invite_codes AS ic
-    WHERE  NOT EXISTS
-	(SELECT 1 FROM user_settings AS us  
-	WHERE us.blocked= 1 AND us.user_id=ic.parent_id AND us.block_whitelist=0  LIMIT 1)
-	 AND ic.parent_id>0 
+    WHERE NOT EXISTS (SELECT 1 FROM user_settings AS us WHERE us.blocked=1 AND us.user_id=ic.parent_id AND us.block_whitelist=0 LIMIT 1)
+	AND ic.parent_id>0
     GROUP BY ic.parent_id
 ) AS tmp
 GROUP BY l ORDER BY l`
@@ -77,6 +74,6 @@ GROUP BY l ORDER BY l`
 	c.JSON(http.StatusOK, admin.Response{
 		Code:    0,
 		Message: admin.API_OK,
-		Data: data,
+		Data:    data,
 	})
 }
