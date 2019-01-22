@@ -4,6 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/tokenme/tmm/handler/admin/info"
 	"github.com/tokenme/tmm/handler/admin/verify"
+	"github.com/tokenme/tmm/handler/admin/stats"
 )
 
 func InfoRouter(r *gin.Engine) {
@@ -25,6 +26,13 @@ func InfoRouter(r *gin.Engine) {
 		InfoGroup.GET(`/invest/total`, info.TotalInvestHandler)
 	}
 	{
+		InfoGroup.GET(`/stats/active`, stats.StatsByWithActive)
+		InfoGroup.GET(`/stats/drawcash`, stats.StatsByWithDrawCash)
+		InfoGroup.GET(`/stats/exchange`, stats.StatsByExchange)
+		InfoGroup.GET(`/stats/invite`, stats.StatsByInvite)
+		InfoGroup.GET(`/stats/points`, stats.StatsByPointSupply)
+	}
+	{
 		InfoGroup.GET(`/invite/data`, info.InviteDataHandler)
 		InfoGroup.GET(`/invite/info`, info.InviteStatsHandler)
 		InfoGroup.GET(`/invite/total`, info.TotalInviteHandler)
@@ -41,9 +49,6 @@ func InfoRouter(r *gin.Engine) {
 	}
 	{
 		InfoGroup.GET(`/user/total`, info.UserStatsHandler)
-	}
-	{
-		InfoGroup.GET(`/stats/stats`, info.StatsHandler)
 	}
 	{
 		InfoGroup.GET(`/trend/drawcash`, info.DrawCashTrendHandler)
