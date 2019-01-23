@@ -46,7 +46,6 @@ type SearchOptions struct {
 	IsWhiteList             bool         `form:"is_white_list"`
 	Id                      int          `form:"id"`
 	Mobile                  string       `form:"mobile"`
-	WxNick                  string       `form:"wx_nick"`
 }
 
 func GetAccountList(c *gin.Context) {
@@ -454,9 +453,6 @@ LEFT JOIN (
 		where = append(where, fmt.Sprintf(`  AND IF(us_set.user_id > 0,IF(us_set.blocked = us_set.block_whitelist,0,1),0) = %d `, 1))
 	} else {
 		where = append(where, fmt.Sprintf(`  AND IF(us_set.user_id > 0,IF(us_set.blocked = us_set.block_whitelist,0,1),0) = %d `, 0))
-	}
-	if search.WxNick != "" {
-		where = append(where, fmt.Sprintf(`  AND wx.nick LIKE '%s' `, search.WxNick+"%"))
 	}
 	rows, res, err := db.Query(query,strings.Join(when, " "),
 		strings.Join(leftJoin, " "), strings.Join(where, " "),limit, offset)
