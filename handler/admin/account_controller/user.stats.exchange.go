@@ -37,25 +37,23 @@ func ExchangeHandler(c *gin.Context) {
 		offset = 0
 	}
 	query := `
-SELECT 
+SELECT
 	DATE_ADD(inserted_at,INTERVAL 8 HOUR),
 	points,
 	tmm,
 	status
-FROM 
-	tmm.exchange_records 
-WHERE 
-	user_id = %d AND %s
+FROM tmm.exchange_records
+WHERE user_id=%d AND %s
 ORDER BY inserted_at DESC
 LIMIT %d OFFSET %d`
 	var where []string
 	if req.Types == Uc {
-		where = append(where, fmt.Sprintf(" direction = %d ", Uc))
+		where = append(where, fmt.Sprintf("direction=%d ", Uc))
 	} else {
-		where = append(where, fmt.Sprintf(" direction = %d ", Point))
+		where = append(where, fmt.Sprintf("direction=%d ", Point))
 	}
 	if req.Devices != "" {
-		where = append(where, fmt.Sprintf(" device_id = '%s'", db.Escape(req.Devices)))
+		where = append(where, fmt.Sprintf("device_id='%s'", db.Escape(req.Devices)))
 	}
 	rows, _, err := db.Query(query, req.Id, strings.Join(where, " AND "), req.Limit, offset)
 	if CheckErr(err, c) {
@@ -86,7 +84,7 @@ LIMIT %d OFFSET %d`
 			exchangeList = append(exchangeList, exchange)
 		}
 	}
-	rows, _, err = db.Query(`SELECT COUNT(1)  FROM tmm.exchange_records WHERE user_id = %d AND %s`, req.Id, strings.Join(where, " AND "))
+	rows, _, err = db.Query(`SELECT COUNT(1) FROM tmm.exchange_records WHERE user_id=%d AND %s`, req.Id, strings.Join(where, " AND "))
 	if CheckErr(err, c) {
 		return
 	}

@@ -1,12 +1,12 @@
 package info
 
 import (
+	"fmt"
 	"github.com/gin-gonic/gin"
 	. "github.com/tokenme/tmm/handler"
-	"time"
-	"fmt"
-	"net/http"
 	"github.com/tokenme/tmm/handler/admin"
+	"net/http"
+	"time"
 )
 
 func UserTrendHandler(c *gin.Context) {
@@ -25,13 +25,12 @@ func UserTrendHandler(c *gin.Context) {
 	}
 	query := `
 	SELECT
-		DATE(created) AS date,
+		DATE(created) AS record_on,
 		COUNT(1)
-	FROM 
+	FROM
 		ucoin.users
-	WHERE created > DATE('%s')   AND created< DATE_ADD('%s', INTERVAL 1 DAY)
-	GROUP BY date
-	ORDER BY date
+	WHERE created BETWEEN '%s' AND DATE_ADD('%s', INTERVAL 1 DAY)
+	GROUP BY record_on
 `
 
 	rows, _, err := db.Query(query, db.Escape(startTime), db.Escape(endTime))

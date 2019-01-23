@@ -1,13 +1,13 @@
 package info
 
 import (
-	"fmt"
-	"github.com/gin-gonic/gin"
-	"net/http"
-	"github.com/tokenme/tmm/handler/admin"
-	. "github.com/tokenme/tmm/handler"
 	"encoding/json"
+	"fmt"
 	"github.com/garyburd/redigo/redis"
+	"github.com/gin-gonic/gin"
+	. "github.com/tokenme/tmm/handler"
+	"github.com/tokenme/tmm/handler/admin"
+	"net/http"
 )
 
 const exchangeDataKey = `info-data-exchange`
@@ -30,32 +30,17 @@ func ExchangeDataHandler(c *gin.Context) {
 		}
 	}
 	query := `SELECT
-    COUNT(*) AS users,
+    COUNT(1) AS users,
     l
-FROM (
-	 SELECT 
-		tmp.user_id, 
-		FLOOR((tmp.times-1)/10) * 10 + 1 AS l
-FROM(			
+FROM(
 	 SELECT
-		COUNT(1) AS times ,
-		er.user_id
-	 FROM
-		tmm.exchange_records AS er 
-	 WHERE 
-		er.status = 1
-	 GROUP BY 
-		er.user_id 
+        FLOOR((COUNT(1)-1)/10) * 10 + 1 AS l, er.user_id
+     FROM tmm.exchange_records AS er
+     WHERE er.status=1
+     GROUP BY er.user_id
 ) AS tmp
-WHERE 
-	 NOT EXISTS
-	(SELECT 1 FROM user_settings AS us  
-	WHERE us.blocked= 1 AND us.user_id=tmp.user_id AND us.block_whitelist=0  LIMIT 1)
-	 GROUP BY tmp.user_id
-)AS tmp 
 GROUP BY l ORDER BY l
 `
-
 	rows, _, err := db.Query(query)
 	if CheckErr(err, c) {
 		return

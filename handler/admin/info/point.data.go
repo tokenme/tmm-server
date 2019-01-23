@@ -1,14 +1,14 @@
 package info
 
 import (
+	"encoding/json"
 	"fmt"
+	"github.com/garyburd/redigo/redis"
 	"github.com/gin-gonic/gin"
 	. "github.com/tokenme/tmm/handler"
-	"net/http"
 	"github.com/tokenme/tmm/handler/admin"
-	"encoding/json"
-	"github.com/garyburd/redigo/redis"
 	"math"
+	"net/http"
 )
 
 const pointDataKey = `info-Data-points`
@@ -31,82 +31,29 @@ func PointDataHandler(c *gin.Context) {
 		return
 	}
 	query := `
-SELECT
-    COUNT(*) AS users,
-    l,
-	SUM(tmp.total_points)
-FROM (
-	SELECT
-		d.user_id,
-		IF(d.total_points  >= 10000,
-		IF(d.total_points < 100000, 
-		FLOOR(d.total_points/10000)*10000+1,
-		IF(d.total_points < 1000000,
-		FLOOR(d.total_points/100000)*100000+1,
-		FLOOR(d.total_points/1000000)*1000000+1)),
-		FLOOR(IF(d.total_points = 0,1,d.total_points) /1000)*1000+1) AS l,
-		d.total_points
-	FROM (
-	SELECT 
-		us.id AS user_id ,
-		IFNULL(reading.points,0)+IFNULL(inv.bonus,0) + IFNULL(task.points,0) AS total_points
-	FROM 
-		ucoin.users AS us
-	LEFT JOIN (
-		SELECT 
-			SUM(inv.bonus) AS bonus,						
-			inv.user_id
-		FROM 
-			tmm.invite_bonus AS inv 
-		GROUP BY 
-			inv.user_id 
-		) AS inv  ON (inv.user_id = us.id)
-	LEFT JOIN (
-		SELECT 
-			SUM(tmp.points) AS points,
-			dev.user_id AS user_id 
-		FROM (
-			SELECT 
-				sha.device_id, 
-				SUM(sha.points) AS points
-			FROM 
-				tmm.device_share_tasks AS sha	
-			WHERE 
-				sha.points > 0 
-			GROUP BY
-				sha.device_id UNION ALL
-			SELECT 
-				app.device_id, 
-				SUM(app.points) AS points
-			FROM 
-				tmm.device_app_tasks AS app   
-			WHERE
-				app.status = 1
-			GROUP BY
-				app.device_id   
-		) AS tmp 
-		INNER JOIN tmm.devices  AS dev ON (dev.id = tmp.device_id)
-		GROUP BY 
-			dev.user_id 
-	) AS task ON (task.user_id = us.id)
-	LEFT JOIN (
-		SELECT 
-			SUM(point) AS points,
-			user_id 
-		FROM 
-			tmm.reading_logs 
-		GROUP BY 
-			user_id 
-	) AS reading  ON (reading.user_id =us.id)
-	GROUP BY 
-		us.id
-	)AS d 
-WHERE NOT EXISTS
-	(SELECT 1 FROM tmm.user_settings AS us  
-	WHERE us.blocked= 1 AND us.user_id=d.user_id AND us.block_whitelist=0  LIMIT 1)
-) AS tmp
-GROUP BY l 
-ORDER BY l
+    SELECT
+        IF(points  >= 10000,
+            IF(points < 100000,
+                FLOOR(points/10000)*10000+1,
+                IF(points < 1000000,
+                    FLOOR(points/100000)*100000+1,
+                    FLOOR(points/1000000)*1000000+1
+                )
+            ),
+            FLOOR(IF(points=0, 1, points) /1000)*1000+1
+        ) AS l,
+        COUNT(1) AS users,
+        points
+    FROM
+    (
+        SELECT
+            d.user_id,
+            SUM(d.points) AS points
+        FROM tmm.devices AS d
+        WHERE NOT EXISTS (SELECT 1 FROM tmm.user_settings AS us WHERE us.blocked=1 AND us.user_id=d.user_id AND us.block_whitelist=0 LIMIT 1)
+        GROUP BY d.user_id
+    ) AS tmp
+    GROUP BY l ORDER BY l
 `
 	rows, _, err := db.Query(query)
 	if CheckErr(err, c) {
@@ -120,9 +67,9 @@ ORDER BY l
 	var data Data
 	var pointList []string
 	for _, row := range rows {
-		valueList = append(valueList, row.Str(0))
+		valueList = append(valueList, row.Str(1))
 		pointList = append(pointList, fmt.Sprintf("%.0f", row.Float(2)))
-		startPoint := row.Int(1)
+		startPoint := row.Int(0)
 		var endPoints int
 		if startPoint == 1 {
 			startPoint = 0

@@ -3,6 +3,7 @@ package account_controller
 import (
 	"fmt"
 	"github.com/gin-gonic/gin"
+	//"github.com/mkideal/log"
 	. "github.com/tokenme/tmm/handler"
 	"github.com/tokenme/tmm/handler/admin"
 	"net/http"
@@ -33,115 +34,80 @@ func FriendsHandler(c *gin.Context) {
 	if req.Page > 0 {
 		offset = (req.Page - 1) * req.Limit
 	}
-	var totalquery, query string
-
-	query = `
+	query := `
 	SELECT
 		inv.user_id,
 		u.mobile,
 		wx.nick,
-		DATE_ADD(u.created,INTERVAL 8 HOUR), 
-		IF(us_set.user_id > 0,IF(us_set.blocked = us_set.block_whitelist,0,1),0) AS blocked,
+		DATE_ADD(u.created,INTERVAL 8 HOUR),
+		IF(IFNULL(us.blocked, 0)=0 OR us.block_whitelist=1, 0, 1) AS blocked,
 		IF(COUNT(IF(
 			(sha.inserted_at > u.created AND sha.inserted_at < DATE_ADD(u.created,INTERVAL 1 day) )  OR
 			(app.inserted_at > u.created AND app.inserted_at < DATE_ADD(u.created,INTERVAL 1 day) )  OR
 			(reading.inserted_at > u.created AND reading.inserted_at < DATE_ADD(u.created,INTERVAL 1 day))
-		,1,NULL)) > 0,TRUE,FALSE 
+		,1,NULL)) > 0,TRUE,FALSE
 		) AS flrst_day_active,
 		IF(COUNT(IF(
 			(sha.inserted_at > DATE_ADD(u.created,INTERVAL 1 day) AND sha.inserted_at < DATE_ADD(u.created,INTERVAL 2 day)) OR
 			(app.inserted_at > DATE_ADD(u.created,INTERVAL 1 day) AND app.inserted_at < DATE_ADD(u.created,INTERVAL 2 day)) OR
 			(reading.inserted_at > DATE_ADD(u.created,INTERVAL 1 day) AND reading.inserted_at < DATE_ADD(u.created,INTERVAL 2 day)) OR
-			(reading.updated_at > DATE_ADD(u.created,INTERVAL 1 day) AND reading.updated_at < DATE_ADD(u.created,INTERVAL 2 day)) 
-			,1,NULL)) > 0,TRUE,FALSE           
+			(reading.updated_at > DATE_ADD(u.created,INTERVAL 1 day) AND reading.updated_at < DATE_ADD(u.created,INTERVAL 2 day))
+			,1,NULL)) > 0,TRUE,FALSE
 		) AS second_day_active,
 		IF(COUNT(IF(
 			sha.inserted_at > DATE_ADD(u.created,INTERVAL 2 day) OR
 			app.inserted_at > DATE_ADD(u.created,INTERVAL 2 day) OR
 			reading.updated_at > DATE_ADD(u.created,INTERVAL 2 day) OR
 			reading.inserted_at > DATE_ADD(u.created,INTERVAL 2 day)
-			,1,NULL)) > 0,TRUE,FALSE 
+			,1,NULL)) > 0,TRUE,FALSE
 		) AS three_day_active,
 		bonus.bonus,
-		IF(inv.parent_id = %d,0,1 ) AS fiends_types,
-		IF(dev_app.app_id IS NOT NULL,TRUE,FALSE) AS  app_id
-	FROM
-		tmm.invite_codes AS inv
-	INNER JOIN 
-		ucoin.users AS u ON u.id = inv.user_id
-	LEFT JOIN 
-		tmm.wx AS wx ON wx.user_id = u.id 
-	LEFT JOIN 
-		tmm.user_settings AS us_set ON (us_set.user_id = u.id )
+		IF(inv.parent_id=%d, 0, 1 ) AS fiends_types,
+		IF(dev_app.app_id IS NOT NULL,TRUE,FALSE) AS app_id
+	FROM tmm.invite_codes AS inv
+	INNER JOIN ucoin.users AS u ON (u.id=inv.user_id)
+	LEFT JOIN tmm.wx AS wx ON (wx.user_id=u.id)
+	LEFT JOIN tmm.user_settings AS us ON (us.user_id=u.id)
+    LEFT JOIN tmm.devices AS dev ON (dev.user_id=u.id)
+    LEFT JOIN tmm.device_apps AS dev_app ON (dev_app.device_id=dev.id)
 	LEFT JOIN(
 		SELECT
 			from_user_id,
 			SUM(bonus) AS bonus
-		FROM 
-			tmm.invite_bonus 
-		WHERE 
-			user_id = %d  
+		FROM tmm.invite_bonus
+		WHERE user_id=%d
 		GROUP BY from_user_id
-		) AS bonus ON bonus.from_user_id = inv.user_id
-	LEFT JOIN 
-		tmm.devices AS dev ON dev.user_id = u.id 
-	LEFT JOIN
-		tmm.device_apps AS dev_app ON dev_app.device_id = dev.id
-	LEFT JOIN 
-		tmm.device_share_tasks AS sha ON (sha.device_id = dev.id AND sha.inserted_at < DATE_ADD(u.created,INTERVAL 3 day ) )
-	LEFT JOIN 
-		tmm.device_app_tasks AS app ON (app.device_id = dev.id AND app.inserted_at < DATE_ADD(u.created,INTERVAL 3 day ))
-	LEFT JOIN 
-		reading_logs AS reading ON (reading.user_id = dev.user_id AND (reading.inserted_at <  DATE_ADD(u.created,INTERVAL 3 day ) OR reading.updated_at <  DATE_ADD(u.created,INTERVAL 3 day ) ) )
+		) AS bonus ON (bonus.from_user_id=inv.user_id)
+	LEFT JOIN tmm.device_share_tasks AS sha ON (sha.device_id = dev.id AND sha.inserted_at < DATE_ADD(u.created,INTERVAL 3 day ) )
+	LEFT JOIN tmm.device_app_tasks AS app ON (app.device_id = dev.id AND app.inserted_at < DATE_ADD(u.created,INTERVAL 3 day ))
+	LEFT JOIN reading_logs AS reading ON (reading.user_id = dev.user_id AND (reading.inserted_at <  DATE_ADD(u.created,INTERVAL 3 day ) OR reading.updated_at <  DATE_ADD(u.created,INTERVAL 3 day ) ) )
  	WHERE %s
-	GROUP BY inv.user_id 
-	ORDER BY  inv.user_id DESC 
+	GROUP BY inv.user_id
+	ORDER BY inv.user_id DESC
 	LIMIT %d OFFSET %d`
-	totalquery = `
-	SELECT
-		COUNT(distinct inv.user_id)
-	FROM 
-		tmm.invite_codes AS inv
-	INNER JOIN 
-		ucoin.users AS u ON u.id = inv.user_id 
-	LEFT JOIN 
-		tmm.wx AS wx ON wx.user_id = inv.user_id 
-	WHERE 
-		 %s
-`
+	totalquery := `SELECT COUNT(DISTINCT inv.user_id) FROM tmm.invite_codes AS inv LEFT JOIN tmm.devices AS dev ON (dev.user_id=inv.user_id) WHERE %s`
 	switch types(req.Types) {
 	case Direct:
-		direct := fmt.Sprintf(" inv.parent_id = %d ", req.Id)
+		direct := fmt.Sprintf("inv.parent_id=%d", req.Id)
 		query = fmt.Sprintf(query, req.Id, req.Id, direct, req.Limit, offset)
 		totalquery = fmt.Sprintf(totalquery, direct)
-
 	case Indirect:
-		indirect := fmt.Sprintf(" inv.grand_id = %d", req.Id)
+		indirect := fmt.Sprintf("inv.grand_id=%d", req.Id)
 		query = fmt.Sprintf(query, req.Id, req.Id, indirect, req.Limit, offset)
 		totalquery = fmt.Sprintf(totalquery, indirect)
-
 	case Children:
-		online := fmt.Sprintf("  inv.parent_id = %d OR inv.grand_id = %d ", req.Id, req.Id)
+		online := fmt.Sprintf("inv.parent_id=%d OR inv.grand_id=%d", req.Id, req.Id)
 		query = fmt.Sprintf(query, req.Id, req.Id, online, req.Limit, offset)
 		totalquery = fmt.Sprintf(totalquery, online)
 
 	case Active:
-		active := fmt.Sprintf(` (inv.parent_id = %d OR inv.grand_id = %d)  AND EXISTS(
-		SELECT 
-		1
-		FROM tmm.devices AS dev 
-		LEFT JOIN tmm.device_share_tasks AS sha ON (sha.device_id = dev.id AND sha.inserted_at > DATE_SUB(NOW(),INTERVAL 3 day ))
-		LEFT JOIN tmm.device_app_tasks AS app ON (app.device_id = dev.id  AND  app.inserted_at > DATE_SUB(NOW(),INTERVAL 3 day ) AND app.status = 1)
-		LEFT JOIN reading_logs AS reading ON (reading.user_id = dev.user_id  AND (reading.updated_at > DATE_SUB(NOW(),INTERVAL 3 day ) OR  reading.inserted_at > DATE_SUB(NOW(),INTERVAL 3 day )))
-		LEFT JOIN tmm.daily_bonus_logs AS daily ON (daily.user_id = dev.user_id AND daily.updated_on >= DATE_SUB(NOW(),INTERVAL 3 day ))
-		WHERE dev.user_id = inv.user_id AND ( 
-		sha.task_id > 0  
-		OR app.task_id > 0   OR reading.user_id > 0
-		OR daily.user_id > 0)
-		LIMIT 1 )`, req.Id, req.Id)
+		active := fmt.Sprintf(`(inv.parent_id=%d OR inv.grand_id=%d) AND (
+            EXISTS (SELECT 1 FROM tmm.device_share_tasks AS dst WHERE dst.device_id=dev.id AND dst.inserted_at>=DATE_ADD(NOW(), INTERVAL 3 DAY) LIMIT 1) OR
+            EXISTS (SELECT 1 FROM tmm.device_app_tasks AS dat WHERE dat.device_id=dev.id AND dat.inserted_at>=DATE_ADD(NOW(), INTERVAL 3 DAY) LIMIT 1) OR
+            EXISTS (SELECT 1 FROM tmm.reading_logs AS rl WHERE rl.user_id=inv.user_id AND (rl.inserted_at>=DATE_ADD(NOW(), INTERVAL 3 DAY) OR rl.updated_at>=DATE_ADD(NOW(), INTERVAL 3 DAY)) LIMIT 1) OR
+            EXISTS (SELECT 1 FROM tmm.daily_bonus_logs AS dbl WHERE dbl.user_id=inv.user_id AND dbl.updated_on>=DATE_ADD(NOW(), INTERVAL 3 DAY) LIMIT 1))`, req.Id, req.Id)
 		query = fmt.Sprintf(query, req.Id, req.Id, active, req.Limit, offset)
 		totalquery = fmt.Sprintf(totalquery, active)
-
 	default:
 		c.JSON(http.StatusOK, admin.Response{
 			Code:    0,

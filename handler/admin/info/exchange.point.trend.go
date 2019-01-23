@@ -42,14 +42,10 @@ func ExchangeTrendHandler(c *gin.Context) {
 	query := `
 SELECT
 	%s,
-	DATE(inserted_at) AS date
-FROM
-	tmm.exchange_records
-WHERE
-	inserted_at > '%s' AND inserted_at <  DATE_ADD('%s', INTERVAL 1 DAY) 
-	AND status = 1 AND direction = %d
-GROUP BY date
-ORDER BY date 
+	DATE(inserted_at) AS record_on
+FROM tmm.exchange_records
+WHERE inserted_at BETWEEN '%s' AND DATE_ADD('%s', INTERVAL 1 DAY) AND status=1 AND direction = %d
+GROUP BY record_on
 `
 
 	var direction int

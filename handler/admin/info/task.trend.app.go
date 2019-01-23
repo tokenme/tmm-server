@@ -1,12 +1,12 @@
 package info
 
 import (
-	"github.com/gin-gonic/gin"
-	"time"
-	. "github.com/tokenme/tmm/handler"
 	"fmt"
-	"net/http"
+	"github.com/gin-gonic/gin"
+	. "github.com/tokenme/tmm/handler"
 	"github.com/tokenme/tmm/handler/admin"
+	"net/http"
+	"time"
 )
 
 const (
@@ -29,72 +29,24 @@ func AppTrendHandler(c *gin.Context) {
 		endTime = req.EndTime
 	}
 	query := `
-SELECT
-	tmp.date,
-	tmp.value,
-	tmp.before_users,
-	tmp.before_times
-FROM(
-%s
-	) AS tmp`
-	appquery := `
-	SELECT 
-		DATE(app.inserted_at) AS date,
-		COUNT(1) AS '%s'  ,
-		COUNT(DISTINCT IF(NOT EXISTS (
-			SELECT 
-				1 
-			FROM 
-				tmm.device_app_tasks AS app 
-			INNER JOIN tmm.devices AS _dev ON (_dev.id = app.device_id)
-			WHERE 
-				app.inserted_at < '%s' AND _dev.user_id = dev.user_id AND status = 1
-		),dev.user_id,NULL)) AS '%s' ,
-		beforeData.times AS before_times,
-		beforeData.users AS before_users
-	FROM 
-		device_app_tasks AS app 
-	INNER JOIN 
-		tmm.devices AS dev ON( dev.id = app.device_id )
-	LEFT JOIN (
-		SELECT 
-			COUNT(DISTINCT dev.user_id) AS users ,
-			COUNT(1) AS times
-		FROM 
-			device_app_tasks  AS app 
-		INNER JOIN 
-			tmm.devices AS dev ON (dev.id = app.device_id) 
-		WHERE 
-			app.inserted_at < '%s' AND status = 1
-	) AS beforeData ON 1 = 1
-	WHERE 
-		app.status = 1  AND app.inserted_at > '%s' 
-		AND app.inserted_at < DATE_ADD('%s', INTERVAL 1 DAY) 
-	GROUP BY 
-		date 
+	SELECT
+		DATE(app.inserted_at) AS record_on,
+		COUNT(1) AS times,
+        COUNT(DISTINCT d.user_id) AS users
+	FROM device_app_tasks AS app
+	INNER JOIN tmm.devices AS d ON( d.id = app.device_id )
+	WHERE app.status=1 AND app.inserted_at BETWEEN '%s' AND DATE_ADD('%s', INTERVAL 1 DAY)
+	GROUP BY record_on
 	`
 	var yaxisName string
 	var data TrendData
-	if req.Type == InstallAppUser {
-		yaxisName = "人数"
-	}else{
-		yaxisName = "次数"
-	}
 	switch req.Type {
 	case InstallAppUser:
-		data.Title = "安装应用总人数"
-		installAppUser := fmt.Sprintf(appquery,
-			"not_use_total_install_times",
-			db.Escape(startTime), "value", db.Escape(startTime),
-			db.Escape(startTime), db.Escape(endTime))
-		query = fmt.Sprintf(query, installAppUser)
+		data.Title = "安装应用人数"
+		yaxisName = "人数"
 	case InstallAppNumber:
-		data.Title = "安装应用总次数"
-		installAppNumber := fmt.Sprintf(appquery,
-			"value",
-			db.Escape(startTime), "not_use__total_users_number", db.Escape(startTime),
-			db.Escape(startTime), db.Escape(endTime))
-		query = fmt.Sprintf(query, installAppNumber)
+		data.Title = "安装应用次数"
+		yaxisName = "次数"
 	default:
 		c.JSON(http.StatusOK, admin.Response{
 			Code:    0,
@@ -103,30 +55,22 @@ FROM(
 		})
 		return
 	}
-	rows, _, err := db.Query(query)
+	rows, _, err := db.Query(query, db.Escape(startTime), db.Escape(endTime))
 	if CheckErr(err, c) {
 		return
 	}
-	var beforeValue int
 	var indexName, valueList []string
-	if len(rows) != 0 {
-		if req.Type == InstallAppUser {
-			beforeValue = rows[0].Int(2)
-		} else if req.Type == InstallAppNumber {
-			beforeValue = rows[0].Int(3)
-		}
-	}
 	dataMap := make(map[string]int)
 	for _, row := range rows {
-		beforeValue += row.Int(1)
-		dataMap[row.Str(0)] = beforeValue
-	}
-	if len(rows) != 0 {
-		if req.Type == InstallAppUser {
-			beforeValue = rows[0].Int(2)
-		} else if req.Type == InstallAppNumber {
-			beforeValue = rows[0].Int(3)
+		switch req.Type {
+		case InstallAppUser:
+			dataMap[row.Str(0)] = row.Int(2)
+		case InstallAppNumber:
+			dataMap[row.Str(0)] = row.Int(1)
+		default:
+			continue
 		}
+
 	}
 	tm, _ := time.Parse(`2006-01-02`, startTime)
 	end, _ := time.Parse(`2006-01-02`, endTime)
@@ -138,18 +82,17 @@ FROM(
 				valueList = append(valueList, fmt.Sprintf("%d", value))
 			} else {
 				indexName = append(indexName, tm.Format(`2006-01-02`))
-				valueList = append(valueList, fmt.Sprintf("%d", beforeValue))
+				valueList = append(valueList, fmt.Sprintf("%d", 0))
 			}
 			break
 		}
 		if value, ok := dataMap[tm.Format(`2006-01-02`)]; ok {
 			indexName = append(indexName, tm.Format(`2006-01-02`))
-			beforeValue = value
 			valueList = append(valueList, fmt.Sprintf("%d", value))
 			tm = tm.AddDate(0, 0, 1)
 		} else {
 			indexName = append(indexName, tm.Format(`2006-01-02`))
-			valueList = append(valueList, fmt.Sprintf("%d", beforeValue))
+			valueList = append(valueList, fmt.Sprintf("%d", 0))
 			tm = tm.AddDate(0, 0, 1)
 		}
 	}
