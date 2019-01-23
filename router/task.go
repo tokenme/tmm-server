@@ -19,6 +19,8 @@ func taskRouter(r *gin.Engine) {
 		taskGroup.POST("/share/add", handler.ApiSignFunc(), task.ShareAddHandler)
 		taskGroup.POST("/share/update", handler.ApiSignFunc(), task.ShareUpdateHandler)
 		taskGroup.POST("/app/add", handler.ApiSignFunc(), task.AppAddHandler)
+        taskGroup.GET("/generals", task.GeneralsHandler)
+        taskGroup.POST("/general/certificates/upload", handler.ApiSignFunc(), task.GeneralCertificatesUploadHandler)
 	}
 	r.GET("/share/:encryptedTaskId/:encryptedDeviceId", task.ShareHandler)
 	r.GET("/s/track/:encryptedTaskId", task.ShareTrackHandler)
