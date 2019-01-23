@@ -79,7 +79,8 @@ func GeneralsHandler(c *gin.Context) {
     g.updated_at,
     dgt.status,
     dgt.cert_images,
-    dgt.cert_comments
+    dgt.cert_comments,
+    dgt.cert_info
 FROM tmm.general_tasks AS g
 LEFT JOIN tmm.device_general_tasks AS dgt ON (dgt.task_id=g.id AND dgt.device_id='%s')
 WHERE 1=1 %s
@@ -109,6 +110,7 @@ ORDER BY %s LIMIT %d, %d`
             CertificateStatus:  int8(row.Int(12)),
             CertificateImages:  row.Str(13),
             CertificateComment: row.Str(14),
+            CertificateInfo:    row.Str(15),
 		}
 		if creator == user.Id {
 			task.Creator = creator
