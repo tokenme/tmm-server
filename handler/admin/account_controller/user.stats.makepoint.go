@@ -160,17 +160,17 @@ func MakePointHandler(c *gin.Context) {
 	for _, row := range rows {
 		extra := ""
 		get := fmt.Sprintf("+%.2f积分", row.Float(0))
-		if row.Int(3) > 0 {
-			taskType = InviteMap[row.Int(3)]
-			if row.Int(3) == 3 {
-				get = fmt.Sprintf("+%.2fUC", row.Float(4))
+		if row.Int(4) > 0 {
+			taskType = InviteMap[row.Int(4)]
+			if row.Int(4) == 3 {
+				get = fmt.Sprintf("+%.2fUC", row.Float(5))
 			}
 		} else {
 			taskType = typeMap[row.Int(2)]
 		}
 
 		if value, ok := ForMatMap[row.Int(2)]; ok {
-			extra = fmt.Sprintf(value, row.Int(5))
+			extra = fmt.Sprintf(value, row.Int(6))
 		}
 		task := &Task{
 			Get:    get,
