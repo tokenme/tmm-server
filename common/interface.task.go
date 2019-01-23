@@ -64,6 +64,7 @@ type ShareTask struct {
 	Cid           []int           `json:"cid,omitempty"`
 	TotalReadUser int             `json:"total_read_user,omitempty"`
 	ReadDuration  int             `json:"read_duration,omitempty"`
+	Pv            int             `json:"pv,omitempty"`
 }
 
 func (this ShareTask) ShouldUseIframe() bool {
