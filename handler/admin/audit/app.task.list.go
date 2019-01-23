@@ -63,7 +63,7 @@ SELECT
 	at.points_left,
 	u.id,
 	u.mobile,
-	IFNULL(u.avatar,wx.avatar),
+	IFNULL(wx.avatar,u.avatar),
 	IFNULL(wx.nick,u.nickname),
 	IF(us.user_id > 0,IF(us.blocked = us.block_whitelist,0,1),0) AS blocked
 FROM 

@@ -53,9 +53,9 @@ type UserStats struct {
 	ShareBlocked
 }
 
-type Pages struct{
-	Page                 int `form:"page"`
-	Limit                int `form:"limit"`
+type Pages struct {
+	Page  int `form:"page"`
+	Limit int `form:"limit"`
 }
 
 type MakePoint struct {
@@ -99,6 +99,7 @@ type User struct {
 	OffLineBFNumber      int             `json:"off_line_bf_number"`
 	Created              string          `json:"inserted_at,omitempty"`
 	Parent               *User           `json:"pre_user,omitempty"`
+	CurrentPoint         string          `json:"current_point,omitempty"`
 	common.User
 }
 
