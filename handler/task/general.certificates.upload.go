@@ -15,6 +15,7 @@ type GeneralCertificatesUploadRequest struct {
 	Imei     string          `json:"imei" form:"imei"`
 	Mac      string          `json:"mac" form:"mac"`
 	TaskId   uint64          `json:"task_id" form:"task_id" binding:"required"`
+    Info     string          `json:"info" form:"info" binding:"required"`
     Images   string          `json:"images" form:"images" binding:"required"`
 }
 
@@ -63,7 +64,7 @@ func GeneralCertificatesUploadHandler(c *gin.Context) {
     if Check(len(rows) == 0, "Task not avaliable", c) {
         return
     }
-    _, _, err = db.Query(`INSERT INTO tmm.device_general_tasks (device_id, task_id, cert_images, status) VALUES ('%s', %d, '%s', 0) ON DUPLICATE KEY UPDATE cert_images=VALUES(cert_images), status=VALUES(status)`, db.Escape(deviceId), req.TaskId, db.Escape(req.Images))
+    _, _, err = db.Query(`INSERT INTO tmm.device_general_tasks (device_id, task_id, cert_info, cert_images, status) VALUES ('%s', %d, '%s', '%s', 0) ON DUPLICATE KEY UPDATE cert_info=VALUES(cert_info), cert_images=VALUES(cert_images), status=VALUES(status)`, db.Escape(deviceId), req.TaskId, db.Escape(req.Info), db.Escape(req.Images))
     if CheckErr(err, c) {
         return
     }

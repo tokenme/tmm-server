@@ -31,6 +31,7 @@ type GeneralTask struct {
 	UpdatedAt          string          `json:"updated_at,omitempty"`
 	OnlineStatus       int8            `json:"online_status,omitempty"`
 	Details            string          `json:"details,omitempty"`
+    CertificateInfo    string          `json:"certificate_info,omitempty"`
 	CertificateStatus  int8            `json:"certificate_status,omitempty"`
 	CertificateImages  string          `json:"certificate_images,omitempty"`
 	CertificateComment string          `json:"certificate_comment,omitempty"`
