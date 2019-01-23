@@ -45,7 +45,6 @@ type SearchOptions struct {
 	IsWhiteList             bool         `form:"is_white_list"`
 	Id                      int          `form:"id"`
 	Mobile                  string       `form:"mobile"`
-	WxNick                  string       `form:"wx_nick"`
 	//Abnormal                bool         `form:"abnormal"`
 	Page                    int          `form:"page"`
 	Limit                    int          `form:"limit"`
@@ -455,9 +454,6 @@ LEFT JOIN (
 		where = append(where, fmt.Sprintf(`  AND IF(us_set.user_id > 0,IF(us_set.blocked = us_set.block_whitelist,0,1),0) = %d `, 1))
 	} else {
 		where = append(where, fmt.Sprintf(`  AND IF(us_set.user_id > 0,IF(us_set.blocked = us_set.block_whitelist,0,1),0) = %d `, 0))
-	}
-	if search.WxNick != "" {
-		where = append(where, fmt.Sprintf(`  AND wx.nick LIKE '%s' `, search.WxNick+"%"))
 	}
 	//if search.Abnormal {
 	//	where = append(where, fmt.Sprintf(`  AND dev_point.points > point.point+1000 `))
