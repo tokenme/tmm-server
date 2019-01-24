@@ -16,10 +16,10 @@ func EditAppTaskHandler(c *gin.Context) {
 
 	query := `UPDATE tmm.device_app_task_certificates SET status = %d,comment="%s" WHERE device_id = '%s' AND task_id = %d AND status = 1`
 	db := Service.Db
-	if _, _, err := db.Query(query, task.Status, db.Escape(task.Comment), db.Escape(task.DeviceId), task.Id); CheckErr(err, c) {
+	if _, _, err := db.Query(query, task.CertificateStatus, db.Escape(task.CertificateComment), db.Escape(task.DeviceId), task.Id); CheckErr(err, c) {
 		return
 	}
-	if task.Status == 2 {
+	if task.CertificateStatus == 2 {
 		var user common.User
 		user.Id = task.UserId
 		_, err := task.Install(user, task.DeviceId, Service, Config)

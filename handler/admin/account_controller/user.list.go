@@ -3,56 +3,21 @@ package account_controller
 import (
 	"fmt"
 	"github.com/gin-gonic/gin"
-	"github.com/shopspring/decimal"
 	. "github.com/tokenme/tmm/handler"
 	"github.com/tokenme/tmm/handler/admin"
 	"net/http"
 	"strings"
 )
 
-type withdrawType int
-type pointType int
-
-const (
-	Any withdrawType = iota
-	Point
-	Ucoin
-)
-const (
-	All pointType = iota
-	invite
-	reading
-	share
-)
 
 type SearchOptions struct {
-	WithdrawType            withdrawType `form:"withdraw_type"`
-	WithDrawNumberOfTimes   int          `form:"with_draw_number_of_times"`
-	WithDrawAmount          int          `form:"with_draw_amount"`
-	ExchangePointToUc       int          `form:"exchange_point_to_uc"`
-	ExchangeUcToPoint       int          `form:"exchange_uc_to_point"`
-	ExchangePointToUcAmount int          `form:"exchange_point_to_uc_amount"`
-	ExchangeUcToPointAmount int          `form:"exchange_uc_to_point_amount"`
-	MakePointType           pointType    `form:"make_point_type"`
-	MakePointTimes          int          `form:"make_point_times"`
-	MakePointDay            int          `form:"make_point_day"`
-	OnlineBFNumber          int          `form:"online_bf_number"`
-	OffLineBfNumber         int          `form:"off_line_bf_number"`
-	StartDate               string       `form:"start_date"`
-	EndDate                 string       `form:"end_date"`
-	StartHours              string       `form:"start_hours"`
-	EndHours                string       `form:"end_hours"`
-	IsWhiteList             bool         `form:"is_white_list"`
-	Id                      int          `form:"id"`
-	Mobile                  string       `form:"mobile"`
-	//Abnormal                bool         `form:"abnormal"`
-	Page                    int          `form:"page"`
-	Limit                    int          `form:"limit"`
-
+	Id     int    `form:"id"`
+	Mobile string `form:"mobile"`
+	Page   int    `form:"page"`
+	Limit  int    `form:"limit"`
 }
 
 func GetAccountList(c *gin.Context) {
-	db := Service.Db
 	var search SearchOptions
 	if CheckErr(c.Bind(&search), c) {
 		return
@@ -68,443 +33,62 @@ func GetAccountList(c *gin.Context) {
 		offset = 0
 	}
 
-	query := `
-SELECT
-	u.id AS id,
-	wx.nick AS nick,
-	u.mobile AS mobile,
-	cny.total AS cny_total,
-	IFNULL(cny.cny,0)  AS  cny,
-	point.total AS point_total,				
-	IFNULL(point.point,0) AS point,
-	ex.exchange_total AS exchange_total,
-	ex.point_to_tmm_times AS point_to_tmm_times,
-	ex.tmm_to_point_times AS tmm_to_point_times,
-	IFNULL(ex.point_to_tmm,0) AS point_to_tmm,
-	ex.tmm_to_point AS tmm_to_point,
-	IFNULL(inv.online,0) AS online,
-	IFNULL(inv.offline,0) AS offline,
-	IF(us_set.user_id > 0,IF(us_set.blocked = us_set.block_whitelist,0,1),0) AS blocked
-FROM 
-	ucoin.users AS u
-LEFT JOIN tmm.wx AS wx ON (wx.user_id = u.id)
-LEFT JOIN tmm.user_settings AS us_set ON (us_set.user_id = u.id )
-LEFT JOIN (
-SELECT 
-	user_id,
-	COUNT(1) AS exchange_total,
-	COUNT(IF(direction = 1,0,NULL)) AS point_to_tmm_times,
-	COUNT(IF(direction = -1,0,NULL)) AS tmm_to_point_times,
-	SUM(IF(direction = 1 ,tmm,0)) AS point_to_tmm,
-	SUM(IF(direction = -1 ,points,0)) AS tmm_to_point
-FROM 
-	tmm.exchange_records 
-WHERE 
-	status = 1 %s
-GROUP BY 
-	user_id 
-) AS ex ON (ex.user_id = u.id)
-LEFT JOIN (
-SELECT 
-	tmp.id AS id,
-	SUM(tmp.online) AS online,
-	SUM(tmp.offline) AS offline
-FROM (
-SELECT
-	inv.parent_id AS id,
-	COUNT(distinct IF(dev.lastping_at > DATE_SUB(NOW(),INTERVAL 1 DAY),inv.user_id,NULL))   AS online,
-	COUNT(distinct IF(IFNULL(dev.lastping_at,DATE_SUB(NOW(),INTERVAL 2 DAY)) < DATE_SUB(NOW(),INTERVAL 1 DAY),inv.user_id,NULL))   AS offline
-FROM 	
-	invite_codes AS inv 
-LEFT JOIN tmm.devices AS dev ON (dev.user_id = inv.user_id)
-GROUP BY  id UNION ALL
-SELECT 
-	inv.grand_id AS id,
-	COUNT(distinct IF(dev.lastping_at > DATE_SUB(NOW(),INTERVAL 1 DAY),inv.user_id,NULL))   AS online,
-	COUNT(distinct IF(IFNULL(dev.lastping_at,DATE_SUB(NOW(),INTERVAL 2 DAY)) < DATE_SUB(NOW(),INTERVAL 1 DAY),inv.user_id,NULL))   AS offline
-FROM 	
-	invite_codes AS inv 
-LEFT JOIN tmm.devices AS dev ON (dev.user_id = inv.user_id)
-GROUP BY  id
-) AS tmp 
-GROUP BY tmp.id
-) AS inv ON (inv.id = u.id) 
-%s 
-WHERE 
-    1 = 1 %s
-GROUP BY 
-	id
-ORDER BY 
-	id  DESC
-LIMIT %d OFFSET %d
-
-`
-
-	totalQuery := `
-SELECT
-	IF(us_set.user_id > 0,IF(us_set.blocked = us_set.block_whitelist,0,1),0) AS blocked,
-	u.id
-FROM 
-	ucoin.users AS u
-LEFT JOIN tmm.wx AS wx ON (wx.user_id = u.id)
-LEFT JOIN tmm.user_settings AS us_set ON (us_set.user_id = u.id )
-LEFT JOIN (
-SELECT 
-	user_id,
-	COUNT(1) AS exchange_total,
-	COUNT(IF(direction = 1,0,NULL)) AS point_to_tmm_times,
-	COUNT(IF(direction = -1,0,NULL)) AS tmm_to_point_times,
-	SUM(IF(direction = 1 ,tmm,0)) AS point_to_tmm,
-	SUM(IF(direction = -1 ,points,0)) AS tmm_to_point
-FROM 
-	tmm.exchange_records 
-WHERE 
-	status = 1 %s
-GROUP BY 
-	user_id 
-) AS ex ON (ex.user_id = u.id)
-LEFT JOIN (
-SELECT 
-	tmp.id AS id,
-	SUM(tmp.online) AS online,
-	SUM(tmp.offline) AS offline
-FROM (
-SELECT
-	inv.parent_id AS id,
-	COUNT(distinct IF(dev.lastping_at > DATE_SUB(NOW(),INTERVAL 1 DAY),inv.user_id,NULL))   AS online,
-	COUNT(distinct IF(IFNULL(dev.lastping_at,DATE_SUB(NOW(),INTERVAL 2 DAY)) < DATE_SUB(NOW(),INTERVAL 1 DAY),inv.user_id,NULL))   AS offline
-FROM 	
-	invite_codes AS inv 
-LEFT JOIN tmm.devices AS dev ON (dev.user_id = inv.user_id)
-GROUP BY  id UNION ALL
-SELECT 
-	inv.grand_id AS id,
-	COUNT(distinct IF(dev.lastping_at > DATE_SUB(NOW(),INTERVAL 1 DAY),inv.user_id,NULL))   AS online,
-	COUNT(distinct IF(IFNULL(dev.lastping_at,DATE_SUB(NOW(),INTERVAL 2 DAY)) < DATE_SUB(NOW(),INTERVAL 1 DAY),inv.user_id,NULL))   AS offline
-FROM 	
-	invite_codes AS inv 
-LEFT JOIN tmm.devices AS dev ON (dev.user_id = inv.user_id)
-GROUP BY  id
-) AS tmp 
-GROUP BY tmp.id
-) AS inv ON (inv.id = u.id)
-%s 
-WHERE 
-    1 = 1 %s
-GROUP BY 
-	id
-ORDER BY 
-	id  DESC`
-
-	var leftJoin []string
-	var when []string
 	var where []string
 
-	if search.StartDate != "" {
-		when = append(when, fmt.Sprintf(` AND inserted_at > %s`, db.Escape(search.StartDate)))
-	}
-	if search.EndDate != "" {
-		when = append(when, fmt.Sprintf(` AND inserted_at < %s`, db.Escape(search.EndDate)))
-	}
-	if search.StartHours != "" {
-		when = append(when, fmt.Sprintf(` AND HOUR(inserted_at)  BETWEEN %s  AND %s `, db.Escape(search.StartHours), db.Escape(search.EndHours)))
-	}
-
-	switch search.WithdrawType {
-	case Any:
-		leftJoin = append(leftJoin, fmt.Sprintf(`
-LEFT JOIN (
-	SELECT 
-	tmp.user_id AS user_id,
-	SUM(tmp.cny) AS cny ,
-	SUM(tmp.total) AS total
-FROM (
-	SELECT
-		user_id, 
-		IFNULL(SUM(cny),0) AS cny,
-		COUNT(1) AS total
-	FROM
-		tmm.withdraw_txs
-	WHERE
-		tx_status = 1  %s
-	GROUP BY
-		user_id UNION ALL
-	SELECT
-		user_id, 
-		IFNULL(SUM(cny),0) AS cny,
-		COUNT(1) AS total 
-	FROM
-		tmm.point_withdraws 
-	WHERE
-		verified = 1  %s
-	GROUP BY 
-		user_id
-	) AS tmp
-	GROUP BY 
-		user_id 
-) AS cny ON (cny.user_id = u.id )`, strings.Join(when, ` `), strings.Join(when, ` `)))
-	case Point:
-		leftJoin = append(leftJoin, fmt.Sprintf(fmt.Sprintf(` 
-LEFT JOIN (
-	SELECT
-		user_id AS user_id, 
-		SUM( cny ) AS cny,
-		COUNT(1) AS total
-	FROM
-		tmm.point_withdraws  
-	WHERE
-		verified = 1 %s
-	GROUP BY  
-		user_id 
-) AS cny ON (cny.user_id = u.id )`, strings.Join(when, ` `))))
-	case Ucoin:
-		leftJoin = append(leftJoin, fmt.Sprintf(` 
-LEFT JOIN (
-	SELECT
-		user_id, 
-		SUM( cny ) AS cny,
-		COUNT(1) AS total
-	FROM
-		tmm.withdraw_txs 
-	WHERE 
-		tx_status = 1 %s
-	GROUP BY 
-		user_id
-) AS cny ON (cny.user_id = u.id )
- `, strings.Join(when, ` `)))
-	default:
-		c.JSON(http.StatusOK, admin.Response{
-			Code:    1,
-			Message: "未知参数",
-		})
-		return
-	}
-	switch search.MakePointType {
-	case All:
-		leftJoin = append(leftJoin, fmt.Sprintf(`
-LEFT JOIN (
-	SELECT 
-		dev.user_id AS id,
-		 IFNULL(SUM(tmp.points),0) + IFNULL(inv.bonus,0) + IFNULL(read_.point,0) AS point,
-		 IFNULL(SUM(tmp.total),0) + IFNULL(inv.total,0) + IFNULL(read_.total,0) AS  total,
-		COUNT(distinct tmp.date) AS _day
-	FROM 
-		tmm.devices AS dev 
-	LEFT JOIN (
-		SELECT 
-			device_id, 
-			SUM(points) AS points,
-			COUNT(1) AS total,
-			DATE(inserted_at) AS date
-		FROM 
-			tmm.device_share_tasks
-		WHERE 
-			points > 0 %s
-		GROUP BY
-			device_id,date UNION ALL
-		SELECT 
-			device_id, 
-			SUM(points) AS points,
-			COUNT(1) AS total,
-			DATE(inserted_at) AS date
-		FROM 
-			tmm.device_app_tasks   
-		WHERE
-			status = 1 %s
-		GROUP BY
-			device_id,date   
-		) AS tmp ON (tmp.device_id =dev.id)
-	LEFT JOIN (
-		SELECT 
-			SUM(bonus) AS bonus,
-			user_id AS user_id ,
-			COUNT(1) AS total 
-		FROM 
-			tmm.invite_bonus  
-		WHERE
-			1 = 1 %s
-		GROUP BY 
-			user_id
-	)AS inv ON (inv.user_id = dev.user_id ) 
-	LEFT JOIN (
-		SELECT
-			SUM(point) AS point,
-			user_id AS user_id,
-			COUNT(1) AS total 
-		FROM
-			tmm.reading_logs 
-		WHERE 
-			1 = 1 %s
-		GROUP BY
-			user_id
-	) AS read_ ON (read_.user_id = dev.user_id)
-	GROUP BY 
-		dev.user_id
-) AS point ON (point.id = u.id)`, strings.Join(when, ` `),
-			strings.Join(when, ` `), strings.Join(when, ` `), strings.Join(when, ` `)))
-	case invite:
-		leftJoin = append(leftJoin, fmt.Sprintf(` 
-LEFT JOIN (
-	SELECT 
-		SUM(bonus) AS point,
-		user_id AS id ,
-		COUNT(1) AS total,
-		COUNT(distinct DATE(inserted_at)) AS _day
-	FROM 
-		tmm.invite_bonus 
-	WHERE
-		task_type = 0 %s
-	GROUP BY 
-		user_id
-) AS point ON (point.id = u.id)`, strings.Join(when, " ")))
-	case reading:
-		leftJoin = append(leftJoin, fmt.Sprintf(`
-LEFT JOIN (
-	SELECT 
-		user_id AS id,
-		SUM(point) AS point,
-		COUNT(1)  AS total,
-		COUNT(distinct DATE(inserted_at)) AS _day
-	FROM 
-		tmm.reading_logs 
-	WHERE 
-		1 = 1 %s
-	GROUP BY 
-	  user_id
-) AS point ON (point.id = u.id)`, strings.Join(when, " ")))
-	case share:
-		leftJoin = append(leftJoin, fmt.Sprintf(`
-LEFT JOIN (
-	SELECT 
-		dev.user_id AS id,
-		SUM(tmp.points) AS point,
-		COUNT(1) AS total,
-		COUNT(distinct DATE(tmp._date)) AS _day
-	FROM 
-		tmm.devices AS dev  
-	LEFT JOIN (
-		SELECT 
-			sha.points AS points,
-			dev.user_id  AS id ,
-			sha.inserted_at AS _date
-		FROM 
-			tmm.device_share_tasks AS sha 
-		INNER JOIN tmm.devices AS dev ON dev.id = sha.device_id 
-		WHERE 	
-    		1 = 1 %s
-		GROUP BY 
-			id
-		UNION ALL 
-		SELECT
-			bonus AS points,
-			user_id AS id,
-			inserted_at AS _date
-		FROM 
-			tmm.invite_bonus 
-		WHERE task_type != 0 AND bonus > 0 AND %s 
-	) AS tmp ON (tmp.id = dev.user_id)
-	GROUP BY 
-	user_id
-) AS point ON (point.id = u.id)`, strings.Join(when, ""), strings.Join(when, "")))
-	default:
-		c.JSON(http.StatusOK, admin.Response{
-			Code:    1,
-			Message: "未知参数",
-		})
-		return
-	}
-
-	if search.Id != 0 {
-		where = append(where, fmt.Sprintf(`AND u.id = %d`, search.Id))
+	if search.Id > 0 {
+		where = append(where, fmt.Sprintf(" AND u.id = %d ", search.Id))
 	}
 	if search.Mobile != "" {
-		where = append(where, fmt.Sprintf(` AND u.mobile = '%s'`, search.Mobile))
+		where = append(where, fmt.Sprintf(" AND u.mobile = '%s' ", search.Mobile))
 	}
-	if search.WithDrawNumberOfTimes != 0 {
-		where = append(where, fmt.Sprintf(" AND cny.total >= %d", search.WithDrawNumberOfTimes))
-	}
-	if search.WithDrawAmount != 0 {
-		where = append(where, fmt.Sprintf(" AND cny.cny >= %d", search.WithDrawAmount))
-	}
-	if search.ExchangePointToUc != 0 {
-		where = append(where, fmt.Sprintf(` AND ex.point_to_tmm_times >= %d `, search.ExchangePointToUc))
-	}
-	if search.ExchangePointToUcAmount != 0 {
-		where = append(where, fmt.Sprintf(` AND ex.point_to_tmm >= %d`, search.ExchangePointToUcAmount))
-	}
-	if search.ExchangeUcToPoint != 0 {
-		where = append(where, fmt.Sprintf(` AND ex.tmm_to_point_times >= %d`, search.ExchangeUcToPoint))
-	}
-	if search.ExchangeUcToPointAmount != 0 {
-		where = append(where, fmt.Sprintf(` AND ex.tmm_to_point >= %d`, search.ExchangeUcToPointAmount))
-	}
-	if search.MakePointTimes != 0 {
-		where = append(where, fmt.Sprintf(` AND point.total >= %d`, search.MakePointTimes))
-	}
-	if search.MakePointDay != 0 {
-		where = append(where, fmt.Sprintf(` AND IFNULL(point.point,1) / IFNULL(point._day,1) >= %d`, search.MakePointDay))
-	}
-	if search.OnlineBFNumber != 0 {
-		where = append(where, fmt.Sprintf(` AND inv.online >= %d`, search.OnlineBFNumber))
-	}
-	if search.OffLineBfNumber != 0 {
-		where = append(where, fmt.Sprintf(` AND inv.offline >= %d`, search.OffLineBfNumber))
-	}
-	if search.IsWhiteList {
-		where = append(where, fmt.Sprintf(`  AND IF(us_set.user_id > 0,IF(us_set.blocked = us_set.block_whitelist,0,1),0) = %d `, 1))
-	} else {
-		where = append(where, fmt.Sprintf(`  AND IF(us_set.user_id > 0,IF(us_set.blocked = us_set.block_whitelist,0,1),0) = %d `, 0))
-	}
-	//if search.Abnormal {
-	//	where = append(where, fmt.Sprintf(`  AND dev_point.points > point.point+1000 `))
-	//}
 
-	rows, res, err := db.Query(query, strings.Join(when, " "),
-		strings.Join(leftJoin, " "), strings.Join(where, " "), search.Limit, offset)
+	db := Service.Db
+	query := `
+SELECT 
+	u.id,
+	IFNULL(wx.nick,u.nickname),
+	u.mobile,
+	IF(us.user_id > 0 , IF(us.block_whitelist = us.blocked,0,1) ,0)
+FROM 
+	ucoin.users AS u 
+LEFT JOIN tmm.wx AS wx ON (wx.user_id = u.id)
+LEFT JOIN tmm.user_settings AS us ON (us.user_id = u.id)
+WHERE 
+	1 = 1 %s
+ORDER BY u.created DESC
+LIMIT %d OFFSET %d`
+
+	rows, _, err := db.Query(query, strings.Join(where, " "), search.Limit, offset)
 	if CheckErr(err, c) {
 		return
 	}
 
-	var List []*admin.User
-
+	var list []*admin.User
 	for _, row := range rows {
-		point, err := decimal.NewFromString(row.Str(res.Map(`point`)))
-		if CheckErr(err, c) {
-			return
-		}
-		pointToUcoin, err := decimal.NewFromString(row.Str(res.Map(`point_to_tmm`)))
-		if CheckErr(err, c) {
-			return
-		}
-		user := &admin.User{
-			ExchangeCount:        row.Int(res.Map(`point_to_tmm_times`)),
-			OnlineBFNumber:       row.Int(res.Map(`online`)),
-			OffLineBFNumber:      row.Int(res.Map(`offline`)),
-			ExchangePointToUcoin: pointToUcoin.Ceil(),
-		}
-		//user.CurrentPoint = fmt.Sprintf("%.0f", row.Float(res.Map(`current_points`)))
-		user.Point = point.StringFixed(0)
-		user.DrawCash = fmt.Sprintf("%.2f", row.Float(res.Map(`cny`)))
-		user.Blocked = row.Int(res.Map(`blocked`))
-		user.Nick = row.Str(res.Map(`nick`))
-		user.Id = row.Uint64(res.Map(`id`))
-		user.Mobile = row.Str(res.Map(`mobile`))
-		List = append(List, user)
-
+		user := &admin.User{}
+		user.Id = row.Uint64(0)
+		user.Nick = row.Str(1)
+		user.Mobile = row.Str(2)
+		user.Blocked = row.Int(3)
+		list = append(list, user)
 	}
 
 	var total int
-	rows, _, err = db.Query(totalQuery, strings.Join(when, " "),
-		strings.Join(leftJoin, " "), strings.Join(where, " "))
+
+	rows, _, err = db.Query(` SELECT COUNT(*) FROM ucoin.users AS u LEFT JOIN tmm.wx AS wx ON (wx.user_id = u.id) WHERE 1 = 1 %s`, strings.Join(where, " "))
+	if CheckErr(err, c) {
+		return
+	}
+
 	if len(rows) > 0 {
-		total = len(rows)
+		total = rows[0].Int(0)
 	}
 
 	c.JSON(http.StatusOK, admin.Response{
 		Code:    0,
 		Message: admin.API_OK,
 		Data: gin.H{
-			"data":  List,
+			"data":  list,
 			"total": total,
 		},
 	})

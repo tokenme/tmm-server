@@ -7,29 +7,22 @@ import (
 	"github.com/tokenme/tmm/handler/admin"
 	"net/http"
 	"strings"
-	"fmt"
+	"github.com/shopspring/decimal"
 )
 
 type AppTask struct {
 	common.AppTask
-	Images     []string `json:"images,omitempty"`
-	Status     int      `json:"status,omitempty"`
-	Comment    string   `json:"comment,omitempty"`
-	DeviceId   string   `json:"device_id,omitempty"`
-	Points     string   `json:"points,omitempty"`
-	PointsLeft string   `json:"points_left,omitempty"`
-	Bonus      string   `json:"bonus,omitempty"`
-	UserId     uint64   `json:"user_id,omitempty"`
-	TaskId     uint64   `json:"task_id,omitempty"`
-	Nick       string   `json:"nick,omitempty"`
-	Mobile     string   `json:"mobile,omitempty"`
-	Avatar     string   `json:"avatar,omitempty"`
-	Blocked    int      `json:"blocked"`
+	Images   []string `json:"images,omitempty"`
+	DeviceId string   `json:"device_id,omitempty"`
+	UserId   uint64   `json:"user_id,omitempty"`
+	Nick     string   `json:"nick,omitempty"`
+	Mobile   string   `json:"mobile,omitempty"`
+	Avatar   string   `json:"avatar,omitempty"`
+	Blocked  int      `json:"blocked"`
 }
 
 type Request struct {
 	admin.Pages
-	Status            int `form:"status"`
 	CertificateStatus int `form:"certificate_status"`
 }
 
@@ -81,7 +74,7 @@ LIMIT %d OFFSET %d
 `
 
 	db := Service.Db
-	rows, _, err := db.Query(query, req.Status, req.Limit, offset)
+	rows, _, err := db.Query(query, req.CertificateStatus, req.Limit, offset)
 	if CheckErr(err, c) {
 		return
 	}
@@ -91,19 +84,19 @@ LIMIT %d OFFSET %d
 	for _, row := range rows {
 		appTask := &AppTask{}
 		appTask.DeviceId = row.Str(0)
-		appTask.TaskId = row.Uint64(1)
+		appTask.Id = row.Uint64(1)
 		appTask.BundleId = row.Str(2)
 		appTask.InsertedAt = row.Str(3)
-		appTask.Comment = row.Str(4)
+		appTask.CertificateComment = row.Str(4)
 		appTask.Images = strings.Split(row.Str(5), `,`)
-		appTask.Status = row.Int(6)
+		appTask.CertificateStatus = int8(row.Int(6))
 		appTask.Name = row.Str(7)
 		appTask.Icon = row.Str(8)
 		appTask.Details = row.Str(9)
-		appTask.Bonus = fmt.Sprintf("%.2f", row.Float(10))
+		appTask.Bonus = decimal.NewFromFloat(row.Float(10))
 		appTask.DownloadUrl = row.Str(11)
-		appTask.Points = fmt.Sprintf("%.2f", row.Float(12))
-		appTask.PointsLeft = fmt.Sprintf("%.2f", row.Float(13))
+		appTask.Points = decimal.NewFromFloat(row.Float(12))
+		appTask.PointsLeft = decimal.NewFromFloat(row.Float(13))
 		appTask.UserId = row.Uint64(14)
 		appTask.Mobile = row.Str(15)
 		appTask.Avatar = row.Str(16)
@@ -113,7 +106,7 @@ LIMIT %d OFFSET %d
 	}
 
 	var total int
-	rows, _, err = db.Query(`SELECT COUNT(1) FROM tmm.device_app_task_certificates WHERE status = %d`, req.Status)
+	rows, _, err = db.Query(`SELECT COUNT(1) FROM tmm.device_app_task_certificates WHERE status = %d`, req.CertificateStatus)
 	if len(rows) > 0 {
 		total = rows[0].Int(0)
 	}

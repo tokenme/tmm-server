@@ -19,7 +19,7 @@ const (
 )
 
 type GeneralTask struct {
-	Id                 uint64          `json:"id,omitempty"`
+	Id                 uint64          `json:"id"`
 	Creator            uint64          `json:"creator,omitempty"`
 	Title              string          `json:"title,omitempty"`
 	Summary            string          `json:"summary,omitempty"`
@@ -32,7 +32,7 @@ type GeneralTask struct {
 	OnlineStatus       int8            `json:"online_status,omitempty"`
 	Details            string          `json:"details,omitempty"`
 	CertificateInfo    string          `json:"certificate_info,omitempty"`
-	CertificateStatus  int8            `json:"certificate_status,omitempty"`
+	CertificateStatus  int8            `json:"certificate_status"`
 	CertificateImages  string          `json:"certificate_images,omitempty"`
 	CertificateComment string          `json:"certificate_comment,omitempty"`
 }
@@ -252,7 +252,7 @@ func WxCodeKey(code string) string {
 }
 
 type AppTask struct {
-	Id                 uint64          `json:"id,omitempty"`
+	Id                 uint64          `json:"id"`
 	Creator            uint64          `json:"creator,omitempty"`
 	Name               string          `json:"name,omitempty"`
 	Platform           Platform        `json:"platform,omitempty"`
