@@ -13,14 +13,11 @@ import (
 type GeneralTask struct {
 	common.GeneralTask
 	DeviceId           string   `json:"device_id"`
-	UserId             int      `json:"user_id"`
-	TaskId             int      `json:"task_id"`
+	UserId             uint64   `json:"user_id"`
 	Nick               string   `json:"nick"`
 	Mobile             string   `json:"mobile"`
 	Blocked            int      `json:"blocked"`
 	Avatar             string   `json:"avatar"`
-	CertificateStatus  int8     `json:"certificate_status"`
-	CertificateComment string   `json:"certificate_comment"`
 	CertificateImages  []string `json:"certificate_images,omitempty"`
 }
 
@@ -82,14 +79,14 @@ LIMIT %d OFFSET %d
 	for _, row := range rows {
 		task := &GeneralTask{}
 		task.DeviceId = row.Str(0)
-		task.TaskId = row.Int(1)
+		task.Id = row.Uint64(1)
 		task.CertificateStatus = int8(row.Int(2))
 		task.CertificateInfo = row.Str(3)
 		task.CertificateImages = strings.Split(row.Str(4), `,`)
 		task.CertificateComment = row.Str(5)
 		task.InsertedAt = row.Str(6)
 		task.Mobile = row.Str(7)
-		task.UserId = row.Int(8)
+		task.UserId = row.Uint64(8)
 		task.Nick = row.Str(9)
 		task.Avatar = row.Str(10)
 		task.Title = row.Str(11)
