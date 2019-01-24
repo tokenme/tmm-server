@@ -12,5 +12,7 @@ func AuditRouter(r *gin.Engine) {
 	{
 		auditGroup.GET(`/app/list`, audit.AuditAppTaskListHandler)
 		auditGroup.POST(`/app/edit`, audit.EditAppTaskHandler)
+		auditGroup.GET(`/general/list`, audit.AuditGeneralTaskListHandler)
+		auditGroup.POST(`/general/edit`, audit.EditGeneralTaskHandler)
 	}
 }

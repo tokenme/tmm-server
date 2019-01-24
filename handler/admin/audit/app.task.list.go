@@ -19,7 +19,8 @@ type AppTask struct {
 	Points     string   `json:"points,omitempty"`
 	PointsLeft string   `json:"points_left,omitempty"`
 	Bonus      string   `json:"bonus,omitempty"`
-	UserId     uint64     `json:"user_id,omitempty"`
+	UserId     uint64   `json:"user_id,omitempty"`
+	TaskId     uint64   `json:"task_id,omitempty"`
 	Nick       string   `json:"nick,omitempty"`
 	Mobile     string   `json:"mobile,omitempty"`
 	Avatar     string   `json:"avatar,omitempty"`
@@ -28,7 +29,8 @@ type AppTask struct {
 
 type Request struct {
 	admin.Pages
-	Status int `form:"status"`
+	Status            int `form:"status"`
+	CertificateStatus int `form:"certificate_status"`
 }
 
 func AuditAppTaskListHandler(c *gin.Context) {
@@ -89,7 +91,7 @@ LIMIT %d OFFSET %d
 	for _, row := range rows {
 		appTask := &AppTask{}
 		appTask.DeviceId = row.Str(0)
-		appTask.Id = row.Uint64(1)
+		appTask.TaskId = row.Uint64(1)
 		appTask.BundleId = row.Str(2)
 		appTask.InsertedAt = row.Str(3)
 		appTask.Comment = row.Str(4)

@@ -19,7 +19,7 @@ const (
 )
 
 type GeneralTask struct {
-	Id                 uint64          `json:"id"`
+	Id                 uint64          `json:"id,omitempty"`
 	Creator            uint64          `json:"creator,omitempty"`
 	Title              string          `json:"title,omitempty"`
 	Summary            string          `json:"summary,omitempty"`
@@ -31,7 +31,7 @@ type GeneralTask struct {
 	UpdatedAt          string          `json:"updated_at,omitempty"`
 	OnlineStatus       int8            `json:"online_status,omitempty"`
 	Details            string          `json:"details,omitempty"`
-    CertificateInfo    string          `json:"certificate_info,omitempty"`
+	CertificateInfo    string          `json:"certificate_info,omitempty"`
 	CertificateStatus  int8            `json:"certificate_status,omitempty"`
 	CertificateImages  string          `json:"certificate_images,omitempty"`
 	CertificateComment string          `json:"certificate_comment,omitempty"`
@@ -252,8 +252,8 @@ func WxCodeKey(code string) string {
 }
 
 type AppTask struct {
-	Id                 uint64          `json:"id"`
-	Creator            uint64          `json:"creator",omitempty`
+	Id                 uint64          `json:"id,omitempty"`
+	Creator            uint64          `json:"creator,omitempty"`
 	Name               string          `json:"name,omitempty"`
 	Platform           Platform        `json:"platform,omitempty"`
 	SchemeId           uint64          `json:"scheme_id,omitempty"`
@@ -460,6 +460,115 @@ ORDER BY d.points DESC LIMIT 1) AS t2`
 				_, _, err = db.Query(`DELETE FROM tmm.invite_bonus WHERE user_id IN (%s) AND from_user_id=%d AND task_type=2 AND task_id=%d`, strings.Join(inviterIds, ","), user.Id, this.Id)
 				if err != nil {
 					return bonus, err
+				}
+			}
+		}
+	}
+	return bonus, nil
+}
+
+func (this *GeneralTask) CompleteTask(user User, deviceId string, service *Service, config Config) (bonus decimal.Decimal, err error) {
+	db := service.Db
+	{ // Check App installed
+		rows, _, err := db.Query(`SELECT 1 FROM tmm.device_general_tasks WHERE device_id='%s' AND task_id=%d AND points>0 LIMIT 1`, db.Escape(deviceId), this.Id)
+		if err != nil {
+			return bonus, err
+		}
+		if len(rows) > 0 {
+			return bonus, errors.New("You have been finished the task")
+		}
+	}
+
+	pointsPerTs, err := GetPointsPerTs(service)
+	if err != nil {
+		return bonus, err
+	}
+	var bonusRate float64 = 1
+	{ // Getting bonus rate
+		rows, _, _ := db.Query(`SELECT ul.task_bonus_rate FROM tmm.user_settings AS us INNER JOIN tmm.user_levels AS ul ON (ul.id=us.level) INNER JOIN tmm.devices AS d ON (d.user_id=us.user_id) WHERE d.id='%s' LIMIT 1`, db.Escape(deviceId))
+		if len(rows) > 0 {
+			bonusRate = rows[0].ForceFloat(0) / 100
+		}
+	}
+	{ // Update device bonus
+		query := `UPDATE tmm.devices AS d, tmm.device_general_tasks AS dgt, tmm.general_tasks AS gt
+SET d.points = d.points + IF(gt.points_left > gt.bonus, gt.bonus, gt.points_left) * %.2f,
+    d.total_ts = d.total_ts + CEIL(IF(gt.points_left > gt.bonus, gt.bonus, gt.points_left) / %s),
+    gt.points_left = IF(gt.points_left > gt.bonus, gt.points_left - gt.bonus, 0),
+    dgt.points = IF(gt.points_left > gt.bonus, gt.bonus, gt.points_left) * %.2f,
+    dgt.status = 1
+WHERE
+    d.id = '%s'
+    AND gt.id = dgt.task_id
+    AND dgt.device_id = d.id
+    AND dgt.task_id = %d
+    AND dgt.points = 0 `
+		_, _, err = db.Query(query, bonusRate, pointsPerTs.String(), bonusRate, db.Escape(deviceId), this.Id)
+		if err != nil {
+			return bonus, err
+		}
+	}
+	{ // Check device bonus
+		rows, _, err := db.Query(`SELECT points FROM tmm.device_general_tasks WHERE device_id='%s' AND task_id=%d AND points > 0  LIMIT 1`, db.Escape(deviceId), this.Id)
+		if err != nil {
+			return bonus, nil
+		}
+		if len(rows) == 0 {
+			return bonus, errors.New("Task not finished")
+		}
+		bonus, _ = decimal.NewFromString(rows[0].Str(0))
+	}
+	{ // Give bonus to inviters
+		query := `SELECT t.id, t.inviter_id, t.is_grand FROM
+(SELECT id, inviter_id,user_id, false AS is_grand FROM
+    (SELECT
+    d.id,
+    d.user_id AS inviter_id,
+	ic.user_id
+    FROM tmm.devices AS d
+    LEFT JOIN tmm.invite_codes AS ic ON (ic.parent_id=d.user_id)
+    INNER JOIN tmm.wx AS wx ON (wx.user_id=ic.user_id)
+    WHERE ic.user_id = %d AND d.user_id > 0
+    AND NOT EXISTS (SELECT 1 FROM tmm.invite_bonus AS ib WHERE ib.user_id=d.user_id AND ib.from_user_id=ic.user_id AND task_type=2 AND task_id=%d LIMIT 1)
+    ORDER BY d.lastping_at DESC LIMIT 1) AS t1
+    UNION
+    SELECT id,inviter_id, user_id, true AS is_grand FROM
+    (SELECT
+    d.id,
+    d.user_id AS inviter_id,
+	ic.user_id
+    FROM tmm.devices AS d
+    LEFT JOIN tmm.invite_codes AS ic ON (ic.grand_id=d.user_id)
+    INNER JOIN tmm.wx AS wx ON (wx.user_id=ic.user_id)
+    WHERE ic.user_id = %d AND d.user_id > 0
+    AND NOT EXISTS (SELECT 1 FROM tmm.invite_bonus AS ib WHERE ib.user_id=d.user_id AND ib.from_user_id=ic.user_id AND task_type=2 AND task_id=%d LIMIT 1)
+    ORDER BY d.lastping_at DESC LIMIT 1) AS t2
+) AS t
+LEFT JOIN tmm.wx AS wx ON (wx.user_id=t.inviter_id)
+LEFT JOIN tmm.wx AS wx2 ON (wx2.user_id=t.user_id)
+WHERE ISNULL(wx.open_id) OR ISNULL(wx2.open_id) OR wx.open_id!=wx2.open_id`
+		rows, _, err := db.Query(query, user.Id, this.Id, user.Id, this.Id)
+		if err != nil {
+			return bonus, err
+		}
+		for _, row := range rows {
+			dId := row.Str(0)
+			inviterId := row.Uint64(1)
+			isGrand := row.Bool(2)
+			var inviterBonus decimal.Decimal
+			if isGrand {
+				inviterBonus = bonus.Mul(decimal.NewFromFloat(bonusRate * config.InviteBonusRate * config.InviteBonusRate))
+			} else {
+				inviterBonus = bonus.Mul(decimal.NewFromFloat(bonusRate * config.InviteBonusRate))
+			}
+			_, ret, err := db.Query(`UPDATE tmm.devices SET points = points + %s, total_ts = total_ts + %d WHERE id='%s'`, inviterBonus.String(), inviterBonus.Div(pointsPerTs).IntPart(), db.Escape(dId))
+			if err != nil {
+				continue
+			}
+			if ret.AffectedRows() > 0 {
+				_, _, err = db.Query(`INSERT INTO tmm.invite_bonus (user_id, from_user_id, bonus, task_type, task_id) VALUES (%d, %d, %s, 2, %d)`, inviterId, user.Id, inviterBonus.String(), this.Id)
+				if err != nil {
+					continue
 				}
 			}
 		}
