@@ -15,8 +15,8 @@ type GeneralCertificatesUploadRequest struct {
 	Imei     string          `json:"imei" form:"imei"`
 	Mac      string          `json:"mac" form:"mac"`
 	TaskId   uint64          `json:"task_id" form:"task_id" binding:"required"`
-    Info     string          `json:"info" form:"info" binding:"required"`
-    Images   string          `json:"images" form:"images" binding:"required"`
+    	Info     string          `json:"info" form:"info"`
+    	Images   string          `json:"images" form:"images" binding:"required"`
 }
 
 func GeneralCertificatesUploadHandler(c *gin.Context) {

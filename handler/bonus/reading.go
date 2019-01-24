@@ -76,7 +76,7 @@ func ReadingHandler(c *gin.Context) {
 		return
 	}
 
-	if Check(payload.Duration >= 2500, "read too slow", c) {
+	if Check(payload.Duration >= 480, "read too slow", c) {
 		_, _, err = db.Query(`INSERT INTO tmm.reading_logs (user_id, task_id, ts, point) VALUES (%d, %d, %d ,0) ON DUPLICATE KEY UPDATE ts=ts+VALUES(ts)`, user.Id, payload.TaskId, payload.Duration)
 		if err != nil {
 			log.Error(err.Error())
