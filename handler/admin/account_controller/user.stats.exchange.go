@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	_Point = 1
+	Point = 1
 	Uc     = -1
 )
 
@@ -20,7 +20,7 @@ func ExchangeHandler(c *gin.Context) {
 	if CheckErr(c.Bind(&req), c) {
 		return
 	}
-	if req.Id < 0 || req.Types != Uc && req.Types != _Point {
+	if req.Id < 0 || req.Types != Uc && req.Types != Point {
 		c.JSON(http.StatusOK, admin.Response{
 			Code:    0,
 			Message: admin.Not_Found,
