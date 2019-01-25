@@ -44,7 +44,6 @@ func PointStatsHandler(c *gin.Context) {
 		redisConn.Do(`EXPIRE`, pointKey, 1)
 	}
 	var query string
-	fmt.Println(startTime)
 	if startTime != "1970-1-1" {
 		query = fmt.Sprintf(`SELECT tmp.user_id AS id, wx.nick AS nick, SUM(tmp.points) AS points, u.mobile AS mobile
 FROM
