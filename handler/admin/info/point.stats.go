@@ -44,27 +44,32 @@ func PointStatsHandler(c *gin.Context) {
 		redisConn.Do(`EXPIRE`, pointKey, 1)
 	}
 	var query string
-	if startTime != "1970-01-01" {
+	fmt.Println(startTime)
+	if startTime != "1970-1-1" {
 		query = fmt.Sprintf(`SELECT tmp.user_id AS id, wx.nick AS nick, SUM(tmp.points) AS points, u.mobile AS mobile
 FROM
 (
-    SELECT d.user_id AS user_id, dst.points AS points
+    SELECT d.user_id AS user_id, SUM(dst.points) AS points
     FROM tmm.device_share_tasks AS dst
     INNER JOIN tmm.devices AS d ON (d.id=dst.device_id)
     WHERE dst.inserted_at>='%s'
+	GROUP BY user_id
     UNION ALL
-    SELECT d.user_id AS user_id, app.points AS points
+    SELECT d.user_id AS user_id, SUM(app.points) AS points
     FROM tmm.device_app_tasks AS app
     INNER JOIN tmm.devices AS d ON (d.id=app.device_id)
     WHERE app.status = 1 AND app.inserted_at>='%s'
+	GROUP BY user_id 
     UNION ALL
     SELECT ib.user_id AS user_id, SUM(ib.bonus) AS points
     FROM tmm.invite_bonus AS ib
     WHERE ib.inserted_at>='%s'
+	GROUP BY user_id 
     UNION ALL
-    SELECT rl.user_id AS user_id, rl.point AS points
+    SELECT rl.user_id AS user_id, SUM(rl.point) AS points
     FROM tmm.reading_logs AS rl
     WHERE rl.inserted_at>='%s'
+	GROUP BY user_id 
 ) AS tmp
 INNER JOIN ucoin.users AS u ON (u.id=tmp.user_id)
 LEFT JOIN tmm.wx AS wx ON (wx.user_id = u.id)
@@ -75,10 +80,9 @@ GROUP BY tmp.user_id ORDER BY points DESC LIMIT 10`, startTime, startTime, start
 FROM tmm.devices AS d
 INNER JOIN ucoin.users AS u ON (u.id=d.user_id)
 LEFT JOIN tmm.wx AS wx ON (wx.user_id = u.id)
-WHERE NOT EXISTS (SELECT 1 FROM user_settings AS us WHERE us.blocked=1 AND us.user_id=d.user_id AND us.block_whitelist=0  LIMIT 1)
+WHERE NOT EXISTS (SELECT 1 FROM user_settings AS us WHERE us.blocked=1 AND us.user_id=d.user_id AND us.block_whitelist=0  LIMIT 1) AND u.id > 1
 GROUP BY d.user_id ORDER BY points DESC LIMIT 10`
 	}
-
 	rows, res, err := db.Query(query)
 	if CheckErr(err, c) {
 		return

@@ -21,7 +21,7 @@ func EditGeneralTaskHandler(c *gin.Context) {
 	}
 	if task.CertificateStatus == 1 {
 		var user common.User
-		user.Id = uint64(task.UserId)
+		user.Id = task.UserId
 		_, err := task.CompleteTask(user, task.DeviceId, Service, Config)
 		if CheckErr(err, c) {
 			return
