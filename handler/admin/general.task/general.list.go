@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strconv"
 	"fmt"
+	"strings"
 )
 
 func GeneralTaskListHandler(c *gin.Context) {
@@ -25,11 +26,22 @@ func GeneralTaskListHandler(c *gin.Context) {
 		offset = (req.Page - 1) * req.Limit
 	}
 
+	var where []string
 	status, err := strconv.Atoi(c.DefaultQuery(`online_status`, `0`))
-	var where string
-	if status != 0 {
-		where = fmt.Sprintf(` AND online_status = %d`, status)
+	if CheckErr(err, c) {
+		return
+	}
 
+	id, err := strconv.Atoi(c.DefaultQuery(`id`, `0`))
+	if CheckErr(err, c) {
+		return
+	}
+
+	if status != 0 {
+		where = append(where, fmt.Sprintf(`AND online_status = %d`, status))
+	}
+	if id > 0 {
+		where = append(where, fmt.Sprintf(`AND id = %d`, id))
 	}
 
 	query := `
@@ -54,7 +66,7 @@ LIMIT %d OFFSET %d
 `
 
 	db := Service.Db
-	rows, _, err := db.Query(query, where, req.Limit, offset)
+	rows, _, err := db.Query(query, strings.Join(where, ` `), req.Limit, offset)
 	if CheckErr(err, c) {
 		return
 	}
@@ -76,7 +88,7 @@ LIMIT %d OFFSET %d
 		})
 	}
 
-	rows, _, err = db.Query(`SELECT COUNT(1) FROm tmm.general_tasks  WHERE 1 = 1 %s`, where)
+	rows, _, err = db.Query(`SELECT COUNT(1) FROm tmm.general_tasks  WHERE 1 = 1 %s`, strings.Join(where, ` AND `))
 	if CheckErr(err, c) {
 		return
 	}

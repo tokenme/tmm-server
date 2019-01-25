@@ -32,7 +32,6 @@ func TaskRouter(r *gin.Engine) {
 	{
 		generalR := r.Group(`/admin/task/general`)
 		generalR.GET(`/list`, general_task.GeneralTaskListHandler)
-		generalR.GET(`/get`, general_task.GetGeneralTaskHandler)
 		generalR.POST(`/add`, general_task.AddGeneralTaskHandler)
 		generalR.POST(`/edit`, general_task.EditGeneralTaskHandler)
 	}
