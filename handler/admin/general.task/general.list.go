@@ -88,7 +88,7 @@ LIMIT %d OFFSET %d
 		})
 	}
 
-	rows, _, err = db.Query(`SELECT COUNT(1) FROm tmm.general_tasks  WHERE 1 = 1 %s`, strings.Join(where, ` AND `))
+	rows, _, err = db.Query(`SELECT COUNT(1) FROm tmm.general_tasks  WHERE 1 = 1 %s`, strings.Join(where, `  `))
 	if CheckErr(err, c) {
 		return
 	}
