@@ -19,6 +19,7 @@ const (
 	Share
 	BfBouns
 	AppTask
+	General
 )
 
 var MsgMap = map[int]string{
@@ -33,6 +34,7 @@ var typeMap = map[int]string{
 	Share:   "分享文章",
 	BfBouns: "好友贡献",
 	AppTask: "安装app",
+	General: "普通任务",
 }
 
 var ForMatMap = map[int]string{
