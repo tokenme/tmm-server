@@ -70,7 +70,7 @@ WHERE created > '%s' AND created < DATE_ADD('%s', INTERVAL 1 DAY)
 	if types == 1 {
 		fieter = `AND (IFNULL(reading.point,0)+IFNULL(SUM(sha.points),0) + IFNULL(SUM(app.task_id),0)+IFNULL(bonus.points,0)) = 1`
 	}
-	fmt.Println(UserList)
+
 	_, stats, err = GetActiveData(db, UserList, tm.Format(`2006-01-02`), fieter)
 	if CheckErr(err, c) {
 		return
@@ -166,10 +166,7 @@ GROUP BY user_id
 WHERE u.id IN (%s)  %s
 GROUP BY u.id
 `
-	fmt.Printf(query, db.Escape(date), db.Escape(date),
-		db.Escape(date), db.Escape(date), db.Escape(date), db.Escape(date),
-		db.Escape(date), db.Escape(date), db.Escape(date), db.Escape(date),
-		strings.Join(idArray, ","), fieter)
+
 	rows, res, err := db.Query(query, db.Escape(date), db.Escape(date),
 		db.Escape(date), db.Escape(date), db.Escape(date), db.Escape(date),
 		db.Escape(date), db.Escape(date), db.Escape(date), db.Escape(date),
