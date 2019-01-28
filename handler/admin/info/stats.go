@@ -95,6 +95,11 @@ FROM
         SELECT DATE(rl.inserted_at) AS record_on, rl.user_id AS user_id, rl.point AS points
         FROM tmm.reading_logs AS rl
         WHERE rl.inserted_at > DATE_SUB(DATE(NOW()),INTERVAL 1 DAY)
+		UNION ALL 
+		SELECT DATE(dgt.inserted_at) AS record_on, d.user_id AS user_id , dgt.points
+		FROM tmm.device_general_tasks AS dgt 
+		INNER JOIN tmm.devices AS d ON (d.id = dgt.device_id )
+		WHERE dgt.inserted_at > DATE_SUB(DATE(NOW()),INTERVAL 1 DAY) AND status = 1
     ) AS tmp
 ) AS device,
 (
