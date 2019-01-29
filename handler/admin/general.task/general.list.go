@@ -99,8 +99,8 @@ LIMIT %d OFFSET %d
 		task.OnlineStatus = int8(row.Int(9))
 		task.InsertedAt = row.Str(10)
 		task.Completed = row.Uint64(11)
-		task.Rejected = row.Uint64(12)
-		task.Waiting = row.Uint64(13)
+		task.Waiting = row.Uint64(12)
+		task.Rejected = row.Uint64(13)
 		list = append(list, task)
 	}
 
