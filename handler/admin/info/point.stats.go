@@ -69,11 +69,17 @@ FROM
     FROM tmm.reading_logs AS rl
     WHERE rl.inserted_at>='%s'
 	GROUP BY user_id 
+	UNION ALL  
+	SELECT d.user_id AS user_id, SUM(dgt.points) AS points
+	FROM tmm.device_general_tasks AS dgt
+	INNER JOIN tmm.devices AS d ON (d.id = dgt.device_id)
+	WHERE dgt.inserted_at>='%s' AND dgt.status = 1 
+	GROUP BY user_id 
 ) AS tmp
 INNER JOIN ucoin.users AS u ON (u.id=tmp.user_id)
 LEFT JOIN tmm.wx AS wx ON (wx.user_id = u.id)
 WHERE NOT EXISTS (SELECT 1 FROM user_settings AS us WHERE us.blocked=1 AND us.user_id=tmp.user_id AND us.block_whitelist=0 LIMIT 1)
-GROUP BY tmp.user_id ORDER BY points DESC LIMIT 10`, startTime, startTime, startTime, startTime)
+GROUP BY tmp.user_id ORDER BY points DESC LIMIT 10`, startTime, startTime, startTime, startTime, startTime)
 	} else {
 		query = `SELECT d.user_id AS id, wx.nick AS nick, SUM(d.points) AS points, u.mobile AS mobile
 FROM tmm.devices AS d

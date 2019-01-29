@@ -470,7 +470,7 @@ ORDER BY d.points DESC LIMIT 1) AS t2`
 func (this *GeneralTask) CompleteTask(user User, deviceId string, service *Service, config Config) (bonus decimal.Decimal, err error) {
 	db := service.Db
 	{ // Check App installed
-		rows, _, err := db.Query(`SELECT 1 FROM tmm.device_general_tasks WHERE device_id='%s' AND task_id=%d AND points>0 LIMIT 1`, db.Escape(deviceId), this.Id)
+		rows, _, err := db.Query(`SELECT 1 FROM tmm.device_general_tasks WHERE device_id='%s' AND task_id=%d AND status = 1 LIMIT 1`, db.Escape(deviceId), this.Id)
 		if err != nil {
 			return bonus, err
 		}
@@ -496,20 +496,21 @@ SET d.points = d.points + IF(gt.points_left > gt.bonus, gt.bonus, gt.points_left
     d.total_ts = d.total_ts + CEIL(IF(gt.points_left > gt.bonus, gt.bonus, gt.points_left) / %s),
     gt.points_left = IF(gt.points_left > gt.bonus, gt.points_left - gt.bonus, 0),
     dgt.points = IF(gt.points_left > gt.bonus, gt.bonus, gt.points_left) * %.2f,
-    dgt.status = 1
+    dgt.status = 1,
+	gt.completed = gt.completed+1
 WHERE
     d.id = '%s'
     AND gt.id = dgt.task_id
     AND dgt.device_id = d.id
     AND dgt.task_id = %d
-    AND dgt.points = 0 `
+    AND dgt.status = 0 `
 		_, _, err = db.Query(query, bonusRate, pointsPerTs.String(), bonusRate, db.Escape(deviceId), this.Id)
 		if err != nil {
 			return bonus, err
 		}
 	}
 	{ // Check device bonus
-		rows, _, err := db.Query(`SELECT points FROM tmm.device_general_tasks WHERE device_id='%s' AND task_id=%d AND points > 0  LIMIT 1`, db.Escape(deviceId), this.Id)
+		rows, _, err := db.Query(`SELECT points FROM tmm.device_general_tasks WHERE device_id='%s' AND task_id=%d AND status = 1  LIMIT 1`, db.Escape(deviceId), this.Id)
 		if err != nil {
 			return bonus, nil
 		}

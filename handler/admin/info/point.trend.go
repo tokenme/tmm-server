@@ -56,10 +56,14 @@ UNION ALL
 SELECT ib.bonus AS points, DATE(ib.inserted_at) AS record_on
 FROM tmm.invite_bonus AS ib
 WHERE ib.inserted_at BETWEEN '%s' AND DATE_ADD('%s', INTERVAL 1 DAY)
+UNION ALL
+SELECT dgt.points AS points, DATE(dgt.inserted_at) AS record_on
+FROM tmm.device_general_tasks AS dgt 
+WHERE dgt.inserted_at BETWEEN '%s' AND DATE_ADD('%s', INTERVAL 1 DAY) AND dgt.status = 1 
 ) AS tmp
 GROUP BY record_on
 	`
-	rows, _, err := db.Query(query, startTime, endTime, startTime, endTime, startTime, endTime, startTime, endTime)
+	rows, _, err := db.Query(query, startTime, endTime, startTime, endTime, startTime, endTime, startTime, endTime, startTime, endTime)
 	if CheckErr(err, c) {
 		return
 	}

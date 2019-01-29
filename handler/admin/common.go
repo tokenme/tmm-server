@@ -63,6 +63,7 @@ type MakePoint struct {
 	PointByReading           int `json:"point_by_reading"`
 	PointByInvite            int `json:"point_by_invite"`
 	PointByDownLoadApp       int `json:"point_by_down_load_app"`
+	PointByGeneralTask       int `json:"point_by_general_task"`
 	DaySign                  int `json:"day_sign"`
 	InviteNewUserActiveCount int `json:"invite_new_user_active_number"`
 	InviteNewUserByThreeDays int `json:"invite_new_user_by_three_days"`

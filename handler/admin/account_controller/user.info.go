@@ -49,6 +49,7 @@ SELECT
 	sha.points AS sha_points,
 	app.points AS app_points,
 	reading.point AS reading_point,
+	dgt.points AS dgt_points,
     IFNULL(pu.id, 0) AS parent_id,
     IF(IFNULL(pus.blocked, 0)=0 OR pus.block_whitelist=1 ,0, 1) AS parent_blocked,
     IFNULL(pwx.nick, pu.nickname) AS parent_nick,
@@ -113,6 +114,12 @@ LEFT JOIN (
 	FROM tmm.point_withdraws
     WHERE user_id=%d AND verified!=-1
 ) AS point ON 1 = 1
+LEFT JOIN (
+	SELECT SUM(dgt.points) AS points
+	FROM tmm.device_general_tasks AS dgt 
+	INNER JOIN tmm.devices AS dev  ON (dev.id = dgt.device_id)
+	WHERE  dev.user_id = %d  AND dgt.status = 1
+) AS dgt ON 1 = 1
 LEFT JOIN (
 	SELECT
         COUNT(DISTINCT IF(inv.parent_id=%d, inv.user_id, NULL)) AS direct,
@@ -190,7 +197,7 @@ LIMIT 1
 	`
 
 	db := Service.Db
-	rows, res, err := db.Query(query, id, id, id, id, id, id, id, id, id, id, id, id, id, id, id, id)
+	rows, res, err := db.Query(query, id, id, id, id, id, id, id, id, id, id, id, id, id, id, id, id, id)
 	if CheckErr(err, c) {
 		return
 	}
@@ -233,6 +240,7 @@ LIMIT 1
 	user.PointByReading = int(row.Float(res.Map(`reading_point`)))
 	user.PointByInvite = int(row.Float(res.Map(`inv_bonus`)))
 	user.PointByDownLoadApp = int(row.Float(res.Map(`app_points`)))
+	user.PointByGeneralTask = int(row.Float(res.Map(`dgt_points`)))
 
 	user.Id = row.Uint64(res.Map(`id`))
 	user.Mobile = row.Str(res.Map(`mobile`))
@@ -249,7 +257,7 @@ LIMIT 1
 	user.OpenId = row.Str(res.Map(`open_id`))
 	user.WxUnionId = row.Str(res.Map(`union_id`))
 
-	user.TotalMakePoint = user.PointByShare + user.PointByReading + user.PointByInvite + user.PointByDownLoadApp
+	user.TotalMakePoint = user.PointByShare + user.PointByReading + user.PointByInvite + user.PointByDownLoadApp + user.PointByGeneralTask
 	threeActiveCount := row.Float(res.Map(`total`))
 	if user.DirectFriends+user.IndirectFriends > 0 && threeActiveCount > 0 {
 		user.NotActive = fmt.Sprintf("%.2f", 100-threeActiveCount/float64(user.DirectFriends+user.IndirectFriends)*100) + "%"
