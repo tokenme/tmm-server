@@ -151,7 +151,7 @@ func UpdateHandler(c *gin.Context) {
 func _inviteBonus(c *gin.Context, userId uint64, service *common.Service) error {
 	db := service.Db
 	{ // Check if have been gave bonus
-		rows, _, err := db.Query(`SELECT IFNULL(ib.user_id, 0) FROM tmm.invite_codes AS ic INNER JOIN tmm.wx ON (wx.user_id=ic.user_id) LEFT JOIN tmm.invite_bonus AS ib ON (ib.from_user_id=ic.user_id) WHERE ic.user_id=%d AND ic.parent_id>0 AND ib.task_type=0 LIMIT 1`, userId)
+		rows, _, err := db.Query(`SELECT IFNULL(ib.user_id, 0) FROM tmm.invite_codes AS ic INNER JOIN tmm.wx ON (wx.user_id=ic.user_id) LEFT JOIN tmm.invite_bonus AS ib ON (ib.from_user_id=ic.user_id AND ib.task_type=0) WHERE ic.user_id=%d AND ic.parent_id>0 LIMIT 1`, userId)
 		if err != nil {
 			return err
 		}
