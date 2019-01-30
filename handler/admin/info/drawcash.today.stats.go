@@ -42,7 +42,7 @@ FROM (
 	FROM
 		tmm.point_withdraws
 	WHERE
-		DATE(inserted_at) = '%s' AND verified = 1 AND  trade_num != ""
+		DATE(inserted_at) = '%s' AND verified != -1 
 		
 	UNION ALL
 
@@ -53,7 +53,7 @@ FROM (
 	FROM
 		tmm.withdraw_txs
 	WHERE
-		DATE(inserted_at) = '%s' AND withdraw_status = 1  
+		DATE(inserted_at) = '%s' AND tx_status = 1 
   UNION ALL 
 	SELECT 
 		user_id,

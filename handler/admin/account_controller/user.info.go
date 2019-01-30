@@ -107,12 +107,12 @@ LEFT JOIN tmm.wx AS rwx ON (rwx.user_id=ru.id)
 LEFT JOIN (
 	SELECT SUM(cny) AS cny
 	FROM tmm.withdraw_txs
-	WHERE user_id=%d AND withdraw_status = 1
+	WHERE user_id=%d AND tx_status = 1
 ) AS uc ON 1 = 1
 LEFT JOIN (
 	SELECT SUM(cny) AS cny
 	FROM tmm.point_withdraws
-    WHERE user_id=%d AND verified!=-1 AND trade_num != ""
+    WHERE user_id=%d AND verified!=-1 
 ) AS point ON 1 = 1
 LEFT JOIN (
 	SELECT SUM(dgt.points) AS points
