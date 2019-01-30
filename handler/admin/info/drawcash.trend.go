@@ -113,12 +113,12 @@ FROM
 	SELECT SUM(tmp._value) AS cash
 	FROM (
 		SELECT SUM(cny) AS _value
-		FROM tmm.point_withdraws
+		FROM tmm.point_withdraws 
 		WHERE inserted_at<'%s' AND verified!=-1
 	UNION ALL
 		SELECT SUM(cny)  AS _value
 		FROM tmm.withdraw_txs
-		WHERE tx_status=1 AND inserted_at<'%s'
+		WHERE tx_status=1 AND inserted_at<'%s' 
 	) AS tmp
 ) AS beforecash
 LEFT JOIN(
@@ -126,7 +126,7 @@ LEFT JOIN(
     FROM(
         SELECT cny, DATE(inserted_at) AS record_on
         FROM tmm.point_withdraws
-        WHERE inserted_at BETWEEN '%s' AND DATE_ADD('%s', INTERVAL 1 DAY)
+        WHERE inserted_at BETWEEN '%s' AND DATE_ADD('%s', INTERVAL 1 DAY) AND verified!=-1
         UNION ALL
         SELECT cny, DATE(inserted_at) AS record_on
         FROM tmm.withdraw_txs

@@ -112,7 +112,7 @@ LEFT JOIN (
 LEFT JOIN (
 	SELECT SUM(cny) AS cny
 	FROM tmm.point_withdraws
-    WHERE user_id=%d AND verified!=-1
+    WHERE user_id=%d AND verified!=-1 
 ) AS point ON 1 = 1
 LEFT JOIN (
 	SELECT SUM(dgt.points) AS points

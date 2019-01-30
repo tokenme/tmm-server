@@ -6,19 +6,8 @@ import (
 	"fmt"
 	"net/http"
 	"github.com/tokenme/tmm/handler/admin"
+	"github.com/tokenme/tmm/handler/admin/account_controller"
 )
-
-const (
-	Waiting   = 0
-	Succeeded = 1
-	Refused   = -1
-)
-
-var StatsMap = map[int]string{
-	Waiting:   "等待",
-	Succeeded: "成功",
-	Refused:   "拒绝",
-}
 
 const (
 	Point = 0
@@ -32,14 +21,15 @@ type SearchOption struct {
 }
 
 type WithDraw struct {
-	Id           string `json:"id"`
-	UserId       int    `json:"user_id"`
-	Nick         string `json:"nick"`
-	Mobile       string `json:"mobile"`
-	InsertedAt   string `json:"inserted_at"`
-	DrawCashType string `json:"draw_cash_type"`
-	Cny          string `json:"cny"`
-	Status       string `json:"status"`
+	Id             string `json:"id"`
+	UserId         int    `json:"user_id"`
+	Nick           string `json:"nick"`
+	Mobile         string `json:"mobile"`
+	InsertedAt     string `json:"inserted_at"`
+	DrawCashType   string `json:"draw_cash_type"`
+	Cny            string `json:"cny"`
+	WithDrawStatus string `json:"with_draw_status"`
+	Status         string `json:"status"`
 }
 
 func GetWithDrawList(c *gin.Context) {
@@ -67,7 +57,8 @@ SELECT
 	tmp.inserted_at,
 	tmp.types,
 	tmp.cny,
-	tmp.verified 
+	tmp.verified,
+	tmp._status 
 FROM (
 	SELECT 
 		id AS _index,
@@ -75,7 +66,8 @@ FROM (
 		inserted_at AS inserted_at,
 		0 AS types,
 		verified AS verified,
-		cny AS cny
+		cny AS cny,
+		IF(trade_num > 0 ,1,2) AS _status
 	FROM 
 		tmm.point_withdraws  
 	WHERE 
@@ -86,7 +78,8 @@ FROM (
 		inserted_at AS inserted_at,
 		1 AS types, 
 		verified AS verified,
-		cny AS cny
+		cny AS cny,
+		withdraw_status AS _status 
 	FROM 
 		tmm.withdraw_txs
 	WHERE 
@@ -145,14 +138,15 @@ ORDER BY tmp.inserted_at DESC
 		}
 
 		withDrawList = append(withDrawList, &WithDraw{
-			Id:           row.Str(0),
-			UserId:       row.Int(1),
-			Mobile:       row.Str(2),
-			Nick:         row.Str(3),
-			InsertedAt:   row.Str(4),
-			DrawCashType: types,
-			Cny:          fmt.Sprintf("%.2f", row.Float(6)),
-			Status:       StatsMap[row.Int(7)],
+			Id:             row.Str(0),
+			UserId:         row.Int(1),
+			Mobile:         row.Str(2),
+			Nick:           row.Str(3),
+			InsertedAt:     row.Str(4),
+			DrawCashType:   types,
+			Cny:            fmt.Sprintf("%.2f", row.Float(6)),
+			Status:         account_controller.AuditMsgMap[row.Int(7)],
+			WithDrawStatus: account_controller.MsgMap[row.Int(8)],
 		})
 	}
 
