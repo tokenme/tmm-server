@@ -4,9 +4,9 @@ import (
 	"github.com/gin-gonic/gin"
 	. "github.com/tokenme/tmm/handler"
 	"fmt"
+	"github.com/tokenme/tmm/handler/admin/account_controller"
 	"net/http"
 	"github.com/tokenme/tmm/handler/admin"
-	"github.com/tokenme/tmm/handler/admin/account_controller"
 )
 
 const (
@@ -67,7 +67,7 @@ FROM (
 		0 AS types,
 		verified AS verified,
 		cny AS cny,
-		IF(trade_num > 0 ,1,2) AS _status
+		IF(verified=-1,0,IF(trade_num != "",1,2)) AS _status
 	FROM 
 		tmm.point_withdraws  
 	WHERE 
@@ -79,7 +79,7 @@ FROM (
 		1 AS types, 
 		verified AS verified,
 		cny AS cny,
-		withdraw_status AS _status 
+		IF(verified=-1,0,withdraw_status) AS _status 
 	FROM 
 		tmm.withdraw_txs
 	WHERE 
