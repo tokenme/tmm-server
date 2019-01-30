@@ -185,7 +185,7 @@ ORDER BY d.lastping_at DESC LIMIT 1`
 	_, _, err = db.Query(`INSERT INTO user_settings (user_id, level)
 (
 SELECT
-i.parent_id, ul.id
+i.parent_id, MAX(ul.id)
 FROM tmm.user_levels AS ul
 INNER JOIN (
     SELECT ic.parent_id, COUNT(DISTINCT ic.user_id) AS invites
