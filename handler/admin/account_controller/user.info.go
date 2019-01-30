@@ -107,7 +107,7 @@ LEFT JOIN tmm.wx AS rwx ON (rwx.user_id=ru.id)
 LEFT JOIN (
 	SELECT SUM(cny) AS cny
 	FROM tmm.withdraw_txs
-	WHERE user_id=%d AND tx_status = 1
+	WHERE user_id=%d AND verified!=-1 AND tx_status = 1 
 ) AS uc ON 1 = 1
 LEFT JOIN (
 	SELECT SUM(cny) AS cny

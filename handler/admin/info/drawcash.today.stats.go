@@ -53,7 +53,7 @@ FROM (
 	FROM
 		tmm.withdraw_txs
 	WHERE
-		DATE(inserted_at) = '%s' AND tx_status = 1 
+		DATE(inserted_at) = '%s' AND verified!=-1 AND tx_status = 1 
   UNION ALL 
 	SELECT 
 		user_id,
