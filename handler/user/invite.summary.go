@@ -39,7 +39,7 @@ func InviteSummaryHandler(c *gin.Context) {
 		return
 	}
 	db := Service.Db
-	query = `SELECT COUNT(*) AS num, us.level
+	query := `SELECT COUNT(*) AS num, us.level
 FROM tmm.invite_codes AS ic
 INNER JOIN tmm.wx AS wx ON (wx.user_id=ic.user_id)
 LEFT JOIN tmm.user_settings AS us ON (us.user_id=ic.parent_id)
@@ -86,7 +86,7 @@ WHERE ic.parent_id=%d AND (IFNULL(us2.blocked, 0)=0 OR us2.block_whitelist=1)`
 	}
 	var users []common.User
 	if req.WithUserList {
-		rows, _, err = db.Query(`SELECT
+		query := `SELECT
                 u.country_code,
                 u.mobile,
                 u.nickname,
@@ -96,7 +96,8 @@ WHERE ic.parent_id=%d AND (IFNULL(us2.blocked, 0)=0 OR us2.block_whitelist=1)`
             FROM tmm.invite_codes AS ic
             INNER JOIN ucoin.users AS u ON (u.id=ic.user_id)
             LEFT JOIN tmm.wx AS wx ON (wx.user_id = u.id)
-            WHERE ic.parent_id=%d ORDER BY ic.user_id DESC LIMIT 10`, user.Id)
+            WHERE ic.parent_id=%d ORDER BY ic.user_id DESC LIMIT 10`
+		rows, _, err = db.Query(query, user.Id)
 		if CheckErr(err, c) {
 			return
 		}
