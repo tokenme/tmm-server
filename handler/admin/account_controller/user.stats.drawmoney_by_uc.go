@@ -28,7 +28,7 @@ SELECT
 	tmm,
 	cny,
 	DATE_ADD(inserted_at,INTERVAL 8 HOUR),
-	withdraw_status,
+	IF(verified=-1,0,withdraw_status),
 	verified
 FROM tmm.withdraw_txs
 WHERE user_id=%d

@@ -118,7 +118,7 @@ FROM
 	UNION ALL
 		SELECT SUM(cny)  AS _value
 		FROM tmm.withdraw_txs
-		WHERE tx_status=1 AND inserted_at<'%s' 
+		WHERE verified!=-1 AND tx_status = 1  AND inserted_at<'%s' 
 	) AS tmp
 ) AS beforecash
 LEFT JOIN(
