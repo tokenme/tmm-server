@@ -87,7 +87,8 @@ func AppsHandler(c *gin.Context) {
     a.details,
     datc.status,
     datc.images,
-    datc.comment
+    datc.comment,
+    datc.info
 FROM tmm.app_tasks AS a
 LEFT JOIN tmm.app_scheme_ids AS asi ON (asi.bundle_id = a.bundle_id)
 LEFT JOIN tmm.device_app_task_certificates AS datc ON (datc.task_id=a.id AND datc.device_id='%s')
@@ -123,6 +124,7 @@ ORDER BY %s LIMIT %d, %d`
             CertificateStatus:  int8(row.Int(19)),
             CertificateImages:  row.Str(20),
             CertificateComment: row.Str(21),
+            CertificateInfo:    row.Str(22),
 		}
 		if creator == user.Id {
 			task.Downloads = row.Uint(8)

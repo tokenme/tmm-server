@@ -271,6 +271,7 @@ type AppTask struct {
 	OnlineStatus       int8            `json:"online_status,omitempty"`
 	InstallStatus      int8            `json:"install_status,omitempty"`
 	Details            string          `json:"details,omitempty"`
+	CertificateInfo    string          `json:"certificate_info,omitempty"`
 	CertificateStatus  int8            `json:"certificate_status,omitempty"`
 	CertificateImages  string          `json:"certificate_images,omitempty"`
 	CertificateComment string          `json:"certificate_comment,omitempty"`
