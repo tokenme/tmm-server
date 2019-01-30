@@ -60,8 +60,8 @@ FROM
         COUNT(IF(inserted_at < DATE(NOW()),1,NULL)) AS yesterday_number,
         SUM(IF(inserted_at > DATE(NOW()),cny,0)) AS today_cny,
         SUM(IF(inserted_at < DATE(NOW()),cny,0)) AS yesterday_cny
-    FROM tmm.point_withdraws
-    WHERE inserted_at > DATE_SUB(DATE(NOW()),INTERVAL 1 DAY) AND verified!=-1
+    FROM tmm.point_withdraws 
+    WHERE inserted_at > DATE_SUB(DATE(NOW()),INTERVAL 1 DAY) AND verified!=-1 AND  trade_num !=  ""
 ) AS points,
 (
     SELECT
@@ -70,7 +70,7 @@ FROM
         SUM(IF(inserted_at > DATE(NOW()),cny,0)) AS today_cny,
         SUM(IF(inserted_at < DATE(NOW()),cny,0)) AS yesterday_cny
     FROM tmm.withdraw_txs
-    WHERE inserted_at > DATE_SUB(DATE(NOW()),INTERVAL 1 DAY) AND tx_status=1 AND verified!=-1
+    WHERE inserted_at > DATE_SUB(DATE(NOW()),INTERVAL 1 DAY) AND withdraw_status=1 AND verified!=-1 
 ) AS tmm,
 (
     SELECT

@@ -25,7 +25,7 @@ const (
 var MsgMap = map[int]string{
 	Failed:  "失败",
 	Success: "成功",
-	Pending: "等待打包中",
+	Pending: "转账中",
 }
 
 var typeMap = map[int]string{
@@ -48,15 +48,15 @@ const (
 	Refused   = -1
 )
 
-var WithDrawMap = map[int]string{
+var AuditMsgMap = map[int]string{
 	Waiting:   "等待审核",
 	Succeeded: "审核成功",
 	Refused:   "审核拒绝",
 }
 var StatusMap = map[int]string{
-	Waiting:   "等待",
-	Succeeded: "成功",
-	Refused:   "拒绝",
+	Waiting:   "提现中",
+	Succeeded: "提现成功",
+	Refused:   "提现失败",
 }
 
 const (
