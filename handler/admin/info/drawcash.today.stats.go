@@ -42,7 +42,7 @@ FROM (
 	FROM
 		tmm.point_withdraws
 	WHERE
-		DATE(inserted_at) = '%s' AND verified = 1 AND  trade_num >  0
+		DATE(inserted_at) = '%s' AND verified = 1 AND  trade_num != ""
 		
 	UNION ALL
 
