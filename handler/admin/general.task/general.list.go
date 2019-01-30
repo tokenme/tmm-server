@@ -12,6 +12,13 @@ import (
 	"strings"
 )
 
+type GeneralTask struct {
+	common.GeneralTask
+	Completed uint64 `json:"completed"`
+	Rejected  uint64 `json:"rejected"`
+	Waiting   uint64 `json:"waiting"`
+}
+
 func GeneralTaskListHandler(c *gin.Context) {
 	var req admin.Pages
 	if CheckErr(c.Bind(&req), c) {
@@ -46,22 +53,28 @@ func GeneralTaskListHandler(c *gin.Context) {
 
 	query := `
 SELECT 
-	id,
-	creator,
-	title,
-	summary,
-	image,
-	details,
-	points,
-	points_left,
-	bonus,
-	online_status,
-	inserted_at
+	gt.id,
+	gt.creator,
+	gt.title,
+	gt.summary,
+	gt.image,
+	gt.details,
+	gt.points,
+	gt.points_left,
+	gt.bonus,
+	gt.online_status,
+	gt.inserted_at,
+	gt.completed,
+	COUNT(IF(dgt.status = 0,0,NULL)) AS waiting,
+	COUNT(IF(dgt.status = -1,0,NULL)) AS rejected
 FROM 
-	tmm.general_tasks
+	tmm.general_tasks AS gt
+LEFT JOIN tmm.device_general_tasks AS dgt ON (dgt.task_id = gt.id)
 WHERE 
     1 = 1 %s
-LIMIT %d OFFSET %d 
+GROUP BY gt.id 
+ORDER BY gt.id 
+LIMIT %d OFFSET %d
 
 `
 
@@ -71,24 +84,27 @@ LIMIT %d OFFSET %d
 		return
 	}
 
-	var list []*common.GeneralTask
+	var list []*GeneralTask
 	for _, row := range rows {
-		list = append(list, &common.GeneralTask{
-			Id:           row.Uint64(0),
-			Creator:      row.Uint64(1),
-			Title:        row.Str(2),
-			Summary:      row.Str(3),
-			Image:        row.Str(4),
-			Details:      row.Str(5),
-			Points:       decimal.NewFromFloat(row.Float(6)),
-			PointsLeft:   decimal.NewFromFloat(row.Float(7)),
-			Bonus:        decimal.NewFromFloat(row.Float(8)),
-			OnlineStatus: int8(row.Int(9)),
-			InsertedAt:   row.Str(10),
-		})
+		task := &GeneralTask{}
+		task.Id = row.Uint64(0)
+		task.Creator = row.Uint64(1)
+		task.Title = row.Str(2)
+		task.Summary = row.Str(3)
+		task.Image = row.Str(4)
+		task.Details = row.Str(5)
+		task.Points = decimal.NewFromFloat(row.Float(6))
+		task.PointsLeft = decimal.NewFromFloat(row.Float(7))
+		task.Bonus = decimal.NewFromFloat(row.Float(8))
+		task.OnlineStatus = int8(row.Int(9))
+		task.InsertedAt = row.Str(10)
+		task.Completed = row.Uint64(11)
+		task.Waiting = row.Uint64(12)
+		task.Rejected = row.Uint64(13)
+		list = append(list, task)
 	}
 
-	rows, _, err = db.Query(`SELECT COUNT(1) FROm tmm.general_tasks  WHERE 1 = 1 %s`, strings.Join(where, `  `))
+	rows, _, err = db.Query(`SELECT COUNT(1) FROM tmm.general_tasks  WHERE 1 = 1 %s`, strings.Join(where, `  `))
 	if CheckErr(err, c) {
 		return
 	}
@@ -102,8 +118,8 @@ LIMIT %d OFFSET %d
 		Code:    0,
 		Message: admin.API_OK,
 		Data: gin.H{
-			`total`: total,
-			`data`:  list,
+			"total": total,
+			"data":  list,
 		},
 	})
 }

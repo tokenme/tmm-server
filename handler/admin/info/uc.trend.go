@@ -154,8 +154,7 @@ func UcTrendHandler(c *gin.Context) {
 	if CheckErr(err, c) {
 		return
 	}
-	_,err=conn.Do(`SET`, key, bytes, `EX`, 60*60)
-	fmt.Println(err)
+	conn.Do(`SET`, key, bytes, `EX`, 60*60)
 	c.JSON(http.StatusOK, admin.Response{
 		Code:    0,
 		Message: admin.API_OK,

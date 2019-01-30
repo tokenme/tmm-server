@@ -84,13 +84,19 @@ func ReadingHandler(c *gin.Context) {
 		return
 	}
 
-	rows, _, err := db.Query(`SELECT 1 FROM tmm.share_tasks WHERE id=%d LIMIT 1`, payload.TaskId)
+	rows, _, err := db.Query(`SELECT st.id, rl.ts FROM tmm.share_tasks AS st LEFT JOIN tmm.reading_logs AS rl ON (rl.task_id=st.id AND rl.user_id=%d) WHERE st.id=%d LIMIT 1`, user.Id, payload.TaskId)
 	if CheckErr(err, c) {
 		return
 	}
 	if Check(len(rows) == 0, "not found", c) {
 		return
 	}
+
+	readTs := rows[0].Int64(1)
+	if Check(readTs+payload.Duration >= 480, "read too much", c) {
+		return
+	}
+
 	maxPoints := decimal.New(1, 2)
 	if payload.Points.GreaterThan(maxPoints) {
 		payload.Points = maxPoints

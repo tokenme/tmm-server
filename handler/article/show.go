@@ -51,6 +51,7 @@ func ShowHandler(c *gin.Context) {
 	if article.PublishedOn == "1970-01-01" {
 		article.PublishedOn = row.ForceLocaltime(7).Format("2006-01-02")
 	}
+	article.SourceUrl = "https://tmm.tianxi100.com/article/rand"
 	article.Content = template.HTML(article.RawContent)
 	c.HTML(http.StatusOK, "article.tmpl", article)
 }

@@ -710,6 +710,12 @@
   version = "v1.5.4"
 
 [[projects]]
+  branch = "master"
+  name = "golang.org/x/crypto"
+  packages = ["sha3"]
+  revision = "057139ce5d2bdbe6fe73c53679e24e9cf007f637"
+
+[[projects]]
   name = "gopkg.in/dgrijalva/jwt-go.v3"
   packages = ["."]
   revision = "06ea1031745cb8b3dab3f6a236daf2b0aa468b7e"
@@ -758,6 +764,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "66ca5a501f555a0498ad537b1169a3b1aafdf9988bf5f019632fd88c71586505"
+  inputs-digest = "300ab689788a4f092532adb281b53d2c3a96b0f4ce2bef117456ff8e89b1401b"
   solver-name = "gps-cdcl"
   solver-version = 1
