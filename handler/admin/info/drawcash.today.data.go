@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"strconv"
 	"time"
-	"github.com/tokenme/tmm/handler/admin/withdraw"
 )
 
 type Transaction struct {
@@ -151,7 +150,7 @@ FROM (
 			Mobile:         row.Str(5),
 			Types:          DrawType[row.Int(6)],
 			Nick:           row.Str(7),
-			Verified:       withdraw.StatsMap[row.Int(8)],
+			Verified:       account_controller.AuditMsgMap[row.Int(8)],
 		}, )
 	}
 
