@@ -83,10 +83,10 @@ SELECT
     dev.updated_at AS d_updated_at,
 	IF(
         (
-            EXISTS (SELECT 1 FROM tmm.device_share_tasks AS dst WHERE dst.device_id=dev.id AND dst.inserted_at>=DATE_ADD(NOW(), INTERVAL 3 DAY) LIMIT 1) OR
-            EXISTS (SELECT 1 FROM tmm.device_app_tasks AS dat WHERE dat.device_id=dev.id AND dat.inserted_at>=DATE_ADD(NOW(), INTERVAL 3 DAY) LIMIT 1) OR
-            EXISTS (SELECT 1 FROM tmm.reading_logs AS rl WHERE rl.user_id=u.id AND (rl.inserted_at>=DATE_ADD(NOW(), INTERVAL 3 DAY) OR rl.updated_at>=DATE_ADD(NOW(), INTERVAL 3 DAY)) LIMIT 1) OR
-            EXISTS (SELECT 1 FROM tmm.daily_bonus_logs AS dbl WHERE dbl.user_id=u.id AND dbl.updated_on>=DATE_ADD(NOW(), INTERVAL 3 DAY) LIMIT 1)),
+            EXISTS (SELECT 1 FROM tmm.device_share_tasks AS dst WHERE dst.device_id=dev.id AND dst.inserted_at>=DATE_SUB(NOW(), INTERVAL 3 DAY) LIMIT 1) OR
+            EXISTS (SELECT 1 FROM tmm.device_app_tasks AS dat WHERE dat.device_id=dev.id AND dat.inserted_at>=DATE_SUB(NOW(), INTERVAL 3 DAY) LIMIT 1) OR
+            EXISTS (SELECT 1 FROM tmm.reading_logs AS rl WHERE rl.user_id=u.id AND (rl.inserted_at>=DATE_SUB(NOW(), INTERVAL 3 DAY) OR rl.updated_at>=DATE_SUB(NOW(), INTERVAL 3 DAY)) LIMIT 1) OR
+            EXISTS (SELECT 1 FROM tmm.daily_bonus_logs AS dbl WHERE dbl.user_id=u.id AND dbl.updated_on>=DATE_SUB(NOW(), INTERVAL 3 DAY) LIMIT 1)),
         TRUE, FALSE
     ) AS _active,
 	IF(COUNT(dev_app.app_id)>0, TRUE, FALSE) AS app_id,
@@ -128,20 +128,20 @@ LEFT JOIN (
         COUNT(DISTINCT IF(inv.grand_id=%d AND us.blocked=1 AND us.block_whitelist=0, inv.user_id, NULL)) AS indirect_blocked,
         COUNT(
             DISTINCT IF(
-                    (EXISTS (SELECT 1 FROM tmm.device_share_tasks AS dst WHERE dst.device_id=d.id AND dst.inserted_at>=DATE_ADD(NOW(), INTERVAL 3 DAY) LIMIT 1) OR
-                    EXISTS (SELECT 1 FROM tmm.device_app_tasks AS dat WHERE dat.device_id=d.id AND dat.inserted_at>=DATE_ADD(NOW(), INTERVAL 3 DAY) LIMIT 1) OR
-                    EXISTS (SELECT 1 FROM tmm.reading_logs AS rl WHERE rl.user_id=d.user_id AND (rl.inserted_at>=DATE_ADD(NOW(), INTERVAL 3 DAY) OR rl.updated_at>=DATE_ADD(NOW(), INTERVAL 3 DAY)) LIMIT 1) OR
-                    EXISTS (SELECT 1 FROM tmm.daily_bonus_logs AS dbl WHERE dbl.user_id=d.user_id AND dbl.updated_on>=DATE_ADD(NOW(), INTERVAL 3 DAY) LIMIT 1)),
+                    (EXISTS (SELECT 1 FROM tmm.device_share_tasks AS dst WHERE dst.device_id=d.id AND dst.inserted_at>=DATE_SUB(NOW(), INTERVAL 3 DAY) LIMIT 1) OR
+                    EXISTS (SELECT 1 FROM tmm.device_app_tasks AS dat WHERE dat.device_id=d.id AND dat.inserted_at>=DATE_SUB(NOW(), INTERVAL 3 DAY) LIMIT 1) OR
+                    EXISTS (SELECT 1 FROM tmm.reading_logs AS rl WHERE rl.user_id=d.user_id AND (rl.inserted_at>=DATE_SUB(NOW(), INTERVAL 3 DAY) OR rl.updated_at>=DATE_SUB(NOW(), INTERVAL 3 DAY)) LIMIT 1) OR
+                    EXISTS (SELECT 1 FROM tmm.daily_bonus_logs AS dbl WHERE dbl.user_id=d.user_id AND dbl.updated_on>=DATE_SUB(NOW(), INTERVAL 3 DAY) LIMIT 1)),
             inv.user_id, NULL)
         ) AS active,
         COUNT(
             DISTINCT IF(
                 u.created > DATE_SUB(NOW(),INTERVAL 3 DAY)
                 AND
-                    (EXISTS (SELECT 1 FROM tmm.device_share_tasks AS dst WHERE dst.device_id=d.id AND dst.inserted_at>=DATE_ADD(NOW(), INTERVAL 3 DAY) LIMIT 1) OR
-                    EXISTS (SELECT 1 FROM tmm.device_app_tasks AS dat WHERE dat.device_id=d.id AND dat.inserted_at>=DATE_ADD(NOW(), INTERVAL 3 DAY) LIMIT 1) OR
-                    EXISTS (SELECT 1 FROM tmm.reading_logs AS rl WHERE rl.user_id=d.user_id AND (rl.inserted_at>=DATE_ADD(NOW(), INTERVAL 3 DAY) OR rl.updated_at>=DATE_ADD(NOW(), INTERVAL 3 DAY)) LIMIT 1) OR
-                    EXISTS (SELECT 1 FROM tmm.daily_bonus_logs AS dbl WHERE dbl.user_id=d.user_id AND dbl.updated_on>=DATE_ADD(NOW(), INTERVAL 3 DAY) LIMIT 1)),
+                    (EXISTS (SELECT 1 FROM tmm.device_share_tasks AS dst WHERE dst.device_id=d.id AND dst.inserted_at>=DATE_SUB(NOW(), INTERVAL 3 DAY) LIMIT 1) OR
+                    EXISTS (SELECT 1 FROM tmm.device_app_tasks AS dat WHERE dat.device_id=d.id AND dat.inserted_at>=DATE_SUB(NOW(), INTERVAL 3 DAY) LIMIT 1) OR
+                    EXISTS (SELECT 1 FROM tmm.reading_logs AS rl WHERE rl.user_id=d.user_id AND (rl.inserted_at>=DATE_SUB(NOW(), INTERVAL 3 DAY) OR rl.updated_at>=DATE_SUB(NOW(), INTERVAL 3 DAY)) LIMIT 1) OR
+                    EXISTS (SELECT 1 FROM tmm.daily_bonus_logs AS dbl WHERE dbl.user_id=d.user_id AND dbl.updated_on>=DATE_SUB(NOW(), INTERVAL 3 DAY) LIMIT 1)),
             inv.user_id, NULL)
         ) AS invite_firend_active,
         COUNT(DISTINCT u.id) AS invite_By_Number
@@ -185,7 +185,7 @@ LEFT JOIN (
 	FROM tmm.invite_codes AS inv
 	INNER JOIN ucoin.users AS u ON u.id = inv.user_id
 	INNER JOIN tmm.devices AS d ON d.user_id = u.id
-	WHERE inv.parent_id=%d OR inv.grand_id=%d
+	WHERE (inv.parent_id=%d OR inv.grand_id=%d)
     AND
         (EXISTS (SELECT 1 FROM tmm.device_share_tasks AS dst WHERE dst.device_id=d.id AND dst.inserted_at<DATE_ADD(u.created, INTERVAL 3 DAY) LIMIT 1) OR
         EXISTS (SELECT 1 FROM tmm.device_app_tasks AS dat WHERE dat.device_id=d.id AND dat.inserted_at<DATE_ADD(u.created, INTERVAL 3 DAY) LIMIT 1) OR

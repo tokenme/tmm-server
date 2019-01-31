@@ -102,10 +102,10 @@ func FriendsHandler(c *gin.Context) {
 
 	case Active:
 		active := fmt.Sprintf(`(inv.parent_id=%d OR inv.grand_id=%d) AND (
-            EXISTS (SELECT 1 FROM tmm.device_share_tasks AS dst WHERE dst.device_id=dev.id AND dst.inserted_at>=DATE_ADD(NOW(), INTERVAL 3 DAY) LIMIT 1) OR
-            EXISTS (SELECT 1 FROM tmm.device_app_tasks AS dat WHERE dat.device_id=dev.id AND dat.inserted_at>=DATE_ADD(NOW(), INTERVAL 3 DAY) LIMIT 1) OR
-            EXISTS (SELECT 1 FROM tmm.reading_logs AS rl WHERE rl.user_id=inv.user_id AND (rl.inserted_at>=DATE_ADD(NOW(), INTERVAL 3 DAY) OR rl.updated_at>=DATE_ADD(NOW(), INTERVAL 3 DAY)) LIMIT 1) OR
-            EXISTS (SELECT 1 FROM tmm.daily_bonus_logs AS dbl WHERE dbl.user_id=inv.user_id AND dbl.updated_on>=DATE_ADD(NOW(), INTERVAL 3 DAY) LIMIT 1))`, req.Id, req.Id)
+            EXISTS (SELECT 1 FROM tmm.device_share_tasks AS dst WHERE dst.device_id=dev.id AND dst.inserted_at>=DATE_SUB(NOW(), INTERVAL 3 DAY) LIMIT 1) OR
+            EXISTS (SELECT 1 FROM tmm.device_app_tasks AS dat WHERE dat.device_id=dev.id AND dat.inserted_at>=DATE_SUB(NOW(), INTERVAL 3 DAY) LIMIT 1) OR
+            EXISTS (SELECT 1 FROM tmm.reading_logs AS rl WHERE rl.user_id=inv.user_id AND (rl.inserted_at>=DATE_SUB(NOW(), INTERVAL 3 DAY) OR rl.updated_at>=DATE_ADD(NOW(), INTERVAL 3 DAY)) LIMIT 1) OR
+            EXISTS (SELECT 1 FROM tmm.daily_bonus_logs AS dbl WHERE dbl.user_id=inv.user_id AND dbl.updated_on>=DATE_SUB(NOW(), INTERVAL 3 DAY) LIMIT 1))`, req.Id, req.Id)
 		query = fmt.Sprintf(query, req.Id, req.Id, active, req.Limit, offset)
 		totalquery = fmt.Sprintf(totalquery, active)
 	default:
