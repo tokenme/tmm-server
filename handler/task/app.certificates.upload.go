@@ -18,6 +18,7 @@ type AppCertificatesUploadRequest struct {
 	Platform common.Platform `json:"platform" form:"platform" binding:"required"`
 	TaskId   uint64          `json:"task_id" form:"task_id" binding:"required"`
     Images   string          `json:"images" form:"images" binding:"required"`
+    Info     string          `json:"info" form:"info"`
 }
 
 func AppCertificatesUploadHandler(c *gin.Context) {
@@ -65,7 +66,7 @@ func AppCertificatesUploadHandler(c *gin.Context) {
     if Check(len(rows) == 0, "Task not avaliable", c) {
         return
     }
-    _, _, err = db.Query(`INSERT INTO tmm.device_app_task_certificates (device_id, task_id, bundle_id, images, status) VALUES ('%s', %d, '%s', '%s', 1) ON DUPLICATE KEY UPDATE images=VALUES(images), status=VALUES(status)`, db.Escape(deviceId), req.TaskId, db.Escape(req.BundleId), db.Escape(req.Images))
+    _, _, err = db.Query(`INSERT INTO tmm.device_app_task_certificates (device_id, task_id, bundle_id, images, info, status) VALUES ('%s', %d, '%s', '%s', '%s', 1) ON DUPLICATE KEY UPDATE images=VALUES(images), info=VALUES(info), status=VALUES(status)`, db.Escape(deviceId), req.TaskId, db.Escape(req.BundleId), db.Escape(req.Images), db.Escape(req.Info))
     if CheckErr(err, c) {
         return
     }

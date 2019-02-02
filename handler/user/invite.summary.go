@@ -17,6 +17,7 @@ type InviteSummaryRequest struct {
 
 type InviteSummaryResponse struct {
 	Invites           uint            `json:"invites"`
+    FamilyInvites     uint            `json:"family_invites"`
 	Points            decimal.Decimal `json:"points"`
 	FriendsContribute decimal.Decimal `json:"friends_contribute"`
 	Users             []common.User   `json:"users,omitempty"`
@@ -55,6 +56,16 @@ WHERE ic.parent_id=%d AND (IFNULL(us2.blocked, 0)=0 OR us2.block_whitelist=1)`
 		invites = rows[0].Uint(0)
 		creditLevel = rows[0].Uint(1)
 	}
+
+    rows, _, err = db.Query(`SELECT COUNT(1) FROM tmm.invite_codes AS ic LEFT JOIN tmm.invite_submissions AS iss ON (ic.id=iss.code) WHERE ic.user_id=%d AND iss.is_family=1`, user.Id)
+    if CheckErr(err, c) {
+        return
+    }
+    var familyInvites uint
+    if len(rows) > 0 {
+        familyInvites = rows[0].Uint(0)
+    }
+
 	rows, _, err = db.Query(`SELECT SUM(bonus), task_type FROM tmm.invite_bonus WHERE user_id=%d GROUP BY task_type`, user.Id)
 	if CheckErr(err, c) {
 		return
@@ -123,6 +134,7 @@ WHERE ic.parent_id=%d AND (IFNULL(us2.blocked, 0)=0 OR us2.block_whitelist=1)`
 	}
 	summary := InviteSummaryResponse{
 		Invites:           invites,
+        FamilyInvites:     familyInvites,
 		Points:            points,
 		FriendsContribute: friendsContribute,
 		Users:             users,
