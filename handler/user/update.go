@@ -107,18 +107,19 @@ func UpdateHandler(c *gin.Context) {
 		}
 	} else if req.WxUnionId != "" {
 		expires := time.Unix(req.WxExpires/1000, 0)
-		rows, _, err := db.Query(`SELECT union_id FROM tmm.wx WHERE user_id=%d LIMIT 1`, user.Id)
+		rows, _, err := db.Query(`SELECT user_id FROM tmm.wx WHERE union_id='%s' LIMIT 1`, db.Escape(req.WxUnionId))
 		if CheckErr(err, c) {
 			return
 		}
 		if len(rows) > 0 {
-			unionId := rows[0].Str(0)
-			if unionId == req.WxUnionId {
-				_, _, err := db.Query(`UPDATE tmm.wx SET nick='%s', avatar='%s', gender=%d, access_token='%s', expires='%s' WHERE user_id=%d`, db.Escape(req.WxNick), db.Escape(req.WxAvatar), req.WxGender, db.Escape(req.WxToken), expires.Format("2006-01-02 15:04:05"), user.Id)
-				if CheckErr(err, c) {
-					return
-				}
-			}
+			userId := rows[0].Uint64(0)
+            if Check(userId != user.Id, "wechat has already binded", c) {
+                return
+            }
+            _, _, err := db.Query(`UPDATE tmm.wx SET nick='%s', avatar='%s', gender=%d, access_token='%s', expires='%s' WHERE user_id=%d`, db.Escape(req.WxNick), db.Escape(req.WxAvatar), req.WxGender, db.Escape(req.WxToken), expires.Format("2006-01-02 15:04:05"), user.Id)
+            if CheckErr(err, c) {
+                return
+            }
 			c.JSON(http.StatusOK, APIResponse{Msg: "ok"})
 			return
 		}
