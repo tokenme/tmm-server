@@ -36,11 +36,10 @@ func GetShareAppHandler(c *gin.Context) {
 	} else {
 		limit = 25
 	}
-	if req.Page <= 0 {
-		offset = 0
-	} else {
+	if req.Page > 1 {
 		offset = limit * (req.Page - 1)
 	}
+
 	query := `SELECT id, bundle_id, name, size, bonus, download_url, icon, 
 				(SELECT COUNT(1) FROM tmm.device_app_tasks WHERE task_id = id AND (status = 1  OR status = 2))  AS downloads,
 				points, points_left, online_status, inserted_at,details
@@ -54,17 +53,11 @@ func GetShareAppHandler(c *gin.Context) {
 	if CheckErr(err, c) {
 		return
 	}
-	if len(rows) == 0 {
-		c.JSON(http.StatusOK, admin.Response{
-			Code:    0,
-			Message: "没有找到数据",
-			Data: gin.H{
-				"total": 0,
-				"data":  nil,
-			},
-		})
+
+	if Check(len(rows) == 0, admin.Not_Found, c) {
 		return
 	}
+
 	var lists []*common.AppTask
 	for _, row := range rows {
 		points, err := decimal.NewFromString(row.Str(res.Map(`points`)))
@@ -96,16 +89,21 @@ func GetShareAppHandler(c *gin.Context) {
 		}
 		lists = append(lists, apps)
 	}
+
 	rows, _, err = db.Query(sumquery, strings.Join(sumwhere, ` `))
 	if CheckErr(err, c) {
 		return
 	}
-	count := rows[0].Int(0)
+	var count int
+
+	if len(rows) > 0 {
+		count = rows[0].Int(0)
+	}
+
 	c.JSON(http.StatusOK, admin.Response{
 		Code:    0,
 		Message: admin.API_OK,
 		Data: gin.H{
-			"curr_page": req.Page,
 			"data":      lists,
 			"amount":    count,
 		},

@@ -8,6 +8,7 @@ import (
 const (
 	API_OK    = "OK"
 	Not_Found = "没有查找到数据"
+	Error_Param = "参数错误"
 )
 
 type Response struct {

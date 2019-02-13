@@ -16,13 +16,12 @@ func MakePointHandler(c *gin.Context) {
 	}
 
 	var offset int
+
 	if req.Limit < 1 {
 		req.Limit = 10
 	}
 	if req.Page > 0 {
 		offset = (req.Page - 1) * req.Limit
-	} else {
-		offset = 0
 	}
 
 	var (

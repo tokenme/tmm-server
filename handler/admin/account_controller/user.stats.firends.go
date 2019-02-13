@@ -23,7 +23,7 @@ func FriendsHandler(c *gin.Context) {
 	if CheckErr(c.Bind(&req), c) {
 		return
 	}
-	if Check(req.Id < 0, admin.Not_Found, c) {
+	if Check(req.Id < 0, admin.Error_Param, c) {
 		return
 	}
 
@@ -34,6 +34,7 @@ func FriendsHandler(c *gin.Context) {
 	if req.Page > 0 {
 		offset = (req.Page - 1) * req.Limit
 	}
+
 	query := `
 	SELECT
 		inv.user_id,
@@ -86,15 +87,18 @@ func FriendsHandler(c *gin.Context) {
 	ORDER BY inv.user_id DESC
 	LIMIT %d OFFSET %d`
 	totalquery := `SELECT COUNT(DISTINCT inv.user_id) FROM tmm.invite_codes AS inv LEFT JOIN tmm.devices AS dev ON (dev.user_id=inv.user_id) WHERE %s`
+
 	switch types(req.Types) {
 	case Direct:
 		direct := fmt.Sprintf("inv.parent_id=%d", req.Id)
 		query = fmt.Sprintf(query, req.Id, req.Id, direct, req.Limit, offset)
 		totalquery = fmt.Sprintf(totalquery, direct)
+
 	case Indirect:
 		indirect := fmt.Sprintf("inv.grand_id=%d", req.Id)
 		query = fmt.Sprintf(query, req.Id, req.Id, indirect, req.Limit, offset)
 		totalquery = fmt.Sprintf(totalquery, indirect)
+
 	case Children:
 		online := fmt.Sprintf("inv.parent_id=%d OR inv.grand_id=%d", req.Id, req.Id)
 		query = fmt.Sprintf(query, req.Id, req.Id, online, req.Limit, offset)
@@ -109,14 +113,7 @@ func FriendsHandler(c *gin.Context) {
 		query = fmt.Sprintf(query, req.Id, req.Id, active, req.Limit, offset)
 		totalquery = fmt.Sprintf(totalquery, active)
 	default:
-		c.JSON(http.StatusOK, admin.Response{
-			Code:    0,
-			Message: admin.API_OK,
-			Data: gin.H{
-				"data":  nil,
-				"total": nil,
-			},
-		})
+		c.JSON(http.StatusOK, nil)
 		return
 	}
 
@@ -127,15 +124,7 @@ func FriendsHandler(c *gin.Context) {
 		return
 	}
 
-	if len(rows) == 0 {
-		c.JSON(http.StatusOK, admin.Response{
-			Code:    0,
-			Message: admin.API_OK,
-			Data: gin.H{
-				"data":  List,
-				"total": 0,
-			},
-		})
+	if Check(len(rows) == 0, admin.Not_Found, c) {
 		return
 	}
 

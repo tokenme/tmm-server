@@ -55,7 +55,7 @@ func AddShareHandler(c *gin.Context) {
 				return
 			}
 		}
-		if Check(len(fieldList) == 0, `Error Link`, c) {
+		if Check(len(fieldList) == 0, admin.Error_Param, c) {
 			return
 		}
 		fieldList = append(fieldList, `link`)

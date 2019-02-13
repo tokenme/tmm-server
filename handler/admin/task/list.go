@@ -9,6 +9,7 @@ import (
 	"github.com/tokenme/tmm/handler/admin"
 	"net/http"
 	"strings"
+	"strconv"
 )
 
 type SearchOptions struct {
@@ -48,7 +49,8 @@ SELECT
     s.inserted_at,
 	COUNT(DISTINCT log.user_id) AS users,
 	SUM(log.ts) AS ts,
-	s.updated_at 
+	s.updated_at,
+	GROUP_CONCAT(DISTINCT stc.cid) AS cid_str
 FROM 
 	tmm.share_tasks AS s
 LEFT JOIN 
@@ -90,15 +92,14 @@ WHERE
 		sumwhere = append(sumwhere, isAuto)
 	}
 
+	var isOnline string
 	if req.Online == 1 {
-		isOnline := fmt.Sprintf(` s.online_status = %d AND s.points_left > s.bonus`, req.Online)
-		where = append(where, isOnline)
-		sumwhere = append(sumwhere, isOnline)
+		isOnline = fmt.Sprintf(` s.online_status = %d AND s.points_left > s.bonus`, req.Online)
 	} else {
-		isOnline := fmt.Sprintf(` s.online_status = %d `, req.Online)
-		where = append(where, isOnline)
-		sumwhere = append(sumwhere, isOnline)
+		isOnline = fmt.Sprintf(` s.online_status = %d `, req.Online)
 	}
+	where = append(where, isOnline)
+	sumwhere = append(sumwhere, isOnline)
 
 	if req.IsCrawled != -1 {
 		isCrawled := fmt.Sprint("  s.is_crawled = 0 ")
@@ -118,16 +119,8 @@ WHERE
 	if CheckErr(err, c) {
 		return
 	}
-	if len(rows) == 0 {
-		c.JSON(http.StatusOK, admin.Response{
-			Code:    0,
-			Message: admin.Not_Found,
-			Data: gin.H{
-				"curr_page": req.Page,
-				"data":      nil,
-				"amount":    0,
-			},
-		})
+
+	if Check(len(rows) == 0  ,admin.Not_Found,c){
 		return
 	}
 
@@ -166,16 +159,19 @@ WHERE
 			TotalReadUser: row.Int(res.Map(`users`)),
 			ReadDuration:  row.Int(res.Map(`ts`)),
 		}
-		cidquery := `SELECT cid FROM tmm.share_task_categories WHERE task_id = %d`
-		rows, _, err = db.Query(cidquery, share.Id)
-		for _, row := range rows {
-			cidList = append(cidList, row.Int(0))
+		cidStrings:=strings.Split(row.Str(res.Map(`cid_str`)),",")
+
+		for _,cidStr:=range cidStrings{
+			cid,_:=strconv.Atoi(cidStr)
+			cidList = append(cidList,cid)
 		}
+
 		share.Cid = cidList
 		sharelist = append(sharelist, share)
 	}
 
 	rows,_,err=db.Query(`SELECT SUM(pv),task_id FROM tmm.share_task_stats WHERE task_id IN (%s) GROUP BY task_id `,strings.Join(taskIdList,`,`))
+
 	if CheckErr(err,c){
 		return
 	}
@@ -190,7 +186,6 @@ WHERE
 			share.Pv = value
 		}
 	}
-
 	rows, _, err = db.Query(sumquery, strings.Join(sumwhere, ` AND `))
 	if CheckErr(err, c) {
 		return
