@@ -67,7 +67,7 @@ FROM (
 		0 AS types,
 		verified AS verified,
 		cny AS cny,
-		IF(verified=-1,0,IF(trade_num != "",1,2)) AS _status
+		IF(verified=-1,0,IF(verified = 1,IF(trade_num != "",1,2),3))  AS _status
 	FROM 
 		tmm.point_withdraws  
 	WHERE 
@@ -79,7 +79,7 @@ FROM (
 		1 AS types, 
 		verified AS verified,
 		cny AS cny,
-		IF(verified=-1,0,withdraw_status) AS _status 
+		IF(verified=-1,0,IF(verified = 1,IF(trade_num != "",1,2),3))  AS _status 
 	FROM 
 		tmm.withdraw_txs
 	WHERE 
