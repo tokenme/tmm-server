@@ -60,7 +60,8 @@ SELECT
 	u.mobile,
 	IFNULL(wx.avatar,u.avatar),
 	IFNULL(wx.nick,u.nickname),
-	IF(us.user_id > 0,IF(us.blocked = us.block_whitelist,0,1),0) AS blocked
+	IF(us.user_id > 0,IF(us.blocked = us.block_whitelist,0,1),0) AS blocked,
+	dc.info
 FROM 
 	tmm.device_app_task_certificates AS dc
 INNER JOIN tmm.app_tasks AS at ON (at.id = dc.task_id)
@@ -102,6 +103,7 @@ LIMIT %d OFFSET %d
 		appTask.Avatar = row.Str(16)
 		appTask.Nick = row.Str(17)
 		appTask.Blocked = row.Int(18)
+		appTask.CertificateInfo = row.Str(19)
 		data = append(data, appTask)
 	}
 

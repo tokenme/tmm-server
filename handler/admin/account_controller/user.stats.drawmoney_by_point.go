@@ -29,7 +29,7 @@ SELECT
 	cny,
 	DATE_ADD(inserted_at,INTERVAL 8 HOUR),
 	verified,
-	IF(verified=-1,0,IF(trade_num != "",1,2)) 
+	IF(verified=-1,0,IF(verified = 1,IF(trade_num != "",1,2),3)) 
 FROM tmm.point_withdraws
 WHERE user_id=%d
 ORDER BY inserted_at DESC
